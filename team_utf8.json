@@ -1,0 +1,169 @@
+﻿{
+    "value":  [
+                  {
+                      "id":  "jkd_mart_\u0026_tokens_boy",
+                      "name":  "JKD mart \u0026 Tokens Boy",
+                      "description":  "Active operations team for JKD mart \u0026 Tokens Boy.",
+                      "lead":  "Santhosha A Doddamallappanavara",
+                      "leadRole":  "Lead Software Engineer",
+                      "members":  4,
+                      "membersList":  [
+                                          {
+                                              "name":  "Santhosha A Doddamallappanavara",
+                                              "role":  "Lead Software Engineer",
+                                              "email":  "santhosha@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Mohammed Faraz",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "mohammed@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Varun R",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "varun@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Tejashwini S",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "tejashwini@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  },
+                  {
+                      "id":  "mlm",
+                      "name":  "MLM",
+                      "description":  "Active operations team for MLM.",
+                      "lead":  "Namith Gowda",
+                      "leadRole":  "Lead Software Engineer",
+                      "members":  4,
+                      "membersList":  [
+                                          {
+                                              "name":  "Aishwarya K",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "aishwarya@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Namith Gowda",
+                                              "role":  "Lead Software Engineer",
+                                              "email":  "namith@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Rakesh Gowda H N",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "rakesh@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Rakshitha Km",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "rakshitha@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  },
+                  {
+                      "id":  "testing",
+                      "name":  "Testing",
+                      "description":  "Active operations team for Testing.",
+                      "lead":  "Manager",
+                      "leadRole":  "Team Lead",
+                      "members":  2,
+                      "membersList":  [
+                                          {
+                                              "name":  "Shobha V R",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "shobha@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Ashwini B G",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "ashwini@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  },
+                  {
+                      "id":  "navabharatha",
+                      "name":  "Navabharatha",
+                      "description":  "Active operations team for Navabharatha.",
+                      "lead":  "Sahana Nv",
+                      "leadRole":  "Lead Software Engineer",
+                      "members":  4,
+                      "membersList":  [
+                                          {
+                                              "name":  "Vishalakshi Gurupadappa Kittur",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "vishalakshi@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Imsha Gaima",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "imsha@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Anuprasad H A",
+                                              "role":  "Junior Software Engineer",
+                                              "email":  "anuprasad@navabharathtechnologies.com"
+                                          },
+                                          {
+                                              "name":  "Sahana Nv",
+                                              "role":  "Lead Software Engineer",
+                                              "email":  "sahana@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  },
+                  {
+                      "id":  "digital_marketing",
+                      "name":  "Digital Marketing",
+                      "description":  "Active operations team for Digital Marketing.",
+                      "lead":  "Deekshitha M",
+                      "leadRole":  "Marketing Team Lead",
+                      "members":  1,
+                      "membersList":  [
+                                          {
+                                              "name":  "Deekshitha M",
+                                              "role":  "Marketing Team Lead",
+                                              "email":  "deekshitha@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  },
+                  {
+                      "id":  "technical_support",
+                      "name":  "Technical Support",
+                      "description":  "Active operations team for Technical Support.",
+                      "lead":  "Manager",
+                      "leadRole":  "Team Lead",
+                      "members":  1,
+                      "membersList":  [
+                                          {
+                                              "name":  "Supriya S",
+                                              "role":  "Technical Support Engineer",
+                                              "email":  "supriya@navabharathtechnologies.com"
+                                          }
+                                      ],
+                      "progress":  85,
+                      "pending":  3,
+                      "risk":  "none",
+                      "status":  "On Track"
+                  }
+              ],
+    "Count":  6
+}
