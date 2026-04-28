@@ -165,14 +165,37 @@ export default function HRDashboard() {
           borderRadius: '20px',
           backdropFilter: 'blur(10px)'
         }}>
-          <div>
-            <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '850', color: '#0f172a', marginBottom: '4px', letterSpacing: '-1px' }}>
-              Titan Dashboard
-            </h1>
-            <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '500' }}>
-              Strength and scale • 6 Active Teams
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div>
+              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '850', color: '#0f172a', marginBottom: '4px', letterSpacing: '-1px' }}>
+                Titan Dashboard
+              </h1>
+              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '500' }}>
+                Strength and scale • 6 Active Teams
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/my-leaves')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                color: 'white',
+                border: 'none',
+                fontWeight: '800',
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.2)',
+                transition: 'all 0.3s'
+              }}
+            >
+              My Leaves
+            </button>
           </div>
+
         </header>
 
         {/* Stats Grid */}

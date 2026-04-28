@@ -653,57 +653,81 @@ export default function LeaveAttendanceCenter() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexDirection: winWidth < 640 ? 'column' : 'row' }}>
-              {/* Date Range Picker Pill */}
-              <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '4px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', width: winWidth < 640 ? '100%' : 'auto', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '95px' }}
-                  />
-                </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button
+                onClick={() => navigate('/my-leaves')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: '800',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)',
+                  transition: 'all 0.3s'
+                }}
+              >
+                <Calendar size={18} /> My Leaves
+              </button>
 
-                <div style={{ width: '1.5px', height: '16px', background: '#e2e8f0' }}></div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '95px', textAlign: 'right' }}
-                  />
-                  <RefreshCw 
-                    size={16} 
-                    className={attendanceLoading ? 'animate-spin' : ''} 
-                    style={{ cursor: 'pointer', color: '#64748b' }} 
-                    onClick={fetchAttendance}
-                  />
-                </div>
-              </div>
-
-              <div ref={dropdownRef} style={{ position: 'relative', width: winWidth < 640 ? '100%' : 'auto' }}>
-                <button
-                  onClick={() => setShowExportDropdown(!showExportDropdown)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)', width: '100%' }}
-                >
-                  <Download size={18} /> Export
-                </button>
-
-                {showExportDropdown && (
-                  <div style={{ position: 'absolute', top: '55px', right: 0, width: '200px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 15px 30px -10px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden', padding: '8px' }}>
-                    <button onClick={handleExportPDF} style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-                      <FileText size={18} color="#ef4444" /> Export as PDF
-                    </button>
-                    <button onClick={handleExportExcel} style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-                      <Table size={18} color="#10b981" /> Export as Excel
-                    </button>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexDirection: winWidth < 640 ? 'column' : 'row' }}>
+                {/* Date Range Picker Pill */}
+                <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '4px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', width: winWidth < 640 ? '100%' : 'auto', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '95px' }}
+                    />
                   </div>
-                )}
+
+                  <div style={{ width: '1.5px', height: '16px', background: '#e2e8f0' }}></div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '95px', textAlign: 'right' }}
+                    />
+                    <RefreshCw 
+                      size={16} 
+                      className={attendanceLoading ? 'animate-spin' : ''} 
+                      style={{ cursor: 'pointer', color: '#64748b' }} 
+                      onClick={fetchAttendance}
+                    />
+                  </div>
+                </div>
+
+                <div ref={dropdownRef} style={{ position: 'relative', width: winWidth < 640 ? '100%' : 'auto' }}>
+                  <button
+                    onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)', width: '100%' }}
+                  >
+                    <Download size={18} /> Export
+                  </button>
+
+                  {showExportDropdown && (
+                    <div style={{ position: 'absolute', top: '55px', right: 0, width: '200px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 15px 30px -10px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden', padding: '8px' }}>
+                      <button onClick={handleExportPDF} style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                        <FileText size={18} color="#ef4444" /> Export as PDF
+                      </button>
+                      <button onClick={handleExportExcel} style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '800', fontSize: '13px', cursor: 'pointer', textAlign: 'left', borderRadius: '10px', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                        <Table size={18} color="#10b981" /> Export as Excel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
+
 
           {/* Biometric Check-in Card */}
           <div style={{ 

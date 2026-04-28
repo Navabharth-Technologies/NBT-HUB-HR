@@ -30,6 +30,8 @@ import PersonalInfo from './components/profile/PersonalInfo';
 import AssetsManagement from './components/profile/AssetsManagement';
 import JobApplications from './components/profile/JobApplications';
 import JobPostings from './components/profile/JobPostings';
+import MyLeaves from './components/profile/MyLeaves';
+
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -75,6 +77,8 @@ function AppRoutes() {
       <Route path="/assets" element={<AssetsManagement />} />
       <Route path="/job-applications" element={<JobApplications />} />
       <Route path="/job-postings" element={<JobPostings />} />
+      <Route path="/my-leaves" element={<MyLeaves />} />
+
     </Routes>
   );
 }
