@@ -45,16 +45,9 @@ export default function TeamsModule() {
     <div className="hr-dashboard-container">
       <AppHeader />
       
-      <main className="dashboard-content" style={{paddingBottom: '120px'}}>
+      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 40px', paddingBottom: '120px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
         <header className="section-header" style={{ marginBottom: '30px' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-            <button 
-              onClick={() => navigate(-1)} 
-              className="btn-outline" 
-              style={{padding: '8px 12px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', color: '#1e293b'}}
-            >
-              ← Back
-            </button>
             <div>
               <h1 style={{fontSize: '26px', fontWeight: '900', color: '#1e293b', margin: 0}}>Total Teams</h1>
               <p style={{color: '#64748b', margin: '4px 0 0 0', fontWeight: '500'}}>Active Operations and Department Units</p>

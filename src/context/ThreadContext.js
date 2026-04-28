@@ -19,143 +19,62 @@ export const ThreadProvider = ({ children }) => {
     if (!user?.token) return;
     try {
       if (!isBackground) setLoading(true);
-      const uId = user?.id || user?.employee_id;
-      const url = `${API_ENDPOINTS.THREADS}${uId ? `?userId=${uId}` : ''}`;
-      const response = await fetch(url, {
+      const response = await fetch(API_ENDPOINTS.THREADS, {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
       if (response.ok) {
         const data = await response.json();
         const raw = Array.isArray(data) ? data : [];
-        const normalized = await Promise.all(raw.map(async t => {
+        const normalized = raw.map(t => {
           const tid = t.id || t._id;
           const pending = pendingActionsRef.current[tid] || {};
 
-          let badgeCountVal = t.badge_count || t.badgeCount || 0;
-          let userLikedVal = !!t.userLiked || !!t.user_liked || !!t.userHasLiked || false;
-          let userBadgeVal = !!t.userBadge || !!t.user_has_badged || false;
-          let badgeTypeVal = t.badgeType || t.badge_type || null;
-
-          // Emoji Mapping for dedicated DB columns
-          const emojiFieldMap = {
-            '❤️': 'heart_count', 'heart': 'heart_count',
-            '👍': 'thumbsup_count', 'thumbsup': 'thumbsup_count',
-            '😮': 'shocked_count', 'shocked': 'shocked_count',
-            '😂': 'laugh_count', 'laugh': 'laugh_count',
-            '🔥': 'fire_count', 'fire': 'fire_count',
-            '👏': 'clap_count', 'clap': 'clap_count',
-            '🎂': 'cake_count', 'cake': 'cake_count',
-            'like': 'likes_count'
-          };
+          const reactions = t.user_reactions || {};
+          const reactors = t.reactors || t.likes_list || t.reaction_list || [];
           
-          let reactionCounts = {
-            likes_count: Number(t.likes_count || 0),
-            heart_count: Number(t.heart_count || 0),
-            thumbsup_count: Number(t.thumbsup_count || 0),
-            shocked_count: Number(t.shocked_count || 0),
-            laugh_count: Number(t.laugh_count || 0),
-            fire_count: Number(t.fire_count || 0),
-            clap_count: Number(t.clap_count || 0),
-            cake_count: Number(t.cake_count || 0)
+          // CRITICAL: Match current user against both token-based reactions and raw reactor lists
+          const currentUid = String(user?.employee_id || user?.id || '');
+          const userLikedByList = Array.isArray(reactors) && reactors.some(r => {
+            const rid = String(r.user_id || r.userId || r.id || r.employee_id || r.EmpID || '');
+            return rid && rid === currentUid;
+          });
+
+          const userLikedVal = Object.values(reactions).some(v => v === true) || userLikedByList;
+          const activeEmojiVal = Object.keys(reactions).find(k => reactions[k] === true) || (userLikedByList ? 'like' : null);
+          
+          const userBadgeVal = !!(t.userBadge || t.user_has_badged || false);
+          const badgeTypeVal = t.badgeType || t.badge_type || null;
+          const badgeCountVal = Number(t.badge_count || t.badgeCount || 0);
+
+          const displayReactions = {
+            '❤️': Number(t.heart_count || 0) + Number(t.likes_count || 0),
+            '👍': Number(t.thumbsup_count || 0),
+            '😮': Number(t.shocked_count || 0),
+            '😂': Number(t.laugh_count || 0),
+            '🔥': Number(t.fire_count || 0),
+            '👏': Number(t.clap_count || 0),
+            '🎂': Number(t.cake_count || 0)
           };
-          // Start with the aggregate likes if available
-          reactionCounts.likes = Number(t.likes || t.likeCount || t.likes_count || 0);
 
-          // Hydrate from DB explicitly
-          try {
-            const rRes = await fetch(API_ENDPOINTS.THREAD_REACTORS(tid), {
-                headers: { 'Authorization': `Bearer ${user.token}` }
-            });
-            if (rRes.ok) {
-                const rData = await rRes.json();
-                const reactors = Array.isArray(rData) ? rData : (rData.users || rData.reactors || rData.data || rData.reactions || rData.reactionUsers || rData.value || []);
-                let ul = false; let ub = false; let bt = null;
-                
-                const currentIdStr = String(user?.id || '');
-                const currentIdNum = Number(user?.id || 0);
-                const currentEmpIdStr = String(user?.employee_id || '');
-                const currentEmailStr = String(user?.email || '').toLowerCase();
-                const currentNameStr = String(user?.name || '').toLowerCase();
-
-                const hydratedCounts = { 
-                    likes_count: 0,
-                    heart_count: 0, 
-                    thumbsup_count: 0, 
-                    shocked_count: 0, 
-                    laugh_count: 0, 
-                    fire_count: 0, 
-                    clap_count: 0, 
-                    cake_count: 0 
-                };
-
-                reactors.forEach(r => {
-                    const rawType = r.reaction_type || r.reactionType || r.type || r.emoji || r.reaction || r.value || r.badge;
-                    if (!rawType) return;
-                    const rType = String(rawType).toLowerCase();
-                    const field = emojiFieldMap[rawType] || emojiFieldMap[rType];
-                    if (field) hydratedCounts[field]++;
-
-                    const rUid = String(r.user_id || r.userId || r.employee_id || r.emp_id || r.id || r.u_id || r.uid || r.EmpID || '');
-                    const rEmail = String(r.user_email || r.userEmail || r.email || '').toLowerCase();
-                    const rName = String(r.user_name || r.userName || r.name || r.employee_name || '').toLowerCase();
-                    
-                    const isMatch = (rUid && currentIdStr && rUid === currentIdStr) || 
-                                    (Number(rUid) > 0 && currentIdNum > 0 && Number(rUid) === currentIdNum) ||
-                                    (rUid && currentEmpIdStr && rUid === currentEmpIdStr) ||
-                                    (rEmail && currentEmailStr && rEmail === currentEmailStr) ||
-                                    (rName && currentNameStr && rName === currentNameStr);
-
-                    if (field) {
-                        if (isMatch) ul = true;
-                    } else if (rType === 'badge' || rType.includes('badge')) {
-                        if (isMatch) { ub = true; bt = rawType; }
-                    }
-                });
-                
-                userLikedVal = ul || (!!t.userLiked || !!t.user_liked || !!t.userHasLiked);
-                userBadgeVal = ub || (!!t.user_has_badged || false);
-                if (bt) badgeTypeVal = bt;
-                
-                Object.keys(hydratedCounts).forEach(f => {
-                    reactionCounts[f] = Math.max(reactionCounts[f] || 0, hydratedCounts[f]);
-                });
-                
-                // Recalculate total likes based on hydrated values, but ensure it doesn't drop below the initial aggregate
-                const calculatedTotal = (reactionCounts.heart_count || 0) + (reactionCounts.thumbsup_count || 0) + (reactionCounts.shocked_count || 0) + (reactionCounts.laugh_count || 0) + (reactionCounts.fire_count || 0) + (reactionCounts.clap_count || 0) + (reactionCounts.cake_count || 0) + (reactionCounts.likes_count || 0);
-                reactionCounts.likes = Math.max(reactionCounts.likes, calculatedTotal);
-            }
-          } catch (e) {
-             console.warn("Hydration failed for HR thread", tid, e);
-          }
+          const totalLikes = Object.values(displayReactions).reduce((a, b) => a + b, 0);
 
           return {
             ...t,
-            ...reactionCounts,
             id: tid,
-            likes: pending.likes !== undefined ? pending.likes : reactionCounts.likes,
-            userId: t.user_id || t.userId,
-            user_id: t.user_id || t.userId,
+            likes: pending.likes !== undefined ? pending.likes : totalLikes,
             userLiked: pending.userLiked !== undefined ? pending.userLiked : userLikedVal,
+            userHasLiked: pending.userLiked !== undefined ? pending.userLiked : userLikedVal,
+            activeEmoji: pending.activeEmoji !== undefined ? pending.activeEmoji : activeEmojiVal,
             userHasBadged: pending.userHasBadged !== undefined ? pending.userHasBadged : userBadgeVal,
             badge_type: pending.badgeType !== undefined ? pending.badgeType : badgeTypeVal,
             badgeType: pending.badgeType !== undefined ? pending.badgeType : badgeTypeVal,
             badgeCount: pending.badgeCount !== undefined ? pending.badgeCount : badgeCountVal,
             badge_count: pending.badgeCount !== undefined ? pending.badgeCount : badgeCountVal,
             commentCount: t.commentCount || t.comment_count || 0,
-            comment_count: t.commentCount || t.comment_count || 0,
             userName: t.userName || t.user_name || 'Anonymous',
-            userRole: t.userRole || t.user_role || 'Member',
-            reactions: {
-              '❤️': (reactionCounts.heart_count || 0) + (reactionCounts.likes_count || 0),
-              '👍': reactionCounts.thumbsup_count || 0,
-              '😮': reactionCounts.shocked_count || 0,
-              '😂': reactionCounts.laugh_count || 0,
-              '🔥': reactionCounts.fire_count || 0,
-              '👏': reactionCounts.clap_count || 0,
-              '🎂': reactionCounts.cake_count || 0
-            }
+            reactions: displayReactions
           };
-        }));
+        });
         const sorted = normalized.sort((a, b) => 
           new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
         );
@@ -213,10 +132,11 @@ export const ThreadProvider = ({ children }) => {
           });
         }
         body = JSON.stringify({
-          userId: Number(postData.userId || postData.user_id),
-          user_id: Number(postData.userId || postData.user_id),
-          userName: postData.user || postData.user_name,
-          role: postData.role || postData.user_role || 'EMPLOYEE',
+          userId: user?.employee_id || user?.id,
+          user_id: user?.employee_id || user?.id,
+          employee_id: user?.employee_id || user?.id,
+          EmpID: user?.employee_id || user?.id,
+          userName: user?.name,
           tagline: postData.tagline || '',
           content: postData.content || '',
           media: mediaData,
@@ -256,11 +176,19 @@ export const ThreadProvider = ({ children }) => {
     let updatedPending = {};
     setThreads(prev => prev.map(t => {
       if (t.id === threadId) {
-        const currentUserLiked = t.userLiked || false;
-        const currentActiveEmoji = t.activeEmoji || '❤️';
+        const currentUserLiked = !!(t.userLiked || t.userHasLiked || t.user_has_liked || t.user_liked);
+        const currentActiveEmoji = t.activeEmoji || 'like';
         const isSameEmoji = currentActiveEmoji === emoji;
 
-        let newCount = t.likes || 0;
+        // Use the highest available count as the base
+        const baseCount = Math.max(
+          Number(t.likes || 0),
+          Number(t.likeCount || 0),
+          Number(t.likes_count || 0),
+          Number(t.total_likes || 0)
+        );
+        
+        let newCount = baseCount;
         let newUserLiked = currentUserLiked;
         
         const field = emojiFieldMap[emoji];
@@ -320,7 +248,6 @@ export const ThreadProvider = ({ children }) => {
     setPendingActions(prev => ({ ...prev, [threadId]: { ...prev[threadId], ...updatedPending } }));
 
     try {
-      const uId = user?.id || user?.employee_id || userId;
       await fetch(API_ENDPOINTS.THREAD_REACT(threadId), {
         method: 'POST',
         headers: { 
@@ -328,20 +255,19 @@ export const ThreadProvider = ({ children }) => {
           'Authorization': `Bearer ${user.token}` 
         },
         body: JSON.stringify({ 
-        emoji, 
-        reactionType: emoji, 
-        reaction_type: emoji,
-        type: emoji,
-        userId: uId, 
-        user_id: uId,
-        employee_id: uId,
-        EmpID: uId,
-        user_name: user?.name,
-        userName: user?.name,
-        employee_name: user?.name
-      })
+          userId: user?.employee_id || user?.id,
+          user_id: user?.employee_id || user?.id,
+          employee_id: user?.employee_id || user?.id,
+          EmpID: user?.employee_id || user?.id,
+          userName: user?.name,
+          emoji, 
+          reactionType: emoji, 
+          reaction_type: emoji,
+          type: emoji,
+          emoji_icon: emoji === 'like' ? '❤️' : emoji
+        })
       });
-      fetchThreads(true);
+      setTimeout(() => fetchThreads(true), 1000);
       setTimeout(() => {
         setPendingActions(prev => {
             const next = { ...prev };
@@ -358,7 +284,6 @@ export const ThreadProvider = ({ children }) => {
   const addComment = async (threadId, content) => {
     if (!user?.token || !content.trim()) return false;
     try {
-      const uId = user?.id || user?.employee_id || user?.EmpID;
       const response = await fetch(API_ENDPOINTS.THREAD_COMMENT(threadId), {
         method: 'POST',
         headers: { 
@@ -366,12 +291,10 @@ export const ThreadProvider = ({ children }) => {
           'Authorization': `Bearer ${user.token}` 
         },
         body: JSON.stringify({ 
-          content, 
-          userId: uId, 
-          user_id: uId,
+          userId: user?.id || user?.employee_id,
+          user_id: user?.id || user?.employee_id,
           userName: user?.name,
-          user_name: user?.name,
-          employee_name: user?.name
+          content
         })
       });
       if (response.ok) {
@@ -406,7 +329,6 @@ export const ThreadProvider = ({ children }) => {
     setPendingActions(prev => ({ ...prev, [threadId]: { ...prev[threadId], badgeType, badgeCount: newCount } }));
 
     try {
-      const uId = user?.id || user?.employee_id || userId;
       await fetch(API_ENDPOINTS.THREAD_BADGE(threadId), {
         method: 'POST',
         headers: { 
@@ -414,14 +336,12 @@ export const ThreadProvider = ({ children }) => {
           'Authorization': `Bearer ${user.token}` 
         },
         body: JSON.stringify({ 
+        userId: user?.id || user?.employee_id,
+        user_id: user?.id || user?.employee_id,
         badge: badgeType, 
         type: badgeType, 
-        userId: uId, 
-        user_id: uId,
         badge_count: newCount,
-        badgeCount: newCount,
-        employee_id: uId,
-        EmpID: uId
+        badgeCount: newCount
       })
       });
       fetchThreads(true);

@@ -10,6 +10,30 @@ import {
   Trash2, Edit3, Filter, ClipboardList
 } from 'lucide-react';
 
+const FormField = ({ label, icon, type = 'text', name, placeholder, value, onChange, required, fullWidth }) => (
+  <div style={{ gridColumn: fullWidth ? 'span 2' : 'auto' }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>
+      {icon} {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+    </label>
+    {type === 'textarea' ? (
+      <textarea
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(name, e.target.value)}
+        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '100px', resize: 'vertical', outline: 'none' }}
+      />
+    ) : (
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(name, e.target.value)}
+        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+      />
+    )}
+  </div>
+);
+
 export default function JobPostings() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -24,11 +48,13 @@ export default function JobPostings() {
   const [form, setForm] = useState({
     title: '',
     department: '',
+    team: '',
     experience: '',
     location: '',
     requirements: '',
     description: '',
-    status: 'Open'
+    status: 'Open',
+    type: 'Full-time'
   });
 
   useEffect(() => {
@@ -63,11 +89,13 @@ export default function JobPostings() {
     setForm({
       title: '',
       department: '',
+      team: '',
       experience: '',
       location: '',
       requirements: '',
       description: '',
-      status: 'Open'
+      status: 'Open',
+      type: 'Full-time'
     });
     setEditingPost(null);
   };
@@ -85,13 +113,37 @@ export default function JobPostings() {
       
       const method = editingPost ? 'PUT' : 'POST';
 
+      // Robust UUID generator fallback for non-secure contexts
+      const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
+      const finalWebsiteId = editingPost?.website_id || editingPost?.websiteId || generateUUID();
+
+      // Ensure team is sent for backend sync and generate website_id for external portal
+      const payload = {
+        ...form,
+        team: form.department,
+        job_type: form.type, // Map type to job_type for backend/external sync
+        website_id: finalWebsiteId,
+        websiteId: finalWebsiteId
+      };
+      
+      console.log('🚀 [FRONTEND] Sending job payload to backend:', payload);
+
       const res = await fetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -130,29 +182,6 @@ export default function JobPostings() {
     post.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const FormField = ({ label, icon, type = 'text', name, placeholder, value, onChange, required, fullWidth }) => (
-    <div style={{ gridColumn: fullWidth ? 'span 2' : 'auto' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>
-        {icon} {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
-      </label>
-      {type === 'textarea' ? (
-        <textarea
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(name, e.target.value)}
-          style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '100px', resize: 'vertical', outline: 'none' }}
-        />
-      ) : (
-        <input
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(name, e.target.value)}
-          style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
-        />
-      )}
-    </div>
-  );
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -254,9 +283,20 @@ export default function JobPostings() {
                 <FormField label="Department" name="department" value={form.department} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. Engineering" required />
                 <FormField label="Experience Required" name="experience" value={form.experience} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. 5+ years" />
                 <FormField label="Location" name="location" value={form.location} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. Remote / Bangalore" />
-                <FormField label="Requirements" name="requirements" type="textarea" value={form.requirements} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="Key skills and requirements..." fullWidth />
-                <FormField label="Job Description (JD)" name="description" type="textarea" value={form.description} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="Detailed job description..." fullWidth />
-                <div style={{ gridColumn: 'span 2' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Job Type</label>
+                  <select 
+                    value={form.type} 
+                    onChange={(e) => setForm({...form, type: e.target.value})}
+                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+                  >
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                  </select>
+                </div>
+                <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Status</label>
                   <select 
                     value={form.status} 
@@ -267,6 +307,8 @@ export default function JobPostings() {
                     <option value="Closed">Closed</option>
                   </select>
                 </div>
+                <FormField label="Requirements" name="requirements" type="textarea" value={form.requirements} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="Key skills and requirements..." fullWidth />
+                <FormField label="Job Description (JD)" name="description" type="textarea" value={form.description} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="Detailed job description..." fullWidth />
               </div>
             </div>
             <div style={{ padding: '20px 30px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '15px' }}>

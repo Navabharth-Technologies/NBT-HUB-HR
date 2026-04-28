@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Play } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -8,20 +8,30 @@ import { API_ENDPOINTS } from '../../config';
 const TaskNotification = ({ onOpenTask }) => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [lastIds, setLastIds] = useState(new Set());
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    const saved = localStorage.getItem('nbt_dismissed_notifs');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   
   const [winWidth, setWinWidth] = useState(window.innerWidth);
 
-  // Auto-dismiss visited notifications
+  // Auto-dismiss visited notifications (only if not "new" to prevent vanishing)
   useEffect(() => {
     const path = location.pathname;
     setNotifications(prev => prev.filter(n => {
        const msg = (n.description || '').toLowerCase();
        const title = (n.title || '').toLowerCase();
        const combine = msg + title;
+
+       if (dismissedIds.has(n.id)) return false;
+
+       // Only auto-dismiss if notification is NOT new and user is on the page
+       const isOld = !n.isNew;
+       if (!isOld) return true;
 
        if (path.includes('/attendance') && combine.includes('leave')) return false;
        if (path.includes('/tickets') && combine.includes('ticket')) return false;
@@ -37,7 +47,7 @@ const TaskNotification = ({ onOpenTask }) => {
        
        return true;
     }));
-  }, [location.pathname]);
+  }, [location.pathname, dismissedIds]);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -45,174 +55,67 @@ const TaskNotification = ({ onOpenTask }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchBlockedJoinees = async () => {
+  const syncNotifications = async () => {
     if (!user?.token) return;
+
     try {
-      const res = await fetch(API_ENDPOINTS.NEW_JOINEES, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
+      const response = await fetch(API_ENDPOINTS.ALERTS, { 
+        headers: { 'Authorization': `Bearer ${user.token}` } 
       });
-      if (res.ok) {
-        const data = await res.json();
-        const blockedUsers = (data || []).filter(j => Number(j.is_blocked) === 1);
-        
-        const blockedNotifications = blockedUsers.map(user => ({
-           id: `blocked-${user.id || user.name}`,
-           title: 'BLOCKED JOINEE',
-           description: `${user.name} got blocked for pending courses. Please unblock them.`,
-           time: 'JUST NOW',
-           date: new Date().toLocaleDateString(),
-           isNew: true,
-           rawDate: new Date(),
-           isBlockedAlert: true
-        }));
-        
-        setNotifications(prev => {
-           // Always remove old blocked alerts and re-add current ones (or none if list is empty)
-           const otherNotifs = (prev || []).filter(n => !n.isBlockedAlert);
-           return [...blockedNotifications, ...otherNotifs].sort((a, b) => b.rawDate - a.rawDate);
-        });
-        
-        // Only trigger "unread" bubble if we actually found NEW blocked users that weren't there before
-        if (blockedUsers.length > 0 && !isOpen) {
-           setHasUnread(true);
-        }
-      }
-    } catch (err) {
-      console.error("Blocked Joinee Fetch Error:", err);
-    }
-  };
 
-  const fetchNotifications = async () => {
-    if (!user?.token) return;
-    const uid = user?.id || user?.empId || user?.userId || user?.employee_id;
+      if (!response.ok) return;
 
-    try {
-      const endpoints = [
-        fetch(API_ENDPOINTS.NOTIFICATIONS_BY_USER(uid), { headers: { 'Authorization': `Bearer ${user.token}` } }),
-        fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.SUPPORT_TICKETS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.RESIGNATIONS_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.SERVICE_CERTIFICATES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.THREADS || '', { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.JOB_APPLICATIONS || '', { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
-      ];
-
-      const results = await Promise.all(endpoints);
-      let aggregated = [];
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : (data.data || []);
+      
+      const aggregatedMap = new Map();
 
       const parseDate = (d) => {
         const r = new Date(d);
         return isNaN(r.getTime()) ? new Date() : r;
       };
 
-      // 1. System Notifications
-      if (results[0]?.ok) {
-        const data = await results[0].json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        list.forEach(n => aggregated.push({
-          id: `sys-${n.id}`,
-          title: (n.type || 'SYSTEM').toUpperCase(),
-          description: n.message,
+      list.forEach(n => {
+        const notif = {
+          id: n.id || `notif-${Math.random()}`,
+          title: (n.title || n.type || 'NOTIFICATION').toUpperCase(),
+          description: n.message || n.description || '',
           rawDate: parseDate(n.created_at || n.timestamp),
-          isNew: n.is_read === 0 || n.is_read === false,
-          type: 'system'
-        }));
-      }
+          isNew: n.is_read === 0 || n.is_read === false || !n.is_read,
+          type: n.type || 'system',
+          isBlockedAlert: n.isBlockedAlert || false
+        };
 
-      // 2. Pending Leaves
-      if (results[1]?.ok) {
-        const data = await results[1].json();
-        const list = Array.isArray(data) ? data : (data.all || data.data || data.requests || []);
-        list.filter(l => String(l.status || '').toLowerCase().includes('pending')).forEach(l => aggregated.push({
-          id: `leave-${l.id}`,
-          title: 'LEAVE REQUEST',
-          description: `New Leave Request from ${l.employee_name || l.name || 'Employee'} (${l.leave_type}): ${l.start_date} to ${l.end_date}`,
-          rawDate: parseDate(l.created_at || l.date),
-          isNew: true,
-          type: 'leave'
-        }));
-      }
+        const key = `${notif.id}|${notif.title}|${notif.description}`.toLowerCase().trim();
+        if (!aggregatedMap.has(key)) aggregatedMap.set(key, notif);
+      });
 
-      // 3. Open Tickets
-      if (results[2]?.ok) {
-        const data = await results[2].json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        list.filter(t => String(t.status || '').toLowerCase() === 'open' || String(t.status || '').toLowerCase() === 'pending').forEach(t => aggregated.push({
-          id: `ticket-${t.id}`,
-          title: 'SUPPORT TICKET',
-          description: `New Ticket #${t.ticket_no || t.id}: ${t.subject || 'No Subject'}`,
-          rawDate: parseDate(t.created_at),
-          isNew: true,
-          type: 'ticket'
+      const finalMapped = Array.from(aggregatedMap.values())
+        .filter(n => !dismissedIds.has(n.id))
+        .sort((a, b) => b.rawDate - a.rawDate)
+        .map(n => ({
+          ...n,
+          time: n.rawDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: n.rawDate.toLocaleDateString()
         }));
-      }
-
-      // 4. Pending Resignations
-      if (results[3]?.ok) {
-        const data = await results[3].json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        list.filter(r => String(r.status || '').toLowerCase().includes('pending')).forEach(r => aggregated.push({
-          id: `resig-${r.id}`,
-          title: 'RESIGNATION',
-          description: `Resignation Request from ${r.employee_name || r.name || 'Employee'}: ${r.reason || 'No reason specified'}`,
-          rawDate: parseDate(r.created_at),
-          isNew: true,
-          type: 'resignation'
-        }));
-      }
-
-      // 5. Pending Certificates
-      if (results[4]?.ok) {
-        const data = await results[4].json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        list.filter(c => String(c.status || '').toLowerCase().includes('pending')).forEach(c => aggregated.push({
-          id: `cert-${c.id}`,
-          title: 'CERTIFICATE REQUEST',
-          description: `Service Certificate Request from ${c.employee_name || 'Employee'}`,
-          rawDate: parseDate(c.created_at),
-          isNew: true,
-          type: 'certificate'
-        }));
-      }
-
-      // 6. Job Applications
-      if (results[6]?.ok) {
-        const data = await results[6].json();
-        const list = Array.isArray(data) ? data : (data.data || []);
-        list.filter(j => String(j.status || '').toLowerCase().includes('pending')).forEach(j => aggregated.push({
-          id: `job-${j.id}`,
-          title: 'JOB APPLICATION',
-          description: `New Application: ${j.full_name} for ${j.position}`,
-          rawDate: parseDate(j.created_at),
-          isNew: true,
-          type: 'job'
-        }));
-      }
-
-      const finalMapped = aggregated.sort((a, b) => b.rawDate - a.rawDate).map(n => ({
-        ...n,
-        time: n.rawDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: n.rawDate.toLocaleDateString()
-      }));
 
       setNotifications(finalMapped);
-      const hasNew = finalMapped.some(n => n.isNew);
-      if (hasNew && !isOpen) setHasUnread(true);
+      if (finalMapped.some(n => n.isNew) && !isOpen) setHasUnread(true);
 
     } catch (err) {
-      console.error("Notification Aggregator Sync Error:", err);
+      console.error("Unified Notification Sync Error:", err);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-    fetchBlockedJoinees();
-    const poll = setInterval(() => {
-      fetchNotifications();
-      fetchBlockedJoinees();
-    }, 15000);
+    localStorage.setItem('nbt_dismissed_notifs', JSON.stringify([...dismissedIds]));
+  }, [dismissedIds]);
+
+  useEffect(() => {
+    syncNotifications();
+    const poll = setInterval(syncNotifications, 15000);
     return () => clearInterval(poll);
-  }, [user, lastIds.size]);
+  }, [user, dismissedIds]);
 
   const isMobile = winWidth < 768;
 
@@ -251,12 +154,23 @@ const TaskNotification = ({ onOpenTask }) => {
                 <Bell size={20} fill="white" />
                 <span style={{ fontWeight: '1000', fontSize: '14px', letterSpacing: '0.5px' }}>NOTIFICATIONS</span>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => {
+                    const allIds = notifications.map(n => n.id);
+                    setDismissedIds(prev => new Set([...prev, ...allIds]));
+                  }}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '10px', padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: '1000' }}
+                >
+                  CLEAR ALL
+                </button>
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f8fafc' }}>
@@ -306,30 +220,31 @@ const TaskNotification = ({ onOpenTask }) => {
                           const title = (notif.title || '').toLowerCase();
 
                           if (notif.isBlockedAlert) {
-                            window.location.href = '/new-joinees#blocked';
+                            navigate('/new-joinees#blocked');
                           } else if (desc.includes('leave') || title.includes('leave')) {
-                            window.location.href = '/attendance';
+                            navigate('/attendance');
                           } else if (desc.includes('resignation') || title.includes('resignation')) {
-                            window.location.href = '/admin/resignations';
+                            navigate('/admin/resignations');
                           } else if (desc.includes('certificate') || title.includes('certificate')) {
-                            window.location.href = '/admin/certificates';
+                            navigate('/admin/certificates');
                           } else if (desc.includes('job') || title.includes('job')) {
-                            window.location.href = '/job-applications';
+                            navigate('/job-applications');
                           } else if (desc.includes('ticket') || title.includes('ticket')) {
-                            window.location.href = '/tickets';
+                            navigate('/tickets');
                           } else if (desc.includes('asset') || title.includes('asset')) {
-                            window.location.href = '/assets';
+                            navigate('/assets');
                           } else if (desc.includes('performance') || title.includes('performance')) {
-                            window.location.href = '/performance';
+                            navigate('/performance');
                           } else if (desc.includes('course') || title.includes('course')) {
-                            window.location.href = '/courses';
+                            navigate('/courses');
                           } else if (desc.includes('award') || title.includes('award') || desc.includes('recognition')) {
-                            window.location.href = '/awards';
+                            navigate('/awards');
                           } else if (onOpenTask) {
                             onOpenTask();
                           } else {
-                            window.location.href = '/alerts';
+                            navigate('/alerts');
                           }
+                          setDismissedIds(prev => new Set([...prev, notif.id]));
                           setIsOpen(false);
                           setHasUnread(false);
                         }}

@@ -44,28 +44,16 @@ export default function LeaveRequestDetail() {
         approve_type: userRole.includes('HR') ? 'HR' : 'PM',
       };
 
-      // Robust Stage Mapping - Dynamic Detection
+      // Explicit Role-to-Stage Mapping
       const r = userRole.toUpperCase();
-      const isLeadApprover = r.includes('PM') || r.includes('CEO') || r.includes('ADMIN') || r.includes('MANAGER') || r.includes('LEAD') || r.includes('SR') || r.includes('SENIOR') || r.includes('HEAD') || r.includes('TEAM');
-      const isHRApprover = r.includes('HR');
-
-      // Determine the logical next stage based on current data
       let finalStage = 'L1';
-      if (request?.approvals?.l2?.status !== 'PENDING') {
+      
+      if (r.includes('PM') || r.includes('CEO') || r.includes('ADMIN') || r.includes('MANAGER')) {
         finalStage = 'L3';
-      } else if (request?.approvals?.l1?.status !== 'PENDING') {
+      } else if (r.includes('HR')) {
         finalStage = 'L2';
-      }
-
-      // Respect explicit roles if they are higher than the auto-detected stage
-      if (isLeadApprover) finalStage = 'L3';
-      else if (isHRApprover && finalStage === 'L1') finalStage = 'L2';
-
-      // Special case: If the requester is a lead, they skip L1 entirely
-      if (isLeadRequester && finalStage === 'L1') finalStage = 'L2';
-      // If L1 is skipped or done, and requester is lead, and we are not HR, we must be L3
-      if (isLeadRequester && finalStage === 'L2' && request?.approvals?.l2?.status !== 'PENDING' && !isHRApprover) {
-          finalStage = 'L3';
+      } else {
+        finalStage = 'L1'; // For Team Leads/Lead Software Engineers
       }
 
       payload.stage = finalStage;
@@ -142,6 +130,18 @@ export default function LeaveRequestDetail() {
           const empId = found.user_id || found.emp_id || found.employee_id;
           const masterEmp = Array.isArray(empData) ? empData.find(e => String(e.id || e.EmpID || e.employee_id) === String(empId)) : null;
           const resolvedRole = (masterEmp?.role || masterEmp?.designation || found.user_role || found.designation || found.role || 'Employee').toUpperCase();
+          const empTeam = masterEmp?.team || found.team || '';
+
+          let dynamicLeadName = found.l1_name || found.reportingManagerName || 'Sahana Nv';
+          if (empTeam && Array.isArray(empData)) {
+            const teamLead = empData.find(e => 
+              (e.team === empTeam) && 
+              (String(e.role || '').toUpperCase().includes('LEAD') || String(e.role || '').toUpperCase().includes('MANAGER'))
+            );
+            if (teamLead) {
+              dynamicLeadName = teamLead.name || teamLead.full_name || dynamicLeadName;
+            }
+          }
           
           setRequest({
             id: found.id || found.ID || id,
@@ -161,9 +161,9 @@ export default function LeaveRequestDetail() {
               found.pm_status, found.l3_status
             ].filter(Boolean).join(',')),
             approvals: {
-              l1: { name: found.l1_name || found.reportingManagerName || 'Sahana Nv', status: resolveStatus(found.rm_status || found.l1_status) },
+              l1: { name: dynamicLeadName, status: resolveStatus(found.rm_status || found.l1_status) },
               l2: { name: found.l2_name || 'Sinchana Hs', status: resolveStatus(found.hr_status || found.l2_status) },
-              l3: { name: found.l3_name || 'Anish V N', status: resolveStatus(found.pm_status || found.l3_status || found.manager_status || found.status) }
+              l3: { name: found.l3_name || 'Anish V N', status: resolveStatus(found.pm_status || found.l3_status || found.manager_status) }
             }
           });
         }

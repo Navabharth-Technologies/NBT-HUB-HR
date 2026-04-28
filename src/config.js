@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://192.168.1.12:5000';
+export const BASE_URL = 'http://192.168.1.3:5000';
 export const TEAM_OFFICE_BASE_URL = '/api/etimeoffice';
 export const TEAM_OFFICE_AUTH_TOKEN = 'c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnRAMTp0cnVl';
 
@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
   PROFILE_ABOUT: `${BASE_URL}/api/profile/about`,
   PROFILE_MANAGER: `${BASE_URL}/api/profile/manager`,
   PROFILE_UPLOAD_DOC: `${BASE_URL}/api/profile/upload-doc`,
+  PROFILE_UPLOAD_DIRECT: `${BASE_URL}/api/profile/upload-direct`,
   EMPLOYEE_PROFILE_GET: (id) => `${BASE_URL}/api/employee-profile/${id}`,
   EMPLOYEE_PROFILE_ALL: `${BASE_URL}/api/admin/employee-profiles`,
   EMPLOYEE_PROFILE_UPDATE: `${BASE_URL}/api/employee-profile/update`,
@@ -28,6 +29,8 @@ export const API_ENDPOINTS = {
   COMMENT_UPDATE: (threadId, commentId) => `${BASE_URL}/api/threads/${threadId}/comments/${commentId}`,
   TASKS: `${BASE_URL}/api/tasks`,
   TASK_UPDATES: `${BASE_URL}/api/task-updates`,
+  PASSWORD_CHANGE: `${BASE_URL}/api/password/change-password`,
+  PASSWORD_RESET: `${BASE_URL}/api/password/reset-with-otp`,
   TEAMS: `${BASE_URL}/api/teams`,
   EMPLOYEES: `${BASE_URL}/api/employees`,
   HOLIDAYS: `${BASE_URL}/api/holidays`,
@@ -39,6 +42,7 @@ export const API_ENDPOINTS = {
   USERS: `${BASE_URL}/api/users`,
   ATTENDANCE: `${BASE_URL}/api/attendance`,
   NEW_JOINEES: `${BASE_URL}/api/new-joinees`,
+  NEW_JOINEE_UPDATE: (id) => `${BASE_URL}/api/new-joinees/${id}`,
   NEWJOINEE_COURSES: `${BASE_URL}/api/newjoinee-courses`,
   SUPPORT_TICKETS: `${BASE_URL}/api/support-tickets`,
   TASKS_ASSIGNED: (uid) => `${BASE_URL}/api/tasks/assigned/${uid}`,
@@ -47,9 +51,11 @@ export const API_ENDPOINTS = {
   LEAVES_GET: `${BASE_URL}/api/leaves/all`,
   PAYSLIPS: `${BASE_URL}/api/payslips`,
   PAY_SLIP_POST: `${BASE_URL}/api/pay_slip`,
-  SERVICE_CERTIFICATES_GET: `${BASE_URL}/api/admin/service-certificates`,
-  SERVICE_CERTIFICATE_UPDATE: (id) => `${BASE_URL}/api/admin/service-certificates/${id}`,
-  SERVICE_CERTIFICATE_REQUEST: `${BASE_URL}/api/service-certificates`,
+  SERVICE_CERTIFICATES_ADMIN: `${BASE_URL}/api/service_certificate_requests`,
+  SERVICE_CERTIFICATE_MY: `${BASE_URL}/api/service_certificate_requests/my`,
+  SERVICE_CERTIFICATE_SINGLE: (id) => `${BASE_URL}/api/service_certificate_requests/${id}`,
+  SERVICE_CERTIFICATE_REQUEST: `${BASE_URL}/api/service_certificate_requests`,
+  SERVICE_CERTIFICATE_UPDATE: (id) => `${BASE_URL}/api/service_certificate_requests/${id}`,
   RESIGNATIONS_GET: `${BASE_URL}/api/admin/resignations`,
   RESIGNATION_UPDATE: (id) => `${BASE_URL}/api/admin/resignations/${id}/review`,
   RESIGNATION_REQUEST: `${BASE_URL}/api/resignations`,
@@ -68,4 +74,13 @@ export const API_ENDPOINTS = {
   JOB_POSTINGS: `${BASE_URL}/api/job-postings`,
   JOB_POSTING_PUT: (id) => `${BASE_URL}/api/job-postings/${id}`,
   JOB_POSTING_DELETE: (id) => `${BASE_URL}/api/job-postings/${id}`,
+  INTERNS: `${BASE_URL}/api/interns`,
+  INTERN_UPDATE: (id) => `${BASE_URL}/api/interns/${id}`,
+  INTERN_PROMOTE: (id) => `${BASE_URL}/api/interns/promote/${id}`,
+  INTERN_DELETE: (id) => `${BASE_URL}/api/interns/${id}`,
+  SUGGESTIONS_ADMIN: `${BASE_URL}/api/admin/suggestions`,
+  UNBLOCK_ALL_JOINEES: `${BASE_URL}/api/admin/new-joinees/unblock-all`,
+  UNBLOCK_ALL_JOINEES_ALT: `${BASE_URL}/api/new-joinees/unblock-all`,
+  NEW_JOINEE_UNBLOCK: (id) => `${BASE_URL}/api/new-joinees/${id}/unblock`,
+  NEW_JOINEE_UNBLOCK_ADMIN: (id) => `${BASE_URL}/api/admin/new-joinees/${id}/unblock`,
 };

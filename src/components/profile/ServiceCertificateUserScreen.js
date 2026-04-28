@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config';
 import { 
   ChevronLeft, FileText, CheckCircle, Clock, 
   Download, Plus, Search, Filter, AlertCircle, X,
-  ExternalLink, Calendar, Info
+  ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,9 +20,16 @@ export default function ServiceCertificateUserScreen() {
     const [purpose, setPurpose] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState(null);
+    const [showAssetsModal, setShowAssetsModal] = useState(false);
+    const [assetData, setAssetData] = useState(null);
+    const [assetsLoading, setAssetsLoading] = useState(false);
+    const [employeeNames, setEmployeeNames] = useState({});
 
     useEffect(() => {
         fetchMyRequests();
+        if (String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') {
+            fetchAllEmployees();
+        }
     }, [user]);
 
     const fetchMyRequests = async () => {
@@ -32,10 +39,9 @@ export default function ServiceCertificateUserScreen() {
             const employeeId = user.id || user.employee_id;
             const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr';
             
-            // If admin/hr, we fetch all via the admin endpoint, otherwise we fetch user-specific
             const endpoint = isAdmin 
-                ? API_ENDPOINTS.SERVICE_CERTIFICATES_GET 
-                : `${API_ENDPOINTS.SERVICE_CERTIFICATE_REQUEST}?employee_id=${employeeId}`;
+                ? API_ENDPOINTS.SERVICE_CERTIFICATES_ADMIN 
+                : API_ENDPOINTS.SERVICE_CERTIFICATE_MY;
 
             const res = await fetch(endpoint, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
@@ -69,6 +75,67 @@ export default function ServiceCertificateUserScreen() {
             setLoading(false);
         }
     };
+
+    const fetchAllEmployees = async () => {
+        if (!user?.token) return;
+        try {
+            const res = await fetch(API_ENDPOINTS.EMPLOYEES, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const mapping = {};
+                (Array.isArray(data) ? data : (data.data || [])).forEach(emp => {
+                    mapping[emp.employee_id || emp.id] = emp.name || emp.employee_name;
+                });
+                setEmployeeNames(mapping);
+            }
+        } catch (error) {
+            console.error('Fetch employees error:', error);
+        }
+    };
+
+    const fetchAssetData = async (reqId = null) => {
+        if (!user?.token) return;
+        try {
+            setAssetsLoading(true);
+            
+            let dataToUse = null;
+            if (reqId) {
+                const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_SINGLE(reqId), {
+                    headers: { 'Authorization': `Bearer ${user.token}` }
+                });
+                if (res.ok) {
+                    dataToUse = await res.json();
+                }
+            } else {
+                const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_MY, {
+                    headers: { 'Authorization': `Bearer ${user.token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = Array.isArray(data) ? data : (data.data || []);
+                    dataToUse = list
+                        .filter(r => r.status === 'Approved' || r.status === 'Pending Audit')
+                        .sort((a, b) => b.id - a.id)[0];
+                }
+            }
+            
+            if (dataToUse) {
+                setAssetData(dataToUse);
+            }
+        } catch (error) {
+            console.error('Fetch assets error:', error);
+        } finally {
+            setAssetsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (showAssetsModal && !assetData?.id) {
+            fetchAssetData();
+        }
+    }, [showAssetsModal]);
 
     const handleCreateRequest = async () => {
         if (!purpose.trim() || !user?.token) return;
@@ -140,14 +207,23 @@ export default function ServiceCertificateUserScreen() {
                         </div>
                     </div>
 
-                    {!(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button 
-                            onClick={() => setShowRequestModal(true)}
-                            style={{ background: '#0f172a', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)' }}
+                            onClick={() => setShowAssetsModal(true)}
+                            style={{ background: 'white', color: '#0f172a', border: '1.5px solid #e2e8f0', padding: '12px 24px', borderRadius: '14px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}
                         >
-                            <Plus size={18} /> New Request
+                            <Package size={18} color="#3b82f6" /> Available Assets
                         </button>
-                    )}
+
+                        {!(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && (
+                            <button 
+                                onClick={() => setShowRequestModal(true)}
+                                style={{ background: '#0f172a', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)' }}
+                            >
+                                <Plus size={18} /> New Request
+                            </button>
+                        )}
+                    </div>
                 </header>
 
                 {/* Section: Active & History Requests */}
@@ -202,8 +278,8 @@ export default function ServiceCertificateUserScreen() {
                                     <div style={{ padding: '20px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                             <span style={{ 
-                                                background: isPending ? '#fffbeb' : isApproved ? '#f0fdf4' : '#fef2f2', 
-                                                color: isPending ? '#d97706' : isApproved ? '#16a34a' : '#dc2626', 
+                                                background: status === 'Pending Audit' ? '#fef2f2' : isPending ? '#fffbeb' : isApproved ? '#f0fdf4' : '#fef2f2', 
+                                                color: status === 'Pending Audit' ? '#ef4444' : isPending ? '#d97706' : isApproved ? '#16a34a' : '#dc2626', 
                                                 padding: '4px 10px', borderRadius: '8px', fontSize: '9px', fontWeight: '950', textTransform: 'uppercase'
                                             }}>
                                                 {status}
@@ -217,7 +293,10 @@ export default function ServiceCertificateUserScreen() {
                                             </div>
                                             <div>
                                                 <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>#{req.id} Certificate</div>
-                                                <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>{new Date(req.created_at).toLocaleDateString()}</div>
+                                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>
+                                                    {req.employee_name || req.name || employeeNames[req.employee_id] || 'Employee'} (ID: {req.employee_id})
+                                                </div>
+                                                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>{new Date(req.created_at).toLocaleDateString()}</div>
                                             </div>
                                         </div>
 
@@ -311,20 +390,33 @@ export default function ServiceCertificateUserScreen() {
                                     </div>
                                 )}
 
-                                <div style={{ display: 'flex', gap: '15px' }}>
-                                    {(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && selectedDetail.status === 'Pending' ? (
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                    {(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && 
+                                     (selectedDetail.status === 'Pending' || selectedDetail.status === 'Pending Audit') ? (
                                         <>
+                                            <div style={{ display: 'flex', gap: '10px', width: '100%', marginBottom: '10px' }}>
+                                                <button 
+                                                    onClick={() => quickStatusUpdate(selectedDetail.id, 'Approved')}
+                                                    style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', background: '#22c55e', color: 'white', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)' }}
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button 
+                                                    onClick={() => quickStatusUpdate(selectedDetail.id, 'Rejected')}
+                                                    style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', background: '#ef4444', color: 'white', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)' }}
+                                                >
+                                                    Reject
+                                                </button>
+                                            </div>
                                             <button 
-                                                onClick={() => quickStatusUpdate(selectedDetail.id, 'Approved')}
-                                                style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', background: '#22c55e', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    setAssetData(selectedDetail);
+                                                    setShowAssetsModal(true);
+                                                    fetchAssetData(selectedDetail.id);
+                                                }}
+                                                style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                             >
-                                                Approve
-                                            </button>
-                                            <button 
-                                                onClick={() => quickStatusUpdate(selectedDetail.id, 'Rejected')}
-                                                style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', background: '#ef4444', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer' }}
-                                            >
-                                                Reject
+                                                <Package size={18} color="#3b82f6" /> Their Asset Submissions
                                             </button>
                                         </>
                                     ) : selectedDetail.status === 'Approved' && selectedDetail.certificate_url ? (
@@ -343,6 +435,108 @@ export default function ServiceCertificateUserScreen() {
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* AVAILABLE ASSETS MODAL */}
+            <AnimatePresence>
+                {showAssetsModal && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '20px' }}>
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            style={{ background: 'white', borderRadius: '32px', width: '100%', maxWidth: '850px', position: 'relative', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #f1f5f9' }}
+                        >
+                            <div style={{ padding: '40px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
+                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                        <div style={{ width: '56px', height: '56px', background: '#eef2ff', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Package size={28} color="#4f46e5" />
+                                        </div>
+                                        <div>
+                                            <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Professional Asset Declaration</h2>
+                                            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                                <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: '700' }}>
+                                                    {assetData?.employee_name || assetData?.name || employeeNames[assetData?.employee_id] || 'Employee'} (ID: {assetData?.employee_id})
+                                                </p>
+                                                <div style={{ width: '1px', height: '12px', background: '#cbd5e1' }} />
+                                                <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: '700' }}>Request ID: #{assetData?.id}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setShowAssetsModal(false)} style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
+                                </div>
+
+                                <div style={{ marginBottom: '32px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#0f172a', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Laptop Details & Serial Number</label>
+                                    <div style={{ background: '#f8fafc', padding: '20px 24px', borderRadius: '18px', border: '1.5px solid #f1f5f9', fontSize: '15px', fontWeight: '700', color: '#334155', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div>{assetData?.laptop_details || 'N/A'}</div>
+                                        {assetData?.serial_number && (
+                                            <div style={{ fontSize: '13px', color: '#64748b' }}>S/N: {assetData.serial_number}</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', padding: '30px', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+                                        <ShieldCheck size={20} color="#059669" />
+                                        <h3 style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Hardware Peripherals Verified</h3>
+                                    </div>
+
+                                    {assetsLoading ? (
+                                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontWeight: '800' }}>Fetching verified assets...</div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
+                                            {[
+                                                { label: 'Optical Mouse', checked: assetData?.mouse || assetData?.has_mouse },
+                                                { label: 'External Keyboard', checked: assetData?.keyboard || assetData?.has_keyboard },
+                                                { label: 'Laptop Stand', checked: assetData?.laptop_stand || assetData?.has_laptop_stand },
+                                                { label: 'Company Mobile', checked: assetData?.company_mobile },
+                                                { label: 'Earphones', checked: assetData?.earphone_headphone },
+                                                { label: 'External Camera', checked: assetData?.external_camera },
+                                                { label: 'Tablet', checked: assetData?.tablet },
+                                                { label: 'Pendrive / Storage', checked: assetData?.pendrive },
+                                                { label: 'Ref Pad / Notebook', checked: assetData?.ref_pad },
+                                            ].map((asset, idx) => (
+                                                <div key={idx} style={{ 
+                                                    background: asset.checked ? '#f0fdf4' : 'white', 
+                                                    border: asset.checked ? '1.5px solid #bbf7d0' : '1.5px solid #e2e8f0', 
+                                                    borderRadius: '16px', 
+                                                    padding: '16px 10px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '10px',
+                                                    textAlign: 'center',
+                                                    transition: '0.2s'
+                                                }}>
+                                                    <div style={{ 
+                                                        width: '24px', height: '24px', borderRadius: '50%', 
+                                                        background: asset.checked ? '#22c55e' : '#f1f5f9',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        {asset.checked ? <CheckCircle size={14} color="white" /> : <Package size={14} color="#94a3b8" />}
+                                                    </div>
+                                                    <span style={{ fontSize: '11px', fontWeight: '800', color: asset.checked ? '#166534' : '#64748b' }}>{asset.label}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    style={{ 
+                                        width: '100%', padding: '18px', borderRadius: '18px', border: 'none', 
+                                        background: '#10b981', color: 'white', fontWeight: '900', fontSize: '15px', 
+                                        cursor: 'pointer', marginTop: '32px', display: 'flex', alignItems: 'center', 
+                                        justifyContent: 'center', gap: '10px', boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
+                                    }}
+                                >
+                                    <Sparkles size={18} /> Update Hardware Declaration
+                                </button>
                             </div>
                         </motion.div>
                     </div>

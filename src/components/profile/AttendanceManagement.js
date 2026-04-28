@@ -42,7 +42,13 @@ export default function LeaveAttendanceCenter() {
   const filterDropdownRef = useRef(null);
   const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
-  const [winWidth, setWinWidth] = React.useState(window.innerWidth);
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWinWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [showHalfDaysModal, setShowHalfDaysModal] = useState(false);
   const [halfDaySearch, setHalfDaySearch] = useState('');
@@ -232,13 +238,24 @@ export default function LeaveAttendanceCenter() {
         }
       });
       const responseData = await res.json();
+      const list = Array.isArray(responseData) ? responseData : (responseData?.all || responseData?.data || responseData?.requests || []);
 
       // Robust parsing for various backend response styles
-      const list = Array.isArray(responseData)
-        ? responseData
-        : (responseData?.data || responseData?.all || responseData?.leaves || responseData?.requests || []);
+      // De-duplicate list by ID to prevent UI glitches
+      const uniqueList = [];
+      const seenIds = new Set();
+      if (Array.isArray(list)) {
+        list.forEach(item => {
+          if (item && item.id && !seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            uniqueList.push(item);
+          } else if (item && !item.id) {
+            uniqueList.push(item);
+          }
+        });
+      }
 
-      setLeaveRequests(Array.isArray(list) ? list : []);
+      setLeaveRequests(uniqueList);
     } catch (err) {
       console.error("Critical Leave Fetch failure:", err);
     } finally {
@@ -618,7 +635,7 @@ export default function LeaveAttendanceCenter() {
     <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
-      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px 30px' : '30px 20px 30px', width: '100%', boxSizing: 'border-box', margin: '0 auto', marginTop: winWidth < 768 ? '85px' : '110px', maxWidth: '100%' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '15px 12px 30px' : '30px 20px 30px', width: '100%', boxSizing: 'border-box', margin: '0 auto', marginTop: winWidth < 768 ? '80px' : '110px', maxWidth: '100%' }}>
         <div style={{ maxWidth: '100%', margin: '0 auto', width: '100%' }}>
           <button
             onClick={() => navigate('/dashboard')}
@@ -627,10 +644,10 @@ export default function LeaveAttendanceCenter() {
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
 
-          <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'flex-start', marginBottom: '32px', gap: '20px' }}>
-            <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.8px' }}>Attendance Dashboard</h1>
-              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'flex-start', marginBottom: winWidth < 768 ? '24px' : '32px', gap: '20px' }}>
+            <div style={{ textAlign: winWidth < 768 ? 'center' : 'left' }}>
+              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.8px' }}>Attendance Hub</h1>
+              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: winWidth < 768 ? 'center' : 'flex-start', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }}></span>
                 Biometric Syncing: Operational
               </p>
@@ -640,7 +657,6 @@ export default function LeaveAttendanceCenter() {
               {/* Date Range Picker Pill */}
               <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '4px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', width: winWidth < 640 ? '100%' : 'auto', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
                   <input
                     type="date"
                     value={fromDate}
@@ -690,125 +706,154 @@ export default function LeaveAttendanceCenter() {
           </div>
 
           {/* Biometric Check-in Card */}
-          <div style={{ background: 'white', borderRadius: '24px', padding: '32px', marginBottom: '32px', border: '1.5px solid #f1f5f9', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '24px', 
+            padding: winWidth < 768 ? '20px' : '32px', 
+            marginBottom: '32px', 
+            border: '1.5px solid #f1f5f9', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.03)', 
+            display: 'flex', 
+            flexDirection: winWidth < 1024 ? 'column' : 'row',
+            justifyContent: 'space-between', 
+            alignItems: winWidth < 1024 ? 'stretch' : 'center',
+            gap: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 480 ? '12px' : '24px' }}>
               <div
                 onClick={getUserCurrentLocation}
-                style={{ width: '56px', height: '56px', borderRadius: '18px', background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #bae6fd', cursor: 'pointer', transition: '0.3s' }}
+                style={{ 
+                  width: winWidth < 768 ? '44px' : '56px', 
+                  height: winWidth < 768 ? '44px' : '56px', 
+                  borderRadius: '16px', 
+                  background: '#e0f2fe', 
+                  color: '#0369a1', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  border: '1.5px solid #bae6fd', 
+                  cursor: 'pointer', 
+                  transition: '0.3s',
+                  flexShrink: 0
+                }}
               >
-                <MapPin size={28} className={isLocating ? 'animate-bounce' : ''} />
+                <MapPin size={winWidth < 768 ? 22 : 28} className={isLocating ? 'animate-bounce' : ''} />
               </div>
-              <div>
-                <div style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', marginBottom: '1px' }}>Shift Management</div>
-                <div style={{ fontSize: '12px', fontWeight: '950', color: (personalAttendance?.in_time && personalAttendance.in_time !== '----') ? '#16a34a' : '#ef4444', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
-                  STATUS: {(personalAttendance?.in_time && personalAttendance.in_time !== '----') ? 'IN OFFICE' : 'OFFLINE'}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: winWidth < 768 ? '17px' : '20px', fontWeight: '950', color: '#0f172a', marginBottom: '1px' }}>Shift Status</div>
+                <div style={{ fontSize: '10px', fontWeight: '950', color: (personalAttendance?.in_time && personalAttendance.in_time !== '----') ? '#16a34a' : '#ef4444', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
+                  {(personalAttendance?.in_time && personalAttendance.in_time !== '----') ? 'In Office' : 'Offline'}
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MapPin size={13} color="#cbd5e1" /> {isLocating ? 'Determining location...' : (userLocation || 'Location access required')}
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '5px', maxWidth: '100%' }}>
+                  <MapPin size={11} color="#cbd5e1" /> <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isLocating ? 'Locating...' : (userLocation || 'Location required')}</span>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: winWidth < 768 ? '15px' : '32px',
+              flexDirection: winWidth < 480 ? 'column' : 'row',
+              justifyContent: 'space-between'
+            }}>
               {/* General Calendar Display */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 background: '#f8fafc',
-                padding: '10px 16px',
-                borderRadius: '20px',
+                padding: '8px 14px',
+                borderRadius: '16px',
                 border: '1.5px solid #e2e8f0',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
-                position: 'relative',
-                overflow: 'hidden'
+                width: winWidth < 480 ? '100%' : 'auto'
               }}>
                 <div style={{
-                  width: '44px',
-                  height: '46px',
+                  width: '38px',
+                  height: '40px',
                   background: 'white',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   border: '1.5px solid #e2e8f0',
                   display: 'flex',
                   flexDirection: 'column',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                  overflow: 'hidden'
                 }}>
-                  <div style={{ background: '#ef4444', height: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: '950', color: 'white', letterSpacing: '0.5px' }}>
+                  <div style={{ background: '#ef4444', height: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '6px', fontWeight: '950', color: 'white' }}>
                     {new Date().toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
                   </div>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '950', color: '#1e293b', lineHeight: '1' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950', color: '#1e293b' }}>
                     {new Date().getDate()}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '950', color: '#1e293b' }}>
-                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Calendar size={11} color="#94a3b8" />
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
-                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b' }}>{new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b' }}>{new Date().toLocaleDateString('en-US', { weekday: 'short' })}</div>
                 </div>
               </div>
 
               {personalAttendance?.in_time && (!personalAttendance?.out_time || personalAttendance?.out_time === '--:--' || personalAttendance?.out_time === '----' || personalAttendance?.out_time === '00:00' || personalAttendance?.out_time === '00:00:00') && (
-                <div style={{ textAlign: 'right', minWidth: '220px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Shift Duration</div>
-                  <div style={{ fontSize: '24px', fontWeight: '910', color: '#0f172a', fontFamily: '"JetBrains Mono", "Courier New", monospace', letterSpacing: '1px' }}>{elapsedTime}</div>
+                <div style={{ textAlign: winWidth < 480 ? 'center' : 'right', minWidth: winWidth < 480 ? '100%' : '140px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Session</div>
+                  <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{elapsedTime}</div>
                 </div>
               )}
-              <div>
+              
+              <div style={{ width: winWidth < 480 ? '100%' : 'auto' }}>
                 {!(personalAttendance?.in_time && personalAttendance.in_time !== '----') ? (
                   <button
                     onClick={handleCheckIn}
                     disabled={isProcessing}
                     style={{
-                      padding: '16px 52px',
+                      width: winWidth < 480 ? '100%' : 'auto',
+                      padding: '14px 32px',
                       borderRadius: '100px',
                       background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
                       color: 'white',
                       border: 'none',
                       fontWeight: '950',
-                      fontSize: '15px',
+                      fontSize: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
+                      justifyContent: 'center',
+                      gap: '10px',
                       boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.4)',
                       transition: 'all 0.3s'
                     }}
                   >
-                    <Fingerprint size={22} /> {isProcessing ? 'SYNCING...' : 'PUNCH IN'}
+                    <Fingerprint size={20} /> {isProcessing ? '...' : 'PUNCH IN'}
                   </button>
                 ) : (!personalAttendance.out_time || personalAttendance.out_time === '--:--' || personalAttendance.out_time === '----' || personalAttendance?.out_time === '00:00' || personalAttendance?.out_time === '00:00:00') ? (
                   <button
                     onClick={handleCheckOut}
                     disabled={isProcessing}
                     style={{
-                      padding: '16px 52px',
+                      width: winWidth < 480 ? '100%' : 'auto',
+                      padding: '14px 32px',
                       borderRadius: '100px',
                       background: 'linear-gradient(135deg, #ef4444 0%, #be123c 100%)',
                       color: 'white',
                       border: 'none',
                       fontWeight: '950',
-                      fontSize: '15px',
+                      fontSize: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
+                      justifyContent: 'center',
+                      gap: '10px',
                       boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.4)',
                       transition: 'all 0.3s'
                     }}
                   >
-                    <Fingerprint size={22} /> {isProcessing ? 'SAVING...' : 'PUNCH OUT'}
+                    <LogOut size={20} /> {isProcessing ? '...' : 'PUNCH OUT'}
                   </button>
                 ) : (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '14px 36px',
-                    borderRadius: '100px',
+                    padding: '16px 24px',
+                    borderRadius: '16px',
                     background: '#f8fafc',
                     border: '1.5px solid #e2e8f0',
                     color: '#475569',

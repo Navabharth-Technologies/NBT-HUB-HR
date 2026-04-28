@@ -44,7 +44,7 @@ export default function TicketManagement() {
       });
       if (res.ok) {
         const data = await res.json();
-        const allTickets = Array.isArray(data) ? data : (data.value || []);
+        const allTickets = Array.isArray(data) ? data : (data.data || data.value || data.all || []);
         // Only fetch HR related tickets per request
         const hrTickets = allTickets.filter(t => (t.department || '').toUpperCase() === 'HR');
         setTickets(hrTickets);
@@ -140,22 +140,46 @@ export default function TicketManagement() {
     if (!actionText.trim()) return triggerToast('Please enter a response.', 'error');
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_ENDPOINTS.SUPPORT_TICKETS}/${selectedTicket.id}`, {
+      const ticketId = selectedTicket.id || selectedTicket.ticket_id || selectedTicket.ticket_number;
+      const updatePayload = { 
+        id: ticketId,
+        ticket_id: ticketId,
+        action: actionText,
+        response: actionText,
+        status: 'Resolved'
+      };
+      const res = await fetch(`${API_ENDPOINTS.SUPPORT_TICKETS}/${encodeURIComponent(ticketId)}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user?.token}`
         },
-        body: JSON.stringify({ action: actionText })
+        body: JSON.stringify(updatePayload)
       });
 
       if (res.ok) {
         triggerToast('Action stored and response sent!');
         setIsManaging(false);
         setActionText('');
-        fetchTickets(); // Refresh the list
+        // Update locally for immediate feedback
+        setTickets(prev => prev.map(t => (t.id === (selectedTicket.id || selectedTicket.ticket_id) || t.ticket_id === (selectedTicket.id || selectedTicket.ticket_id)) ? { ...t, action: actionText, status: 'Resolved' } : t));
+        fetchTickets(); // Refresh from server to be sure
       } else {
-        throw new Error('Update failed');
+        // Try fallback POST
+        const res2 = await fetch(`${API_ENDPOINTS.SUPPORT_TICKETS}/${encodeURIComponent(ticketId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
+          body: JSON.stringify(updatePayload)
+        });
+        if (res2.ok) {
+          triggerToast('Action stored and response sent!');
+          setIsManaging(false);
+          setActionText('');
+          setTickets(prev => prev.map(t => (t.id === (selectedTicket.id || selectedTicket.ticket_id) || t.ticket_id === (selectedTicket.id || selectedTicket.ticket_id)) ? { ...t, action: actionText, status: 'Resolved' } : t));
+          fetchTickets();
+        } else {
+          throw new Error('Update failed');
+        }
       }
     } catch (err) {
       console.error('Update error:', err);
@@ -182,7 +206,7 @@ export default function TicketManagement() {
         </div>
       )}
       
-      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: '70px' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '70px' : '85px' }}>
         <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
           <div>
             <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Ticket Management</h1>

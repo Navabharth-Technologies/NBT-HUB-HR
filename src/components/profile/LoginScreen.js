@@ -12,6 +12,13 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+  React.useEffect(() => {
+    const handleResize = () => setWinWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const styles = {
     container: {
@@ -28,31 +35,31 @@ export default function LoginScreen() {
     },
     card: {
       width: '100%',
-      maxWidth: '450px',
+      maxWidth: winWidth < 480 ? '100%' : '450px',
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(10px)',
-      borderRadius: '40px',
-      padding: '50px 40px',
+      borderRadius: winWidth < 480 ? '30px' : '40px',
+      padding: winWidth < 480 ? '35px 25px' : '50px 40px',
       boxShadow: '0 30px 60px rgba(0,0,0,0.12)',
       textAlign: 'center'
     },
     logo: {
-      width: '100px',
+      width: winWidth < 480 ? '80px' : '100px',
       height: 'auto',
       maxHeight: '100px',
       objectFit: 'contain',
       margin: '0 auto 25px',
       display: 'block'
     },
-    title: { fontSize: '36px', fontWeight: '900', color: '#1e293b', marginBottom: '8px', letterSpacing: '-1.5px' },
-    subtitle: { fontSize: '15px', color: '#64748b', marginBottom: '45px', fontWeight: '800', letterSpacing: '0.5px' },
+    title: { fontSize: winWidth < 480 ? '28px' : '36px', fontWeight: '900', color: '#1e293b', marginBottom: '8px', letterSpacing: '-1.5px' },
+    subtitle: { fontSize: winWidth < 480 ? '13px' : '15px', color: '#64748b', marginBottom: winWidth < 480 ? '30px' : '45px', fontWeight: '800', letterSpacing: '0.5px' },
 
     label: { fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', textAlign: 'left', display: 'block', marginBottom: '10px' },
-    inputGroup: { marginBottom: '25px' },
+    inputGroup: { marginBottom: '20px' },
     inputWrapper: { display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0 15px', borderRadius: '20px', border: '1px solid #f1f5f9' },
-    input: { flex: 1, padding: '15px', fontSize: '15px', fontWeight: '700', color: '#1e293b', border: 'none', background: 'transparent', outline: 'none' },
+    input: { flex: 1, padding: winWidth < 480 ? '12px' : '15px', fontSize: '15px', fontWeight: '700', color: '#1e293b', border: 'none', background: 'transparent', outline: 'none' },
 
-    loginBtn: { width: '100%', padding: '20px', borderRadius: '20px', border: 'none', backgroundColor: '#3863a8', color: 'white', fontSize: '16px', fontWeight: '900', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 10px 25px rgba(56,99,168,0.3)', marginTop: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' },
+    loginBtn: { width: '100%', padding: winWidth < 480 ? '16px' : '20px', borderRadius: '20px', border: 'none', backgroundColor: '#3863a8', color: 'white', fontSize: '16px', fontWeight: '900', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 10px 25px rgba(56,99,168,0.3)', marginTop: winWidth < 480 ? '25px' : '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' },
 
     infoBox: { marginTop: '30px', padding: '18px', backgroundColor: '#f0f9ff', borderRadius: '20px', border: '1px solid #e0f2fe', textAlign: 'left', display: 'flex', gap: '12px', color: '#3863a8', fontSize: '12px', lineHeight: '1.4' }
   };

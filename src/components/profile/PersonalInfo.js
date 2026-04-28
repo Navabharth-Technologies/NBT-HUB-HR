@@ -133,7 +133,7 @@ const SECTIONS = [
 ];
 
 export default function PersonalInfo({ onBack }) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
     emp_name: '', gender: 'Male', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: 'General',
     pan_proof: '', aadhar_proof: '', voter_id: '', voter_proof: '', passport_no: '', passport_proof: '',
@@ -142,7 +142,8 @@ export default function PersonalInfo({ onBack }) {
     qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
     separation: '', lwd: '', attrition_bucket: 'N/A', reason: '',
     bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '',
-    bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: ''
+    bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: '',
+    profile_pic: ''
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -208,7 +209,8 @@ export default function PersonalInfo({ onBack }) {
           qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
           separation: '', lwd: '', attrition_bucket: 'N/A', reason: '',
           bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '',
-          bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: ''
+          bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: '',
+          profile_pic: ''
         };
         setForm(emptyForm);
 
@@ -249,6 +251,12 @@ export default function PersonalInfo({ onBack }) {
           });
 
           setForm(prev => ({ ...prev, ...cleanData }));
+          
+          // Sync with AuthContext if viewing self
+          const isSelf = String(uid) === String(user?.id || user?.employee_id || user?.email);
+          if (isSelf && cleanData.profile_pic) {
+            updateUser({ profile_pic: cleanData.profile_pic });
+          }
         } else {
            if (String(uid) !== String(user?.employee_id || user?.id || user?.email)) {
              setToast({ type: 'info', msg: 'Unable to reach profile metadata for this employee.' });
@@ -266,28 +274,79 @@ export default function PersonalInfo({ onBack }) {
     setIsEditing(true);
     setUploadingFiles(prev => ({ ...prev, [key]: true }));
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('employee_id', selectedEmpId);
-      formData.append('type', key);
-
       const token = localStorage.getItem('token');
-      const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DOC, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
+      
+      if (key === 'profile_pic') {
+        // Convert to Base64 for the Direct JSON API
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+        
+        const base64Data = await base64Promise;
+        
+        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DIRECT, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({
+            userId: selectedEmpId,
+            profilePicture: base64Data
+          })
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        const url = data.url || data.filePath || data.path || data.record?.path;
-        if (url) {
-          setForm(prev => ({ ...prev, [key]: url }));
-          setToast({ type: 'success', msg: `${key.replace('_', ' ').toUpperCase()} Attached!` });
+        if (res.ok) {
+          const data = await res.json();
+          const url = data.url || data.filePath || data.path || data.record?.path;
+          if (url) {
+            setForm(prev => ({ ...prev, [key]: url }));
+            
+            // Persist the URL via PROFILE_UPDATE
+            await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ profile_pic: url })
+            });
+            
+            // Update global auth state if it's the current user
+            if (String(selectedEmpId) === String(user?.id || user?.employee_id || user?.email)) {
+              updateUser({ profile_pic: url });
+            }
+            
+            setToast({ type: 'success', msg: `PROFILE PIC Attached!` });
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setToast({ type: 'error', msg: errData.message || 'Upload failed.' });
         }
       } else {
-        const errData = await res.json().catch(() => ({}));
-        setToast({ type: 'error', msg: errData.message || 'Upload failed.' });
+        // Standard FormData for other documents
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('employee_id', selectedEmpId);
+        formData.append('type', key);
+
+        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DOC, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const url = data.url || data.filePath || data.path || data.record?.path;
+          if (url) {
+            setForm(prev => ({ ...prev, [key]: url }));
+            setToast({ type: 'success', msg: `${key.replace('_', ' ').toUpperCase()} Attached!` });
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setToast({ type: 'error', msg: errData.message || 'Upload failed.' });
+        }
       }
     } catch (err) {
       console.error("Upload error:", err);
@@ -603,6 +662,40 @@ export default function PersonalInfo({ onBack }) {
               </div>
             </div>
 
+ 
+            {activeSection === 'primary' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '35px', position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ 
+                    width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden', 
+                    border: '4px solid #f8fafc', boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                    background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {form.profile_pic ? (
+                      <img src={form.profile_pic.startsWith('http') || form.profile_pic.startsWith('data:') ? form.profile_pic : `${BASE_URL}${form.profile_pic.startsWith('/') ? '' : '/'}${form.profile_pic}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={60} color="#cbd5e1" />
+                    )}
+                  </div>
+                  {isEditing && (
+                    <label style={{ 
+                      position: 'absolute', bottom: '5px', right: '5px', background: '#315A9E', 
+                      width: '36px', height: '36px', borderRadius: '50%', display: 'flex', 
+                      alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      border: '3px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                    }}>
+                      <Upload size={18} color="white" />
+                      <input type="file" accept="image/*" onChange={(e) => handleFileSelect('profile_pic', e.target.files[0])} style={{ display: 'none' }} />
+                    </label>
+                  )}
+                </div>
+                <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: '#0B1E3F' }}>{form.emp_name || 'Set Name'}</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>{selectedEmpId}</div>
+                </div>
+              </div>
+            )}
+ 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '24px' }}>
               {(() => {
                 const fields = currentSection.fields;

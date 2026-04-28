@@ -242,29 +242,6 @@ export default function AwardsScreen() {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '20px', width: winWidth < 600 ? '100%' : 'auto', justifyContent: winWidth < 600 ? 'space-between' : 'flex-start', alignItems: 'center' }}>
-                            {/* Date Filter */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>FROM</span>
-                                    <input 
-                                        type="date" 
-                                        value={startDate} 
-                                        onChange={e => setStartDate(e.target.value)}
-                                        style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
-                                    />
-                                </div>
-                                <div style={{ width: '1px', height: '15px', background: '#e2e8f0' }}></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>TO</span>
-                                    <input 
-                                        type="date" 
-                                        value={endDate} 
-                                        onChange={e => setEndDate(e.target.value)}
-                                        style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
-                                    />
-                                </div>
-                            </div>
-
                             <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px' }}>
                                 <button 
                                     onClick={() => setView('feed')}

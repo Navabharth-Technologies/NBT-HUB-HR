@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config';
 import { 
   ChevronLeft, FileText, CheckCircle, Clock, 
   ExternalLink, Search, Filter, MoreHorizontal,
-  Mail, User, Briefcase, Calendar, AlertCircle, X
+  Mail, User, Briefcase, Calendar, AlertCircle, X, Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -40,7 +40,7 @@ export default function ServiceCertificateManagement() {
         if (!user?.token) return;
         try {
             setLoading(true);
-            const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATES_GET, {
+            const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATES_ADMIN, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
             if (res.ok) {
@@ -73,7 +73,17 @@ export default function ServiceCertificateManagement() {
         setUpdatePayload({
             status: request.status || 'Pending',
             admin_remark: request.admin_remark || '',
-            certificate_url: request.certificate_url || ''
+            certificate_url: request.certificate_url || '',
+            laptop_details: request.laptop_details || '',
+            mouse: request.mouse || false,
+            keyboard: request.keyboard || false,
+            laptop_stand: request.laptop_stand || false,
+            mobile: request.mobile || false,
+            earphones: request.earphones || false,
+            camera: request.camera || false,
+            tablet: request.tablet || false,
+            storage: request.storage || false,
+            notebook: request.notebook || false
         });
     };
  
@@ -305,67 +315,97 @@ export default function ServiceCertificateManagement() {
                                 <FileText size={24} color="#3b82f6" /> Review Request
                             </h2>
 
-                            <div style={{ display: 'grid', gap: '20px', marginBottom: '30px' }}>
-                                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Request Details</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
-                                            <span style={{ fontWeight: '600', color: '#64748b', minWidth: '80px' }}>Employee:</span>
-                                            <span style={{ fontWeight: '800', color: '#0f172a' }}>{selectedRequest.employee_name}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
-                                            <span style={{ fontWeight: '600', color: '#64748b', minWidth: '80px' }}>Reason:</span>
-                                            <span style={{ fontWeight: '700', color: '#334155' }}>{selectedRequest.purpose || selectedRequest.reason}</span>
+                            <div style={{ overflowY: 'auto', maxHeight: '70vh', paddingRight: '10px' }}>
+                                <div style={{ display: 'grid', gap: '20px', marginBottom: '30px' }}>
+                                    <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Request Details</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
+                                                <span style={{ fontWeight: '600', color: '#64748b', minWidth: '80px' }}>Employee:</span>
+                                                <span style={{ fontWeight: '800', color: '#0f172a' }}>{selectedRequest.employee_name}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '10px', fontSize: '14px' }}>
+                                                <span style={{ fontWeight: '600', color: '#64748b', minWidth: '80px' }}>Reason:</span>
+                                                <span style={{ fontWeight: '700', color: '#334155' }}>{selectedRequest.purpose || selectedRequest.reason}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Update Status</label>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        {['Pending', 'Approved', 'Rejected'].map(status => (
-                                            <button 
-                                                key={status}
-                                                onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
-                                                style={{ 
-                                                    flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid', 
-                                                    borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
-                                                    background: updatePayload.status === status ? '#0f172a' : 'white',
-                                                    color: updatePayload.status === status ? 'white' : '#64748b',
-                                                    fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: '0.2s'
-                                                }}
-                                            >
-                                                {status}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Admin Remarks</label>
-                                    <textarea 
-                                        placeholder="Add private remarks or notes..."
-                                        value={updatePayload.admin_remark}
-                                        onChange={(e) => setUpdatePayload(prev => ({ ...prev, admin_remark: e.target.value }))}
-                                        style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '14px', fontWeight: '600', minHeight: '80px', resize: 'none' }}
-                                    />
-                                </div>
-
-                                {updatePayload.status === 'Approved' && (
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Certificate URL (Google Drive / S3)</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <ExternalLink size={16} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-                                            <input 
-                                                type="text" 
-                                                placeholder="https://drive.google.com/cert-id"
-                                                value={updatePayload.certificate_url}
-                                                onChange={(e) => setUpdatePayload(prev => ({ ...prev, certificate_url: e.target.value }))}
-                                                style={{ width: '100%', padding: '14px 14px 14px 45px', borderRadius: '14px', border: '1.5px solid #3b82f6', outline: 'none', fontSize: '14px', fontWeight: '600', background: '#eff6ff' }}
-                                            />
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Update Status</label>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            {['Pending', 'Approved', 'Rejected'].map(status => (
+                                                <button 
+                                                    key={status}
+                                                    onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
+                                                    style={{ 
+                                                        flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid', 
+                                                        borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
+                                                        background: updatePayload.status === status ? '#0f172a' : 'white',
+                                                        color: updatePayload.status === status ? 'white' : '#64748b',
+                                                        fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: '0.2s'
+                                                    }}
+                                                >
+                                                    {status}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                )}
+
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Admin Remarks</label>
+                                        <textarea 
+                                            placeholder="Add private remarks or notes..."
+                                            value={updatePayload.admin_remark}
+                                            onChange={(e) => setUpdatePayload(prev => ({ ...prev, admin_remark: e.target.value }))}
+                                            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '14px', fontWeight: '600', minHeight: '80px', resize: 'none' }}
+                                        />
+                                    </div>
+
+                                    {updatePayload.status === 'Approved' && (
+                                        <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '18px', border: '1.5px solid #dcfce7' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                                                <Package size={18} color="#16a34a" />
+                                                <span style={{ fontSize: '12px', fontWeight: '900', color: '#166534', textTransform: 'uppercase' }}>Hardware Clearance Checklist</span>
+                                            </div>
+
+                                            <div style={{ marginBottom: '15px' }}>
+                                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#166534', marginBottom: '8px' }}>Laptop / Primary Asset Info</label>
+                                                <input 
+                                                    type="text"
+                                                    placeholder="e.g. MacBook Pro M2, S/N: 12345"
+                                                    value={updatePayload.laptop_details}
+                                                    onChange={(e) => setUpdatePayload(prev => ({ ...prev, laptop_details: e.target.value }))}
+                                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', fontSize: '13px', outline: 'none' }}
+                                                />
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                {[
+                                                    { id: 'mouse', label: 'Optical Mouse' },
+                                                    { id: 'keyboard', label: 'External Keyboard' },
+                                                    { id: 'laptop_stand', label: 'Laptop Stand' },
+                                                    { id: 'mobile', label: 'Company Mobile' },
+                                                    { id: 'earphones', label: 'Earphones' },
+                                                    { id: 'camera', label: 'External Camera' },
+                                                    { id: 'tablet', label: 'Tablet' },
+                                                    { id: 'storage', label: 'Pendrive / Storage' },
+                                                    { id: 'notebook', label: 'Ref Pad / Notebook' },
+                                                ].map(asset => (
+                                                    <label key={asset.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '10px', background: updatePayload[asset.id] ? '#dcfce7' : 'white', border: '1px solid #bbf7d0', cursor: 'pointer', transition: '0.2s' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={updatePayload[asset.id]}
+                                                            onChange={(e) => setUpdatePayload(prev => ({ ...prev, [asset.id]: e.target.checked }))}
+                                                            style={{ cursor: 'pointer' }}
+                                                        />
+                                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#166534' }}>{asset.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '15px' }}>

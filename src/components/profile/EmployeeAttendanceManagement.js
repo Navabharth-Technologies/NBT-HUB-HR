@@ -30,6 +30,7 @@ export default function EmployeeAttendanceManagement() {
   const [employee, setEmployee] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [startDate, setStartDate] = useState('2026-02-01');
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -195,10 +196,15 @@ export default function EmployeeAttendanceManagement() {
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
-      if (!user?.token || !id) return;
+      if (!user?.token || !id) {
+        console.warn('Attendance Detail: Missing token or ID', { hasToken: !!user?.token, id });
+        return;
+      }
       
       try {
         setLoading(true);
+        setError(null);
+        console.log('Attendance Detail: Fetching for ID:', id);
         
         // Fetch All Users/Employees to find the specific employee
         const userRes = await fetch(API_ENDPOINTS.EMPLOYEES || API_ENDPOINTS.USERS, {
@@ -207,11 +213,14 @@ export default function EmployeeAttendanceManagement() {
         const users = await userRes.json();
         const validUsers = Array.isArray(users) ? users : (users?.data || []);
         
-        const found = validUsers.find(u => 
-          String(u.id) === String(id) || 
-          String(u.Empcode) === String(id) || 
-          String(u.EmpID) === String(id)
-        );
+        const found = validUsers.find(u => {
+          if (!u) return false;
+          return (
+            String(u.id) === String(id) || 
+            String(u.Empcode) === String(id) || 
+            String(u.EmpID) === String(id)
+          );
+        });
         setEmployee(found);
 
         // Fetch Logs with filters and high limit
@@ -257,8 +266,20 @@ export default function EmployeeAttendanceManagement() {
           if (!rawDate) return;
           
           // Extract just the YYYY-MM-DD part
-          const dStr = String(rawDate).split('T')[0].split(' ')[0];
-          if (!dStr || dStr.length < 8) return; // Expecting at least YYYY-M-D
+          // Extract just the YYYY-MM-DD part safely
+          let dStr = '';
+          try {
+            const dObj = new Date(rawDate);
+            if (isNaN(dObj.getTime())) {
+              dStr = String(rawDate).split('T')[0].split(' ')[0];
+            } else {
+              dStr = dObj.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            dStr = String(rawDate).split('T')[0].split(' ')[0];
+          }
+          
+          if (!dStr || dStr.length < 8 || dStr.toLowerCase().includes('invalid')) return;
           
           if (!grouped[dStr]) grouped[dStr] = [];
           grouped[dStr].push(l);
@@ -294,6 +315,7 @@ export default function EmployeeAttendanceManagement() {
 
       } catch (err) {
         console.error("Error fetching employee detail:", err);
+        setError("Failed to load attendance records. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -500,9 +522,17 @@ export default function EmployeeAttendanceManagement() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" style={{ padding: '100px', textAlign: 'center' }}>
+                  <td colSpan="8" style={{ padding: '100px', textAlign: 'center' }}>
                      <div className="animate-spin" style={{ margin: '0 auto', width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #3b82f6', borderRadius: '50%' }}></div>
                      <p style={{ marginTop: '20px', fontWeight: '700', color: '#64748b' }}>Loading Comprehensive Records...</p>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="8" style={{ padding: '60px', textAlign: 'center' }}>
+                     <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto' }} />
+                     <p style={{ marginTop: '16px', fontWeight: '800', color: '#ef4444' }}>{error}</p>
+                     <button onClick={() => window.location.reload()} style={{ marginTop: '12px', padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}>Retry</button>
                   </td>
                 </tr>
               ) : logs.length > 0 ? (
@@ -541,8 +571,17 @@ export default function EmployeeAttendanceManagement() {
                         {(() => {
                           const logDate = log.punch_date || log.date || log.created_at || '';
                           const d = new Date(logDate);
-                          const isSunday = d.getDay() === 0;
+                          
+                          // Defensive check for invalid date to prevent crash
+                          if (isNaN(d.getTime())) {
+                            return (
+                              <div style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', background: '#fef2f2', padding: '6px 14px', borderRadius: '100px' }}>
+                                INVALID DATE
+                              </div>
+                            );
+                          }
 
+                          const isSunday = d.getDay() === 0;
                           const month = d.toLocaleDateString('en-US', { month: 'short' });
                           const dateDay = String(d.getDate()).padStart(2, '0');
                           const dayMonth = `${month} ${dateDay}`;

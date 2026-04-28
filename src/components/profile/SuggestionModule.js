@@ -3,26 +3,44 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import './Dashboard.css';
 
 export default function SuggestionModule() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!user?.token) return;
+      if (!user?.token) {
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await fetch(API_ENDPOINTS.SUGGESTIONS, {
+        const res = await fetch(API_ENDPOINTS.SUGGESTIONS_ADMIN, {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
         if (res.ok) {
-          setSubmissions(await res.json());
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.data || data.suggestions || []);
+          const mapped = list.map(s => ({
+            user: s.employee_name || s.user_name || s.user || 'Anonymous',
+            team: s.employee_id || s.department || s.team || 'N/A',
+            date: s.created_at ? new Date(s.created_at).toLocaleDateString() : (s.date || 'Today'),
+            content: s.suggestion || s.suggestion_text || s.message || s.content || 'No content provided.',
+            participation: s.requirement || s.status || s.participation || 'Active',
+            profile_pic: s.profile_pic || s.profile_picture || s.user_profile_pic || s.user_pic
+          }));
+          setSubmissions(mapped);
+        } else {
+          console.error('Failed to fetch suggestions:', res.status);
         }
       } catch (err) {
         console.error('Suggestion fetch error:', err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchSuggestions();
@@ -57,32 +75,56 @@ export default function SuggestionModule() {
         <section className="dashboard-section animate-fade-in">
            <h2 className="section-title">Recent Submissions</h2>
            <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px'}}>
-              {submissions.map((s, i) => (
-                <div key={i} className="team-card" style={{padding: '24px', borderLeft: '4px solid var(--primary)', cursor: 'default'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '16px'}}>
-                    <div>
-                      <span style={{fontWeight: '800', color: 'var(--secondary)', fontSize: '15px'}}>{s.user}</span>
-                      <span style={{fontSize: '11px', color: 'var(--text-muted)', marginLeft: '10px'}}>from <strong style={{color: 'var(--primary)'}}>{s.team}</strong></span>
-                    </div>
-                    <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>{s.date}</span>
-                  </div>
-                  <p style={{fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontStyle: 'italic'}}>
-                    "{s.content}"
-                  </p>
-                  <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                      <span style={{fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)'}}>Engagement:</span>
-                      <span style={{fontSize: '10px', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: '800'}}>
-                        {s.participation}
-                      </span>
-                    </div>
-                    <div style={{display: 'flex', gap: '10px'}}>
-                       <button className="btn-ghost" style={{ fontSize: '12px', padding: '8px 16px' }}>Archive</button>
-                       <button className="btn-primary" style={{ fontSize: '12px', padding: '8px 16px' }}>Review Input</button>
-                    </div>
-                  </div>
+              {loading ? (
+                <div style={{padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--white)', borderRadius: '20px', border: '1px dashed var(--border)'}}>
+                  <p style={{fontWeight: '800'}}>Fetching latest suggestions...</p>
                 </div>
-              ))}
+              ) : submissions.length === 0 ? (
+                <div style={{padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--white)', borderRadius: '20px', border: '1px dashed var(--border)'}}>
+                  <p style={{fontWeight: '800'}}>No submissions found.</p>
+                  <p style={{fontSize: '12px'}}>New suggestions will appear here once submitted.</p>
+                </div>
+              ) : (
+                submissions.map((s, i) => (
+                  <div key={i} className="team-card" style={{padding: '24px', borderLeft: '4px solid var(--primary)', cursor: 'default'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center'}}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '16px', fontWeight: '900', color: '#315A9E' }}>
+                          {s.profile_pic ? (
+                            <img 
+                              src={s.profile_pic.startsWith('http') || s.profile_pic.startsWith('data:') ? s.profile_pic : `${BASE_URL}${s.profile_pic.startsWith('/') ? '' : '/'}${s.profile_pic}`} 
+                              alt="User" 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
+                          ) : (
+                            s.user.charAt(0)
+                          )}
+                        </div>
+                        <div>
+                          <span style={{fontWeight: '800', color: 'var(--secondary)', fontSize: '15px', display: 'block'}}>{s.user}</span>
+                          <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>from <strong style={{color: 'var(--primary)'}}>{s.team}</strong></span>
+                        </div>
+                      </div>
+                      <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>{s.date}</span>
+                    </div>
+                    <p style={{fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontStyle: 'italic'}}>
+                      "{s.content}"
+                    </p>
+                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        <span style={{fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)'}}>Engagement:</span>
+                        <span style={{fontSize: '10px', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: '800'}}>
+                          {s.participation}
+                        </span>
+                      </div>
+                      <div style={{display: 'flex', gap: '10px'}}>
+                         <button className="btn-ghost" style={{ fontSize: '12px', padding: '8px 16px' }}>Archive</button>
+                         <button className="btn-primary" style={{ fontSize: '12px', padding: '8px 16px' }}>Review Input</button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
            </div>
         </section>
       </main>

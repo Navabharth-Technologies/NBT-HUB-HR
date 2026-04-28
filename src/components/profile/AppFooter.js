@@ -15,6 +15,14 @@ export default function AppFooter({ onCreateTeam }) {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState({ leaves: 0, tickets: 0, threads: 0 });
+  const [seenCounts, setSeenCounts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hr_footer_seen_counts');
+      return saved ? JSON.parse(saved) : { leaves: 0, tickets: 0, threads: 0 };
+    } catch (e) {
+      return { leaves: 0, tickets: 0, threads: 0 };
+    }
+  });
 
   const fetchUnreadCounts = async () => {
     if (!user?.token) return;
@@ -27,20 +35,18 @@ export default function AppFooter({ onCreateTeam }) {
         fetch(API_ENDPOINTS.NOTIFICATIONS_BY_USER(uid), { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
       ]);
 
-      let leaveCount = 0;
-      let ticketCount = 0;
-      let threadCount = 0;
+      const updates = {};
 
       if (leaveRes?.ok) {
         const lData = await leaveRes.json();
         const lList = Array.isArray(lData) ? lData : (lData.all || lData.data || []);
-        leaveCount = lList.filter(l => String(l.status || '').toLowerCase().includes('pending')).length;
+        updates.leaves = lList.filter(l => String(l.status || '').toLowerCase().includes('pending')).length;
       }
 
       if (ticketRes?.ok) {
         const tData = await ticketRes.json();
-        const tList = Array.isArray(tData) ? tData : (tData.data || []);
-        ticketCount = tList.filter(t => 
+        const tList = Array.isArray(tData) ? tData : (tData.data || tData.value || []);
+        updates.tickets = tList.filter(t => 
           ((t.department || '').toUpperCase() === 'HR') && 
           (String(t.status || '').toLowerCase() === 'open' || String(t.status || '').toLowerCase() === 'pending')
         ).length;
@@ -49,14 +55,12 @@ export default function AppFooter({ onCreateTeam }) {
       if (notifRes?.ok) {
         const nData = await notifRes.json();
         const nList = Array.isArray(nData) ? nData : (nData.data || []);
-        threadCount = nList.filter(n => (n.is_read === 0 || n.is_read === false) && (n.message + (n.type || '')).toLowerCase().includes('thread')).length;
+        updates.threads = nList.filter(n => (n.is_read === 0 || n.is_read === false) && (n.message + (n.type || '')).toLowerCase().includes('thread')).length;
       }
 
-      setUnreadCounts({
-        leaves: leaveCount,
-        tickets: ticketCount,
-        threads: threadCount
-      });
+      if (Object.keys(updates).length > 0) {
+        setUnreadCounts(prev => ({ ...prev, ...updates }));
+      }
     } catch (e) {
       console.error("Footer counts fetch error:", e);
     }
@@ -67,6 +71,53 @@ export default function AppFooter({ onCreateTeam }) {
     const poll = setInterval(fetchUnreadCounts, 15000);
     return () => clearInterval(poll);
   }, [user]);
+
+  // Update seen counts when visiting the respective screens
+  useEffect(() => {
+    setSeenCounts(prev => {
+      const currentPath = location.pathname;
+      const next = { ...prev };
+      let changed = false;
+
+      // Aggressive Sync: If on the page, the "seen" count must match the "live" count exactly.
+      if (currentPath.startsWith('/attendance')) {
+        if (next.leaves !== unreadCounts.leaves) {
+          next.leaves = unreadCounts.leaves;
+          changed = true;
+        }
+      } else if (unreadCounts.leaves < next.leaves) {
+        // Sync Down: If count dropped elsewhere, match it to avoid negative badges
+        next.leaves = unreadCounts.leaves;
+        changed = true;
+      }
+
+      if (currentPath.startsWith('/tickets')) {
+        if (next.tickets !== unreadCounts.tickets) {
+          next.tickets = unreadCounts.tickets;
+          changed = true;
+        }
+      } else if (unreadCounts.tickets < next.tickets) {
+        next.tickets = unreadCounts.tickets;
+        changed = true;
+      }
+
+      if (currentPath.startsWith('/engagement')) {
+        if (next.threads !== unreadCounts.threads) {
+          next.threads = unreadCounts.threads;
+          changed = true;
+        }
+      } else if (unreadCounts.threads < next.threads) {
+        next.threads = unreadCounts.threads;
+        changed = true;
+      }
+
+      if (changed) {
+        localStorage.setItem('hr_footer_seen_counts', JSON.stringify(next));
+        return next;
+      }
+      return prev;
+    });
+  }, [location.pathname, unreadCounts]);
 
   useEffect(() => {
     let timeout;
@@ -115,38 +166,39 @@ export default function AppFooter({ onCreateTeam }) {
         className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
         onMouseEnter={() => setIsVisible(true)}
     >
-      {showAddMenu && (
-        <div className="add-upward-menu animate-slide-up">
-          <button className="add-menu-item" onClick={() => { if (onCreateTeam) onCreateTeam(); else navigate('/teams'); setShowAddMenu(false); }}>
-            <span className="add-menu-icon">👥</span>
-            <span>Create New Team</span>
-          </button>
-          <button className="add-menu-item" onClick={() => { navigate('/courses'); setShowAddMenu(false); }}>
-            <span className="add-menu-icon">📚</span>
-            <span>Add Course</span>
-          </button>
-          <button className="add-menu-item" onClick={() => { navigate('/suggestions'); setShowAddMenu(false); }}>
-            <span className="add-menu-icon">💡</span>
-            <span>Review Suggestions</span>
-          </button>
-        </div>
-      )}
-
       <nav className="app-footer">
         {navItems.map((item) => (
-          <button
-            key={item.name}
-            className={`footer-item ${isActive(item.path) ? 'active' : ''} ${item.isAction && showAddMenu ? 'action-active' : ''}`}
-            onClick={() => handleNavClick(item)}
-          >
-            <div className="footer-icon">
-              {item.icon}
-              {item.name === 'Leaves' && unreadCounts.leaves > 0 && !location.pathname.includes('/attendance') && <span className="footer-dot">{unreadCounts.leaves}</span>}
-              {item.name === 'View tickets' && unreadCounts.tickets > 0 && !location.pathname.includes('/tickets') && <span className="footer-dot">{unreadCounts.tickets}</span>}
-              {item.name === 'Thread' && unreadCounts.threads > 0 && !location.pathname.includes('/engagement') && <span className="footer-dot">{unreadCounts.threads}</span>}
-            </div>
-            <span className="footer-label">{item.name}</span>
-          </button>
+          <div key={item.name} className="footer-item-container" style={{ position: 'relative' }}>
+            {item.isAction && showAddMenu && (
+              <div className="add-upward-menu animate-slide-up">
+                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); if (onCreateTeam) onCreateTeam(); else navigate('/teams'); setShowAddMenu(false); }}>
+                  <span className="add-menu-icon">👥</span>
+                  <span>Create New Team</span>
+                </button>
+                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); navigate('/courses'); setShowAddMenu(false); }}>
+                  <span className="add-menu-icon">📚</span>
+                  <span>Add Course</span>
+                </button>
+                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); navigate('/suggestions'); setShowAddMenu(false); }}>
+                  <span className="add-menu-icon">💡</span>
+                  <span>Review Suggestions</span>
+                </button>
+              </div>
+            )}
+            <button
+              key={item.name}
+              className={`footer-item ${isActive(item.path) ? 'active' : ''} ${item.isAction && showAddMenu ? 'action-active' : ''}`}
+              onClick={() => handleNavClick(item)}
+            >
+              <div className="footer-icon">
+                {item.icon}
+                {item.name === 'Leaves' && (unreadCounts.leaves - seenCounts.leaves) > 0 && !location.pathname.includes('/attendance') && <span className="footer-dot">{unreadCounts.leaves - seenCounts.leaves}</span>}
+                {item.name === 'View tickets' && (unreadCounts.tickets - seenCounts.tickets) > 0 && !location.pathname.includes('/tickets') && <span className="footer-dot">{unreadCounts.tickets - seenCounts.tickets}</span>}
+                {item.name === 'Thread' && (unreadCounts.threads - seenCounts.threads) > 0 && !location.pathname.includes('/engagement') && <span className="footer-dot">{unreadCounts.threads - seenCounts.threads}</span>}
+              </div>
+              <span className="footer-label">{item.name}</span>
+            </button>
+          </div>
         ))}
       </nav>
     </div>

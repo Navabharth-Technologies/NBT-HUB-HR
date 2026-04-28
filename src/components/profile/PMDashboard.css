@@ -54,3 +54,18 @@ section div::-webkit-scrollbar-thumb {
   background: #e2e8f0;
   border-radius: 10px;
 }
+
+/* Grid System for Cards */
+.responsive-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .responsive-card-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

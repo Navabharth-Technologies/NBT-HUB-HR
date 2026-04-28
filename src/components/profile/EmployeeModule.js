@@ -57,7 +57,7 @@ export default function EmployeeModule() {
     <div className="hr-dashboard-container">
       <AppHeader />
       
-      <main className="dashboard-content" style={{paddingBottom: '100px', padding: winWidth < 480 ? '12px 14px' : '20px'}}>
+      <main className="dashboard-content" style={{paddingBottom: '100px', padding: winWidth < 480 ? '12px 14px' : '20px', marginTop: winWidth < 768 ? '70px' : '85px'}}>
         <header className="section-header" style={{ marginBottom: winWidth < 480 ? '15px' : '24px' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: winWidth < 480 ? '8px' : '15px', flexWrap: 'wrap'}}>
             <button 

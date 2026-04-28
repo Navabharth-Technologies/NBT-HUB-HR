@@ -3,6 +3,7 @@ import logo from '../../assets/logo.png';
 import { useAuth } from '../../context/AuthContext';
 import { getTheme } from '../../constants/Theme';
 import { useNavigate } from 'react-router-dom';
+import { BASE_URL, API_ENDPOINTS } from '../../config';
 
 
 export default function AppHeader() {
@@ -114,11 +115,25 @@ export default function AppHeader() {
 
         <div
           onClick={() => navigate('/performance')}
-          style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s transform' }}
+          style={{ 
+            width: '48px', height: '48px', borderRadius: '14px', 
+            background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            cursor: 'pointer', transition: '0.2s transform',
+            overflow: 'hidden'
+          }}
           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          {user?.profile_pic ? (
+            <img 
+              src={user.profile_pic.startsWith('http') || user.profile_pic.startsWith('data:') ? user.profile_pic : `${BASE_URL}${user.profile_pic.startsWith('/') ? '' : '/'}${user.profile_pic}`} 
+              alt="Profile" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            />
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          )}
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import AppFooter from './AppFooter';
 import { useThread } from '../../context/ThreadContext';
 import { useAuth } from '../../context/AuthContext';
 import {
-    Heart, MessageSquare, Award, Smile,
+    Heart, MessageSquare, Smile,
     Send, MoreHorizontal, User, Share2, Cake, Gift, Plus, ChevronLeft,
     Trash2, Edit3, X, Check, Image as ImageIcon, Film, XCircle
 } from 'lucide-react';
@@ -30,7 +30,6 @@ export default function EngagementModule() {
     const fileInputRef = useRef(null);
 
     const [activeEmojiPicker, setActiveEmojiPicker] = useState(null);
-    const [activeBadgePicker, setActiveBadgePicker] = useState(null);
     const [activeCommentPost, setActiveCommentPost] = useState(null);
     const [flyingEmoji, setFlyingEmoji] = useState(null);
     const [userProfiles, setUserProfiles] = useState({});
@@ -114,10 +113,6 @@ export default function EngagementModule() {
     };
 
     const onToggleLike = (id) => toggleReaction(id, user?.employee_id || user?.id || user?.EmpID, '❤️');
-    const onToggleBadge = (id, badgeType) => {
-        toggleBadge(id, user?.employee_id || user?.id || user?.EmpID, badgeType);
-        setActiveBadgePicker(null);
-    };
 
     const [commentText, setCommentText] = useState('');
     const handleAddComment = async (id) => {
@@ -173,7 +168,18 @@ export default function EngagementModule() {
     const isTablet = winWidth < 1024;
 
     const styles = {
-        container: { minHeight: '100vh', backgroundColor: 'transparent', display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '20px', padding: isMobile ? '15px' : (isTablet ? '25px' : '40px'), maxWidth: '100%', margin: '0', boxSizing: 'border-box' },
+        container: { 
+            minHeight: '100vh', 
+            backgroundColor: 'transparent', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: isMobile ? '12px' : '20px', 
+            padding: isMobile ? '15px' : (isTablet ? '25px' : '40px'), 
+            paddingTop: isMobile ? '85px' : '110px',
+            maxWidth: '100%', 
+            margin: '0', 
+            boxSizing: 'border-box' 
+        },
         card: { backgroundColor: 'white', borderRadius: isMobile ? '25px' : '40px', padding: isMobile ? '20px' : '30px', boxShadow: '0 10px 40px rgba(0,0,0,0.04)', border: '1px solid #eef2f6' },
         tagInput: { width: '100%', padding: '12px 20px', borderRadius: '15px', border: '1.5px solid #f1f5f9', background: '#f8fafc', fontSize: isMobile ? '12px' : '14px', fontWeight: '900', color: '#315A9E', outline: 'none', marginBottom: '12px' },
         mainInput: { width: '100%', padding: isMobile ? '15px' : '20px', borderRadius: '20px', border: '1.5px solid #f1f5f9', background: '#f8fafc', fontSize: isMobile ? '14px' : '16px', fontWeight: '600', color: '#0B1E3F', outline: 'none', resize: 'none', minHeight: isMobile ? '80px' : '100px' },
@@ -310,7 +316,15 @@ export default function EngagementModule() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', gap: '15px' }}>
                                     <div style={{ width: '50px', height: '50px', borderRadius: '15px', backgroundColor: '#f1f5f9', border: '1px solid #315A9E', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '18px', fontWeight: '900', color: '#315A9E' }}>
-                                        {userProfiles[uid]?.name?.charAt(0) || post.user_name?.charAt(0) || 'U'}
+                                        {userProfiles[uid]?.profile_pic || userProfiles[uid]?.profile_picture ? (
+                                            <img 
+                                                src={getFullUrl(userProfiles[uid]?.profile_pic || userProfiles[uid]?.profile_picture)} 
+                                                alt="User" 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                            />
+                                        ) : (
+                                            userProfiles[uid]?.name?.charAt(0) || post.user_name?.charAt(0) || 'U'
+                                        )}
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: '16px', fontWeight: '900', color: '#0B1E3F' }}>{userProfiles[uid]?.name || post.user_name || 'Member'}</div>
@@ -472,14 +486,6 @@ export default function EngagementModule() {
                                 <div 
                                     style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px' }}
                                 >
-                                    <div 
-                                        style={{ ...styles.action(post.badgeType, '#FDB913'), padding: '8px 12px', borderRadius: '10px' }}
-                                        onClick={() => setActiveBadgePicker(activeBadgePicker === post.id ? null : post.id)}
-                                    >
-                                        <Award size={18} fill={post.badgeType ? "#FDB913" : "none"} /> 
-                                        <span style={{ textTransform: 'uppercase' }}>{post.badgeType ? post.badgeType : 'Badge'} ({post.badgeCount || post.badge_count || 0})</span>
-                                    </div>
-
                                     <div style={styles.commentBadge} onClick={() => handleOpenComments(post.id)}>
                                         <MessageSquare size={16} /> 
                                         <span>COMMENT ({post.commentCount || 0})</span>
@@ -491,57 +497,6 @@ export default function EngagementModule() {
                                         style={{ cursor: 'pointer' }} 
                                         onClick={() => setActiveEmojiPicker(activeEmojiPicker === post.id ? null : post.id)}
                                     />
-
-                                    <AnimatePresence>
-                                        {activeBadgePicker === post.id && (
-                                            <motion.div 
-                                                initial={{ y: 20, opacity: 0, scale: 0.8 }} 
-                                                animate={{ y: 0, opacity: 1, scale: 1 }} 
-                                                exit={{ y: 10, opacity: 0, scale: 0.8 }} 
-                                                style={{ 
-                                                    position: 'absolute', 
-                                                    bottom: '50px', 
-                                                    right: '0', 
-                                                    background: 'white', 
-                                                    padding: '10px', 
-                                                    borderRadius: '18px', 
-                                                    boxShadow: '0 10px 40px rgba(0,0,0,0.12)', 
-                                                    display: 'flex', 
-                                                    flexDirection: 'column',
-                                                    gap: '5px', 
-                                                    zIndex: 100,
-                                                    minWidth: '150px',
-                                                    border: '1px solid var(--border)' 
-                                                }}
-                                            >
-                                                {[
-                                                    { id: 'Top Player', icon: '🏆' },
-                                                    { id: 'Team Work', icon: '🤝' },
-                                                    { id: 'Creative', icon: '🎨' },
-                                                    { id: 'Star', icon: '⭐' }
-                                                ].map(b => (
-                                                    <div 
-                                                        key={b.id} 
-                                                        style={{ 
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
-                                                            gap: '8px', 
-                                                            padding: '10px 14px', 
-                                                            borderRadius: '10px', 
-                                                            cursor: 'pointer',
-                                                            background: post.badgeType === b.id ? 'var(--bg)' : 'transparent',
-                                                            fontSize: '12px',
-                                                            fontWeight: '900',
-                                                            color: 'var(--secondary)'
-                                                        }}
-                                                        onClick={(e) => { e.stopPropagation(); onToggleBadge(post.id, b.id); }}
-                                                    >
-                                                        <span>{b.icon}</span> {b.id.toUpperCase()}
-                                                    </div>
-                                                ))}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
                                 </div>
                             </div>
 
@@ -580,8 +535,16 @@ export default function EngagementModule() {
                                                     
                                                     return (
                                                         <div key={c.id} style={{ display: 'flex', gap: '12px' }}>
-                                                            <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)' }}>
-                                                                {cUser.charAt(0).toUpperCase()}
+                                                            <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)', overflow: 'hidden' }}>
+                                                                {userProfiles[commentAuthorId]?.profile_pic || userProfiles[commentAuthorId]?.profile_picture ? (
+                                                                    <img 
+                                                                        src={getFullUrl(userProfiles[commentAuthorId]?.profile_pic || userProfiles[commentAuthorId]?.profile_picture)} 
+                                                                        alt="User" 
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                                    />
+                                                                ) : (
+                                                                    cUser.charAt(0).toUpperCase()
+                                                                )}
                                                             </div>
                                                             <div style={{ flex: 1, padding: '15px', background: 'white', borderRadius: '20px', border: '1.5px solid #f1f5f9', position: 'relative' }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>

@@ -15,16 +15,19 @@ import {
 import UpdatePasswordModal from './UpdatePasswordModal';
 
 export default function PerformanceModule() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { fetchUserThreads, toggleReaction, deleteThread } = useThread();
   const navigate = useNavigate();
 
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [phone, setPhone] = useState(user?.phone_number || 'Add Phone Number');
   const [aboutMe, setAboutMe] = useState(user?.about_me || 'Write a short introduction about yourself');
+  const [isEditingAbout, setIsEditingAbout] = useState(false);
+  const [tempAbout, setTempAbout] = useState('');
+  const [saving, setSaving] = useState(false);
   const [dob, setDob] = useState(user?.date_of_birth || 'Add Date of Birth');
   const [profileImage, setProfileImage] = useState(user?.profile_picture || null);
-  const [reportingManager, setReportingManager] = useState({ name: 'Anish V N', id: '' });
+  const [reportingManager, setReportingManager] = useState({ name: 'Loading...', id: '' });
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -32,6 +35,7 @@ export default function PerformanceModule() {
   const [tempPhone, setTempPhone] = useState('');
   const [tempDob, setTempDob] = useState('');
   const [profileData, setProfileData] = useState({ name: '', employee_id: '', designation: '' });
+  const [toast, setToast] = useState({ show: false, message: '' });
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -46,63 +50,287 @@ export default function PerformanceModule() {
         });
         const data = await res.json();
         if (res.ok) {
-          setPhone(data.phone_number || 'Add Phone Number');
-          setAboutMe(data.about_me || 'Write a short introduction about yourself');
-          setDob(data.date_of_birth || 'Add Date of Birth');
+          const fetchedPic = data.profile_pic || data.profile_picture;
+          
+          setPhone(data.phone_number || user.phone_number || localStorage.getItem(`phone_${user.email}`) || 'Add Phone Number');
+          setAboutMe(data.about_me || user.about_me || 'Write a short introduction about yourself');
+          setDob(data.date_of_birth || user.date_of_birth || localStorage.getItem(`dob_${user.email}`) || 'Add Date of Birth');
+          
+          if (fetchedPic) {
+            const isFullUrl = fetchedPic.startsWith('http') || fetchedPic.startsWith('data:');
+            const fullUrl = isFullUrl ? fetchedPic : `${BASE_URL}${fetchedPic.startsWith('/') ? '' : '/'}${fetchedPic}`;
+            setProfileImage(fullUrl);
+            // Sync with AuthContext to ensure persistence across all components (like AppHeader)
+            updateUser({ profile_pic: fetchedPic, profile_picture: fetchedPic });
+          }
+
           setProfileData({
             name: data.name || user?.name || 'Employee',
             employee_id: data.employee_id || user?.employee_id || '—',
-            designation: data.designation || user?.designation || 'Lead Software Engineer'
+            designation: data.role || data.designation || user?.role || user?.designation || 'Employee'
           });
-          setReportingManager({ name: data.reportingManagerName || 'Anish V N', id: data.reportingManagerId });
+          setReportingManager({ 
+            name: data.reporting_manager || 'Anish V N', 
+            id: data.reporting_manager_id || '' 
+          });
+
+          // If we have an ID but no name, or just to ensure it's fresh, fetch manager details
+          if (data.reporting_manager_id) {
+            try {
+              const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/${data.reporting_manager_id}`, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+              });
+              if (mRes.ok) {
+                const mData = await mRes.json();
+                setReportingManager({ 
+                  name: mData.name || data.reporting_manager || 'Anish V N', 
+                  id: data.reporting_manager_id,
+                  profile_pic: mData.profile_pic || mData.profile_picture 
+                });
+              }
+            } catch (err) { console.error('Manager details fetch error:', err); }
+          }
         }
       } catch (err) { console.error('Profile fetch error:', err); }
     };
 
     const loadManager = async () => {
-      if (!user?.token) return;
+      if (!user?.token || !user?.email) return;
       try {
-        const res = await fetch(API_ENDPOINTS.PROFILE_MANAGER, {
-          headers: { 'Authorization': `Bearer ${user?.token}` }
+        const res = await fetch(`${API_ENDPOINTS.PROFILE_MANAGER}?email=${user.email}`, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
         });
-        const data = await res.json();
-        if (res.ok) setReportingManager({ name: data.name || 'Anish V N', id: data.id });
+        if (res.ok) {
+          const data = await res.json();
+          // Merge with existing reporting manager info from loadProfile if needed
+          setReportingManager(prev => ({ 
+            ...prev, 
+            name: data.name || prev.name || 'Anish V N', 
+            id: data.id || prev.id,
+            profile_pic: data.profile_pic || data.profile_picture || prev.profile_pic
+          }));
+        }
       } catch (err) { console.error('Manager fetch error:', err); }
     };
 
     loadProfile();
     loadManager();
     return () => window.removeEventListener('resize', handleResize);
-  }, [user]);
+  }, [user?.email, user?.token]);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // 1. Local preview
+    const reader = new FileReader();
+    reader.onloadend = () => setProfileImage(reader.result);
+    reader.readAsDataURL(file);
+
+    // 2. Upload to server using the DIRECT JSON API
+    try {
+      const base64Promise = new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+      
+      const base64Data = await base64Promise;
+
+      const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DIRECT, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}` 
+        },
+        body: JSON.stringify({
+          userId: user.employee_id || user.id,
+          profilePicture: base64Data
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const url = data.url || data.filePath || data.path || data.record?.path;
+        if (url) {
+          // 3. Persist in DB via PROFILE_UPDATE
+          await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ 
+              email: user.email,
+              employee_id: user.employee_id,
+              id: user.id || user.employee_id,
+              profile_pic: url,
+              profile_picture: url
+            })
+          });
+          
+          // 4. Update Global State
+          updateUser({ profile_pic: url, profile_picture: url });
+          setToast({ show: true, message: 'Profile picture updated! ✅', type: 'success' });
+          setTimeout(() => setToast({ show: false, message: '' }), 3000);
+        }
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setToast({ show: true, message: 'Upload failed', type: 'error' });
+      setTimeout(() => setToast({ show: false, message: '' }), 3000);
     }
   };
 
   const updateProfileField = async (field, value) => {
-    if (!user?.token) return;
+    if (!user?.token || !user?.email) return;
     try {
-        const payload = { [field]: value };
+        // Prepare full payload with current values to prevent "erasing" on backend
+        // We use user context values as final fallback to ensure we never send empty strings if data exists
+        const nextPhone = field === 'phone_number' ? value : (phone !== 'Add Phone Number' ? phone : (user.phone_number || ''));
+        const nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
+
+        const payload = { 
+            email: user.email, 
+            employee_id: user.employee_id,
+            id: user.id || user.employee_id, // Include primary key id
+            // Primary fields (users table uses phone_number and date_of_birth)
+            phone_number: nextPhone,
+            date_of_birth: nextDob,
+            about_me: aboutMe,
+            // Compatibility aliases for different backend table schemas
+            phone: nextPhone,
+            mobile: nextPhone,
+            contact_no: nextPhone,
+            dob: nextDob,
+            dateOfBirth: nextDob,
+            emp_name: user.name
+        };
+
+        // Step 1: Update main Profile (Primary hit to users table via POST)
         const res = await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${user.token}`
             },
-            body: JSON.stringify({ email: user.email, ...payload })
+            body: JSON.stringify(payload)
         });
-        if (res.ok) {
-            if (field === 'phone_number') { setPhone(value); setIsEditingPhone(false); }
-            if (field === 'date_of_birth') { setDob(value); setIsEditingDob(false); }
+
+        // Backup in localStorage to prevent "disappearing within a second" on refresh
+        if (nextPhone) localStorage.setItem(`phone_${user.email}`, nextPhone);
+        if (nextDob) localStorage.setItem(`dob_${user.email}`, nextDob);
+
+        // Step 2: Also update Employee Profile (hits granular metadata table)
+        try {
+            await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: JSON.stringify({ 
+                    ...payload,
+                    id: user.employee_id,
+                    contact_no: nextPhone, // specifically used in employee_profiles
+                })
+            });
+        } catch (err) {
+            console.warn("Secondary profile update failed.");
         }
-    } catch (err) { console.error('Update profile error:', err); }
+        
+        if (res.ok) {
+            // Update local state immediately
+            if (field === 'phone_number') { 
+              setPhone(value); 
+              setIsEditingPhone(false); 
+              updateUser({ phone_number: value });
+            }
+            if (field === 'date_of_birth') { 
+              setDob(value); 
+              setIsEditingDob(false); 
+              updateUser({ date_of_birth: value });
+            }
+            
+            // Show Success Toast
+            setToast({ show: true, message: 'Profile updated successfully ✅', type: 'success' });
+            setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+        } else {
+            const errData = await res.json();
+            setToast({ show: true, message: errData.error || 'Failed to update profile', type: 'error' });
+            setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+        }
+    } catch (err) { 
+        console.error('Update profile error:', err);
+        setToast({ show: true, message: 'Server connection failed', type: 'error' });
+        setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+    }
+  };
+
+  const updateAboutMe = async () => {
+    if (!user?.token || !user?.email) return;
+    setSaving(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.PROFILE_ABOUT, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ 
+          email: user.email, 
+          about_me: tempAbout,
+          employee_id: user.employee_id,
+          id: user.id || user.employee_id
+        })
+      });
+      if (res.ok) {
+        setAboutMe(tempAbout);
+        setIsEditingAbout(false);
+        updateUser({ about_me: tempAbout });
+        setToast({ show: true, message: 'About me updated successfully ✅', type: 'success' });
+        setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+        console.error('About me update failure:', errData);
+        setToast({ show: true, message: errData.error || 'Failed to update about me', type: 'error' });
+        setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+      }
+    } catch (err) {
+      console.error('About me update error:', err);
+      setToast({ show: true, message: 'Server connection failed', type: 'error' });
+      setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr || dateStr.toLowerCase().includes('add')) return dateStr;
+    // If it's already in DD/MM/YYYY format, return it
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatToISODate = (dateStr) => {
+    if (!dateStr || dateStr.toLowerCase().includes('add')) return '';
+    // If it's already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // If it's DD/MM/YYYY
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dateStr;
   };
 
   const dashboardStyles = {
@@ -202,7 +430,7 @@ export default function PerformanceModule() {
           <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'center' : 'flex-start', gap: winWidth < 1024 ? '30px' : '0', textAlign: winWidth < 1024 ? 'center' : 'left' }}>
             <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
               <div style={dashboardStyles.avatar}>
-                {profileImage ? <img src={profileImage} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
+                {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
@@ -226,15 +454,37 @@ export default function PerformanceModule() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
                     <Phone size={16} /> 
                     {isEditingPhone ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <input 
                                 value={tempPhone} 
-                                onChange={e => setTempPhone(e.target.value)}
-                                onBlur={() => updateProfileField('phone_number', tempPhone)}
-                                onKeyDown={e => e.key === 'Enter' && updateProfileField('phone_number', tempPhone)}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, ''); // Numbers only
+                                    if (val.length <= 10) setTempPhone(val);
+                                }}
+                                onKeyDown={e => e.key === 'Enter' && tempPhone.length === 10 && updateProfileField('phone_number', tempPhone)}
                                 autoFocus
-                                style={{ border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', outline: 'none' }}
+                                style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white', width: '140px' }}
+                                placeholder="10-digit Phone"
                             />
+                            <div 
+                                onClick={() => {
+                                    if (tempPhone.length === 10) {
+                                        updateProfileField('phone_number', tempPhone);
+                                    } else {
+                                        setToast({ show: true, message: 'Please enter a valid 10-digit number ⚠️' });
+                                        setTimeout(() => setToast({ show: false, message: '' }), 3000);
+                                    }
+                                }}
+                                style={{ background: tempPhone.length === 10 ? '#22c55e' : '#e2e8f0', color: 'white', padding: '6px', borderRadius: '8px', cursor: tempPhone.length === 10 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: tempPhone.length === 10 ? '0 4px 10px rgba(34, 197, 94, 0.3)' : 'none' }}
+                            >
+                                <Check size={14} strokeWidth={3} />
+                            </div>
+                            <div 
+                                onClick={() => setIsEditingPhone(false)}
+                                style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <X size={14} strokeWidth={3} />
+                            </div>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempPhone(phone === 'Add Phone Number' ? '' : phone); setIsEditingPhone(true); }}>
@@ -248,20 +498,31 @@ export default function PerformanceModule() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
                     <Calendar size={16} /> 
                     {isEditingDob ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <input 
                                 type="date"
                                 value={tempDob} 
                                 onChange={e => setTempDob(e.target.value)}
-                                onBlur={() => updateProfileField('date_of_birth', tempDob)}
                                 onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
                                 autoFocus
-                                style={{ border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', outline: 'none' }}
+                                style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white' }}
                             />
+                            <div 
+                                onClick={() => updateProfileField('date_of_birth', tempDob)}
+                                style={{ background: '#22c55e', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
+                            >
+                                <Check size={14} strokeWidth={3} />
+                            </div>
+                            <div 
+                                onClick={() => setIsEditingDob(false)}
+                                style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <X size={14} strokeWidth={3} />
+                            </div>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(dob === 'Add Date of Birth' ? '' : dob); setIsEditingDob(true); }}>
-                            <span>{dob}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(formatToISODate(dob)); setIsEditingDob(true); }}>
+                            <span>{formatDateDisplay(dob)}</span>
                             <Edit3 size={14} color="#94a3b8" />
                         </div>
                     )}
@@ -271,8 +532,14 @@ export default function PerformanceModule() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc', padding: '12px 20px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
-                {reportingManager.name?.[0]}
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', overflow: 'hidden' }}>
+                {reportingManager.profile_pic ? (
+                  <img 
+                    src={reportingManager.profile_pic.startsWith('http') || reportingManager.profile_pic.startsWith('data:') ? reportingManager.profile_pic : `${BASE_URL}${reportingManager.profile_pic.startsWith('/') ? '' : '/'}${reportingManager.profile_pic}`} 
+                    alt="Manager" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ) : reportingManager.name?.[0]}
               </div>
               <div style={{ textAlign: 'left' }}>
                 <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reporting Manager</p>
@@ -382,11 +649,53 @@ export default function PerformanceModule() {
         <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px', background: 'white', borderRadius: winWidth < 768 ? '24px' : '32px', padding: winWidth < 768 ? '25px' : '40px', border: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: winWidth < 768 ? '20px' : '40px' }}>
             <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', margin: 0 }}>About Me</h3>
-            <div style={{ width: '36px', height: '36px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Edit3 size={18} color="#0f172a" /></div>
+            {!isEditingAbout && (
+              <div 
+                onClick={() => { setTempAbout(aboutMe === 'Write a short introduction about yourself' ? '' : aboutMe); setIsEditingAbout(true); }}
+                style={{ width: '36px', height: '36px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <Edit3 size={18} color="#0f172a" />
+              </div>
+            )}
           </div>
-          <div style={{ textAlign: 'center', padding: winWidth < 768 ? '20px 0' : '40px 0' }}>
-            <div style={{ width: '50px', height: '50px', background: '#f8fafc', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Edit3 size={24} color="#cbd5e1" /></div>
-            <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8', fontWeight: '700' }}>Write a short introduction about yourself</p>
+          <div style={{ textAlign: isEditingAbout ? 'left' : 'center', padding: isEditingAbout ? '0' : (winWidth < 768 ? '20px 0' : '40px 0') }}>
+            {isEditingAbout ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <textarea 
+                  value={tempAbout}
+                  onChange={e => setTempAbout(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  style={{ width: '100%', minHeight: '120px', padding: '16px', borderRadius: '16px', border: '1.5px solid #3b82f6', outline: 'none', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button 
+                    onClick={() => setIsEditingAbout(false)}
+                    style={{ padding: '8px 20px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={updateAboutMe}
+                    disabled={saving}
+                    style={{ padding: '8px 24px', borderRadius: '10px', border: 'none', background: '#1e40af', color: 'white', fontWeight: '700', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {aboutMe === 'Write a short introduction about yourself' ? (
+                  <>
+                    <div style={{ width: '50px', height: '50px', background: '#f8fafc', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Edit3 size={24} color="#cbd5e1" /></div>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8', fontWeight: '700' }}>{aboutMe}</p>
+                  </>
+                ) : (
+                  <p style={{ margin: 0, fontSize: '15px', color: '#475569', fontWeight: '500', lineHeight: '1.6', textAlign: 'left' }}>{aboutMe}</p>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -409,6 +718,16 @@ export default function PerformanceModule() {
       />
 
       <AppFooter />
+
+      {/* Success Toast */}
+      {toast.show && (
+        <div style={{ position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: 'white', padding: '12px 24px', borderRadius: '16px', fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', zIndex: 9999, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ background: toast.type === 'success' ? '#22c55e' : '#ef4444', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {toast.type === 'success' ? <Check size={12} color="white" strokeWidth={4} /> : <X size={12} color="white" strokeWidth={4} />}
+          </div>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

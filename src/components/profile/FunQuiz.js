@@ -32,6 +32,8 @@ const FunQuiz = ({ onBack }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
   const [showManagementModal, setShowManagementModal] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const showSuccessState = (pts) => {
     setSubmissionFeedback({ show: true, points: pts });
@@ -46,6 +48,7 @@ const FunQuiz = ({ onBack }) => {
 
   const isMobile = winWidth < 768;
   const isTablet = winWidth < 1024;
+  const isHR = user?.role?.toUpperCase() === 'HR' || user?.role?.toUpperCase() === 'HUMAN RESOURCE';
 
   const fetchQuestions = async () => {
     try {
@@ -228,6 +231,48 @@ const FunQuiz = ({ onBack }) => {
     }
   };
 
+  const handleDeleteMultipleQuestions = async () => {
+    if (selectedQuestionIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedQuestionIds.length} question(s)? This action cannot be undone.`)) return;
+    
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const deletePromises = selectedQuestionIds.map(qId => 
+        fetch(`${BASE_URL}/api/fun-quizzes/${qId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      );
+      
+      await Promise.all(deletePromises);
+      
+      setFeedback({ show: true, msg: `${selectedQuestionIds.length} questions deleted! ✅`, type: 'success' });
+      setTimeout(() => setFeedback({ show: false, msg: '', type: 'success' }), 3000);
+      setSelectedQuestionIds([]);
+      fetchQuestions();
+      
+      if (questions.length <= selectedQuestionIds.length) {
+        setQuizActive(false);
+        setShowManagementModal(false);
+      }
+    } catch (err) {
+      console.error("Batch delete error:", err);
+      setFeedback({ show: true, msg: 'Error deleting questions! ❌', type: 'error' });
+      setTimeout(() => setFeedback({ show: false, msg: '', type: 'success' }), 3000);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuestionIds.length === questions.length) {
+      setSelectedQuestionIds([]);
+    } else {
+      setSelectedQuestionIds(questions.map(q => q.id));
+    }
+  };
+
   const handleEditClick = (q) => {
     if (!q) return;
     setNewQuiz({
@@ -377,7 +422,7 @@ const FunQuiz = ({ onBack }) => {
                     >
                       Add Quiz
                     </button>
-                    <button onClick={() => setQuizActive(true)} style={{ ...s.heroBtn, marginTop: 0 }}>View all</button>
+                    <button onClick={() => setQuizActive(true)} style={{ ...s.heroBtn, marginTop: 0 }}>{isHR ? 'Monitor Quiz' : 'View all'}</button>
                   </div>
                 </div>
 
@@ -425,15 +470,15 @@ const FunQuiz = ({ onBack }) => {
 
                         <button
                           style={{
-                            backgroundColor: isDone ? '#f8fafc' : '#0d676c',
-                            color: isDone ? '#64748b' : 'white',
-                            border: isDone ? '1.5px solid #e2e8f0' : 'none',
+                            backgroundColor: (isDone || isHR) ? '#f8fafc' : '#0d676c',
+                            color: (isDone || isHR) ? '#64748b' : 'white',
+                            border: (isDone || isHR) ? '1.5px solid #e2e8f0' : 'none',
                             padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: '900',
                             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
                           }}
                         >
-                          {isDone ? 'Review' : (inProgress ? 'Continue' : 'View all')}
-                          {isDone ? <Info size={12} /> : <ChevronRight size={12} />}
+                          {isHR ? 'Monitor' : (isDone ? 'Review' : (inProgress ? 'Continue' : 'View all'))}
+                          { (isDone || isHR) ? <Info size={12} /> : <ChevronRight size={12} />}
                         </button>
                       </div>
                     );
@@ -506,146 +551,153 @@ const FunQuiz = ({ onBack }) => {
               {/* INNER PAGE MONSTER HERO */}
               <div style={{ backgroundColor: '#B2DCE2', borderRadius: '20px', padding: isMobile ? '25px 20px' : '30px 40px', marginBottom: '30px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'center' : 'center', overflow: 'hidden', textAlign: isMobile ? 'center' : 'left' }}>
                 <div>
-                  <h2 style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '900', color: '#0B1E3F', margin: '0 0 10px 0' }}>Thinking Cap On!</h2>
-                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#0B1E3F', opacity: 0.8, maxWidth: '300px', margin: isMobile ? '0 auto' : 0 }}>Answer these questions carefully. You only get one shot to earn those points!</p>
+                  <h2 style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: '900', color: '#0B1E3F', margin: '0 0 10px 0' }}>{isHR ? 'Quiz Monitor' : 'Thinking Cap On!'}</h2>
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#0B1E3F', opacity: 0.8, maxWidth: '300px', margin: isMobile ? '0 auto' : 0 }}>{isHR ? 'Review the questions and answers for the active quiz session.' : 'Answer these questions carefully. You only get one shot to earn those points!'}</p>
                 </div>
                 <div>
                   {ReactiveMonster}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '20px' }}>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8' }}>
-                    Q {questions.length > 0 ? currentIdx + 1 : 0}/{questions.length}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => setCurrentIdx(p => Math.max(0, p - 1))}
-                      disabled={currentIdx === 0}
-                      style={{ backgroundColor: 'white', border: '1.5px solid #eef2f3', borderRadius: '10px', padding: '8px 12px', cursor: currentIdx === 0 ? 'not-allowed' : 'pointer', opacity: currentIdx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '12px', fontWeight: '800' }}
-                    >
-                      <ArrowLeft size={14} />
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentIdx(p => Math.min(questions.length - 1, p + 1))}
-                      disabled={currentIdx === questions.length - 1}
-                      style={{ backgroundColor: 'white', border: '1.5px solid #eef2f3', borderRadius: '10px', padding: '8px 16px', cursor: currentIdx === questions.length - 1 ? 'not-allowed' : 'pointer', opacity: currentIdx === questions.length - 1 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '6px', color: '#0B1E3F', fontSize: '12px', fontWeight: '800' }}
-                    >
-                      Next <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {isQuestionsLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
-                  <Loader2 className="animate-spin" size={30} color="#0d676c" />
-                </div>
-              ) : questions.length > 0 && currentQ ? (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentIdx}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                  >
-                    {/* Question Status Banner */}
-                    {currentQ.has_answered && (
-                      <div style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: currentQ.previous_result === 'correct' ? '#f0fdf4' : '#fef2f2', border: `1.5px solid ${currentQ.previous_result === 'correct' ? '#bbf7d0' : '#fecaca'}` }}>
-                        {currentQ.previous_result === 'correct' ? <CheckIcon size={18} color="#15803d" /> : <XIcon size={18} color="#b91c1c" />}
-                        <span style={{ fontSize: '14px', fontWeight: '800', color: currentQ.previous_result === 'correct' ? '#15803d' : '#b91c1c' }}>
-                          {currentQ.previous_result === 'correct' ? 'You answered this correctly!' : 'You answered this incorrectly.'}
-                        </span>
+              {isHR ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {questions.map((q, idx) => (
+                    <div key={idx} style={{ padding: '20px', borderRadius: '16px', border: '1.5px solid #eef2f3', background: '#f8fafc' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '900', color: '#0B1E3F', marginBottom: '10px' }}>
+                        Q{idx + 1}. "{q.question}"
                       </div>
-                    )}
-
-                    <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '900', color: '#0B1E3F', marginBottom: '25px' }}>
-                      Q{currentIdx + 1}. "{currentQ.question}"
+                      <div style={{ padding: '12px 16px', borderRadius: '10px', background: '#dcfce7', border: '1px solid #22c55e', color: '#15803d', fontSize: '14px', fontWeight: '800' }}>
+                        Answer: {q.correct_answer}
+                      </div>
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '15px' }}>
-                      {currentQ.options.map((optObj, i) => {
-                        const st = s.option(optObj, currentQ.has_answered);
-
-                        return (
-                          <div
-                            key={i}
-                            style={st}
-                            onClick={() => {
-                              if (!currentQ.has_answered) setSelectedOption(optObj.letter);
-                            }}
-                          >
-                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: st.borderColor === '#22c55e' ? '#22c55e' : (st.borderColor === '#ef4444' ? '#ef4444' : '#0d676c'), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: '900' }}>
-                              {optObj.letter}
-                            </div>
-                            {optObj.text}
-
-                            {currentQ.has_answered && currentQ.correct_answer === optObj.text && (
-                              <div style={{ marginLeft: 'auto', backgroundColor: '#22c55e', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900' }}>CORRECT</div>
-                            )}
-                            {currentQ.has_answered && currentQ.user_selected_letter === optObj.letter && currentQ.correct_answer !== optObj.text && (
-                              <div style={{ marginLeft: 'auto', backgroundColor: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900' }}>WRONG</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                      {currentQ.has_answered && currentIdx < questions.length - 1 ? (
-                        <button
-                          onClick={() => setCurrentIdx(prev => prev + 1)}
-                          style={{
-                            backgroundColor: '#0d676c', color: 'white', border: 'none', padding: '12px 30px',
-                            borderRadius: '12px', fontWeight: '900', fontSize: '14px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(13,103,108,0.2)'
-                          }}
-                        >
-                          Next Question <ChevronRight size={18} />
-                        </button>
-                      ) : currentQ.has_answered && currentIdx === questions.length - 1 ? (
-                        <button
-                          disabled={isSubmitting}
-                          onClick={handleSendTotalResults}
-                          style={{
-                            backgroundColor: '#34A853', color: 'white', border: 'none', padding: '12px 30px',
-                            borderRadius: '12px', fontWeight: '900', fontSize: '14px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(52,168,83,0.2)'
-                          }}
-                        >
-                          {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Trophy size={18} />}
-                          Submit Final Score ({questions.filter(q => q.previous_result === 'correct').reduce((sum, q) => sum + (q.points_reward || 0), 0)} pts)
-                        </button>
-                      ) : (
-                        <button
-                          disabled={currentQ.has_answered || !selectedOption || isSubmitting}
-                          onClick={handleSubmit}
-                          style={{
-                            backgroundColor: currentQ.has_answered || !selectedOption ? '#e2e8f0' : '#0d676c',
-                            color: currentQ.has_answered || !selectedOption ? '#94a3b8' : 'white',
-                            border: 'none', padding: '12px 30px', borderRadius: '12px',
-                            fontWeight: '900', fontSize: '14px',
-                            cursor: currentQ.has_answered || !selectedOption || isSubmitting ? 'not-allowed' : 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            boxShadow: currentQ.has_answered || !selectedOption ? 'none' : '0 4px 12px rgba(13,103,108,0.2)'
-                          }}
-                        >
-                          {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-                          Check Answer
-                        </button>
-                      )}
-                    </div>
-
-                  </motion.div>
-                </AnimatePresence>
-              ) : (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '800' }}>
-                  No quizzes available for today.
+                  ))}
                 </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8' }}>
+                        Q {questions.length > 0 ? currentIdx + 1 : 0}/{questions.length}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setCurrentIdx(p => Math.max(0, p - 1))}
+                          disabled={currentIdx === 0}
+                          style={{ backgroundColor: 'white', border: '1.5px solid #eef2f3', borderRadius: '10px', padding: '8px 12px', cursor: currentIdx === 0 ? 'not-allowed' : 'pointer', opacity: currentIdx === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '12px', fontWeight: '800' }}
+                        >
+                          <ArrowLeft size={14} />
+                        </button>
+                        <button
+                          onClick={() => setCurrentIdx(p => Math.min(questions.length - 1, p + 1))}
+                          disabled={currentIdx === questions.length - 1}
+                          style={{ backgroundColor: 'white', border: '1.5px solid #eef2f3', borderRadius: '10px', padding: '8px 16px', cursor: currentIdx === questions.length - 1 ? 'not-allowed' : 'pointer', opacity: currentIdx === questions.length - 1 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '6px', color: '#0B1E3F', fontSize: '12px', fontWeight: '800' }}
+                        >
+                          Next <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {isQuestionsLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+                      <Loader2 className="animate-spin" size={30} color="#0d676c" />
+                    </div>
+                  ) : questions.length > 0 && currentQ ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentIdx}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        {/* Question Status Banner */}
+                        {currentQ.has_answered && (
+                          <div style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: currentQ.previous_result === 'correct' ? '#f0fdf4' : '#fef2f2', border: `1.5px solid ${currentQ.previous_result === 'correct' ? '#bbf7d0' : '#fecaca'}` }}>
+                            {currentQ.previous_result === 'correct' ? <CheckIcon size={18} color="#15803d" /> : <XIcon size={18} color="#b91c1c" />}
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: currentQ.previous_result === 'correct' ? '#15803d' : '#b91c1c' }}>
+                              {currentQ.previous_result === 'correct' ? 'You answered this correctly!' : 'You answered this incorrectly.'}
+                            </span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '900', color: '#0B1E3F', marginBottom: '25px' }}>
+                          Q{currentIdx + 1}. "{currentQ.question}"
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '15px' }}>
+                          {currentQ.options.map((optObj, i) => {
+                            const st = s.option(optObj, currentQ.has_answered);
+                            return (
+                              <div
+                                key={i}
+                                style={st}
+                                onClick={() => {
+                                  if (!currentQ.has_answered) setSelectedOption(optObj.letter);
+                                }}
+                              >
+                                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: st.borderColor === '#22c55e' ? '#22c55e' : (st.borderColor === '#ef4444' ? '#ef4444' : '#0d676c'), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: '900' }}>
+                                  {optObj.letter}
+                                </div>
+                                {optObj.text}
+                                {currentQ.has_answered && currentQ.correct_answer === optObj.text && (
+                                  <div style={{ marginLeft: 'auto', backgroundColor: '#22c55e', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900' }}>CORRECT</div>
+                                )}
+                                {currentQ.has_answered && currentQ.user_selected_letter === optObj.letter && currentQ.correct_answer !== optObj.text && (
+                                  <div style={{ marginLeft: 'auto', backgroundColor: '#ef4444', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900' }}>WRONG</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                          {currentQ.has_answered && currentIdx < questions.length - 1 ? (
+                            <button
+                              onClick={() => setCurrentIdx(prev => prev + 1)}
+                              style={{
+                                backgroundColor: '#0d676c', color: 'white', border: 'none', padding: '12px 30px',
+                                borderRadius: '12px', fontWeight: '900', fontSize: '14px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(13,103,108,0.2)'
+                              }}
+                            >
+                              Next Question <ChevronRight size={18} />
+                            </button>
+                          ) : currentQ.has_answered && currentIdx === questions.length - 1 ? (
+                            <button
+                              disabled={isSubmitting}
+                              onClick={handleSendTotalResults}
+                              style={{
+                                backgroundColor: '#34A853', color: 'white', border: 'none', padding: '12px 30px',
+                                borderRadius: '12px', fontWeight: '900', fontSize: '14px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(52,168,83,0.2)'
+                              }}
+                            >
+                              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Trophy size={18} />}
+                              Submit Final Score ({questions.filter(q => q.previous_result === 'correct').reduce((sum, q) => sum + (q.points_reward || 0), 0)} pts)
+                            </button>
+                          ) : (
+                            <button
+                              disabled={currentQ.has_answered || !selectedOption || isSubmitting}
+                              onClick={handleSubmit}
+                              style={{
+                                backgroundColor: currentQ.has_answered || !selectedOption ? '#e2e8f0' : '#0d676c',
+                                color: currentQ.has_answered || !selectedOption ? '#94a3b8' : 'white',
+                                border: 'none', padding: '12px 30px', borderRadius: '12px',
+                                fontWeight: '900', fontSize: '14px',
+                                cursor: currentQ.has_answered || !selectedOption || isSubmitting ? 'not-allowed' : 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                boxShadow: currentQ.has_answered || !selectedOption ? 'none' : '0 4px 12px rgba(13,103,108,0.2)'
+                              }}
+                            >
+                              {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                              Check Answer
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '800' }}>
+                      No quizzes available for today.
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -865,73 +917,117 @@ const FunQuiz = ({ onBack }) => {
                   <h2 style={{ fontSize: '24px', fontWeight: '1000', color: '#0B1E3F', margin: 0 }}>Quiz Repository</h2>
                   <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginTop: '4px' }}>Manage all active questions in the hub</p>
                 </div>
-                <button
-                  onClick={() => setShowManagementModal(false)}
-                  style={{ background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
-                >✕</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {questions.length > 0 && (
+                    <button
+                      onClick={toggleSelectAll}
+                      style={{
+                        padding: '10px 20px', borderRadius: '14px', border: '1.5px solid #e2e8f0',
+                        background: selectedQuestionIds.length === questions.length ? '#0d676c' : 'white',
+                        color: selectedQuestionIds.length === questions.length ? 'white' : '#0B1E3F',
+                        fontSize: '12px', fontWeight: '1000', cursor: 'pointer', transition: '0.2s',
+                        boxShadow: selectedQuestionIds.length === questions.length ? '0 4px 12px rgba(13,103,108,0.2)' : 'none'
+                      }}
+                    >
+                      {selectedQuestionIds.length === questions.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowManagementModal(false);
+                      setSelectedQuestionIds([]);
+                    }}
+                    style={{ background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+                  >✕</button>
+                </div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {questions.length > 0 ? (
                   <>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Select Question</label>
-                      <select 
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if(val) {
-                             const found = questions.find(q => String(q.id) === String(val));
-                             if(found) setEditId(found.id);
-                          } else {
-                             setEditId(null);
-                          }
-                        }}
-                        value={editId || ''}
-                        style={{ width: '100%', padding: '14px 18px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', backgroundColor: '#f8fafc', appearance: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="">-- Click to Select a Question --</option>
-                        {questions.map((q, idx) => (
-                          <option key={q.id || idx} value={q.id}>
-                            Q{idx + 1}: {q.question.substring(0, 50)}{q.question.length > 50 ? '...' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {editId && questions.find(q => String(q.id) === String(editId)) && (() => {
-                      const selectedQ = questions.find(q => String(q.id) === String(editId));
-                      return (
-                        <div style={{ padding: '25px', borderRadius: '20px', background: '#f8fafc', border: '1.5px solid #eef2f3' }}>
-                           <h4 style={{ fontSize: '15px', fontWeight: '900', color: '#0B1E3F', marginTop: 0, marginBottom: '15px', lineHeight: 1.4 }}>{selectedQ.question}</h4>
-                           
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                             {selectedQ.options.map((opt, i) => (
-                               <div key={i} style={{ padding: '10px 14px', borderRadius: '10px', background: 'white', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '700', color: '#475569' }}>
-                                 <span style={{ fontWeight: '900', color: '#0d676c', marginRight: '8px' }}>{opt.letter}</span> {opt.text}
-                               </div>
-                             ))}
-                           </div>
-
-                           <div style={{ display: 'flex', gap: '15px' }}>
-                              <button
-                                onClick={() => handleEditClick(selectedQ)}
-                                style={{ flex: 1, background: '#0d676c', color: 'white', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', boxShadow: '0 4px 10px rgba(13,103,108,0.2)' }}
-                              >
-                                <Edit size={16} /> Edit Question
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleDeleteQuestion(selectedQ.id);
-                                  setEditId(null);
-                                }}
-                                style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '12px', padding: '12px 20px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s' }}
-                              >
-                                <Trash2 size={16} /> Delete
-                              </button>
-                           </div>
+                    {selectedQuestionIds.length > 0 && (
+                      <div style={{ padding: '20px', borderRadius: '20px', background: '#fef2f2', border: '1.5px solid #fecaca', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#b91c1c' }}>{selectedQuestionIds.length} Questions Selected</div>
+                          <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: '700' }}>Are you sure you want to delete these?</div>
                         </div>
-                      )
-                    })()}
+                        <button
+                          onClick={handleDeleteMultipleQuestions}
+                          disabled={isDeleting}
+                          style={{
+                            background: '#ef4444', color: 'white', border: 'none', borderRadius: '12px',
+                            padding: '12px 24px', fontWeight: '1000', fontSize: '13px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(239,68,68,0.2)'
+                          }}
+                        >
+                          {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                          Delete All
+                        </button>
+                      </div>
+                    )}
+
+                    {!selectedQuestionIds.length && (
+                      <>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Select Question</label>
+                          <select 
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if(val) {
+                                 const found = questions.find(q => String(q.id) === String(val));
+                                 if(found) setEditId(found.id);
+                              } else {
+                                 setEditId(null);
+                              }
+                            }}
+                            value={editId || ''}
+                            style={{ width: '100%', padding: '14px 18px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', backgroundColor: '#f8fafc', appearance: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="">-- Click to Select a Question --</option>
+                            {questions.map((q, idx) => (
+                              <option key={q.id || idx} value={q.id}>
+                                Q{idx + 1}: {q.question.substring(0, 50)}{q.question.length > 50 ? '...' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {editId && questions.find(q => String(q.id) === String(editId)) && (() => {
+                          const selectedQ = questions.find(q => String(q.id) === String(editId));
+                          return (
+                            <div style={{ padding: '25px', borderRadius: '20px', background: '#f8fafc', border: '1.5px solid #eef2f3' }}>
+                               <h4 style={{ fontSize: '15px', fontWeight: '900', color: '#0B1E3F', marginTop: 0, marginBottom: '15px', lineHeight: 1.4 }}>{selectedQ.question}</h4>
+                               
+                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                                 {selectedQ.options.map((opt, i) => (
+                                   <div key={i} style={{ padding: '10px 14px', borderRadius: '10px', background: 'white', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '700', color: '#475569' }}>
+                                     <span style={{ fontWeight: '900', color: '#0d676c', marginRight: '8px' }}>{opt.letter}</span> {opt.text}
+                                   </div>
+                                 ))}
+                               </div>
+
+                               <div style={{ display: 'flex', gap: '15px' }}>
+                                  <button
+                                    onClick={() => handleEditClick(selectedQ)}
+                                    style={{ flex: 1, background: '#0d676c', color: 'white', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', boxShadow: '0 4px 10px rgba(13,103,108,0.2)' }}
+                                  >
+                                    <Edit size={16} /> Edit Question
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleDeleteQuestion(selectedQ.id);
+                                      setEditId(null);
+                                    }}
+                                    style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '12px', padding: '12px 20px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s' }}
+                                  >
+                                    <Trash2 size={16} /> Delete
+                                  </button>
+                               </div>
+                            </div>
+                          )
+                        })()}
+                      </>
+                    )}
                   </>
                 ) : (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No questions found in repository.</div>

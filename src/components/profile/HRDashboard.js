@@ -18,19 +18,17 @@ export default function HRDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [joineeCount, setJoineeCount] = useState(1);
+  const [joineeCount, setJoineeCount] = useState(0);
   const [jobAppCount, setJobAppCount] = useState(0);
-  const [stats, setStats] = useState({
-    totalEmployees: 482,
-    newJoinees: 12,
-    openPositions: 8,
-    engagementScore: '84%'
-  });
+  const [currentStatIndex, setCurrentStatIndex] = useState(0);
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     onLeave: 0,
     late: 0
   });
+  const [rewardsCount, setRewardsCount] = useState(0);
+  const [employeesCount, setEmployeesCount] = useState(0);
+  const [teamsCount, setTeamsCount] = useState(0);
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
 
   React.useEffect(() => {
@@ -103,6 +101,33 @@ export default function HRDashboard() {
            setAttendanceStats(prev => ({ ...prev, onLeave }));
         }
       }
+
+      // Fetch Rewards History
+      const rewardsRes = await fetch(API_ENDPOINTS.REWARDS_HISTORY, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (rewardsRes.ok) {
+        const rData = await rewardsRes.json();
+        setRewardsCount(Array.isArray(rData) ? rData.length : (rData?.data?.length || 0));
+      }
+
+      // Fetch Total Users
+      const usersRes = await fetch(API_ENDPOINTS.USERS, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (usersRes.ok) {
+        const uData = await usersRes.json();
+        setEmployeesCount(Array.isArray(uData) ? uData.length : (uData?.data?.length || 0));
+      }
+
+      // Fetch Total Teams
+      const teamsRes = await fetch(API_ENDPOINTS.TEAMS, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (teamsRes.ok) {
+        const tData = await teamsRes.json();
+        setTeamsCount(Array.isArray(tData) ? tData.length : (tData?.data?.length || 0));
+      }
     } catch (err) {
       console.error('Fetch dashboard data error:', err);
     } finally {
@@ -115,13 +140,13 @@ export default function HRDashboard() {
   }, [user]);
 
   const hrStats = [
-    { label: 'Total Teams', value: 6, icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
-    { label: 'Total Employees', value: 19, icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
+    { label: 'Total Teams', value: teamsCount || 'View', icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
+    { label: 'Total Employees', value: employeesCount || 'View', icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
     { label: 'Personal Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
-    { label: 'Awards and Recognition', value: 0, icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
+    { label: 'Awards and Recognition', value: rewardsCount || 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
     { label: 'Assets Management', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
-    { label: 'New Joinee', value: joineeCount || 2, icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
-    { label: 'New Hirings', value: jobAppCount, icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
+    { label: 'New Joinee', value: joineeCount || 'View', icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
+    { label: 'New Hirings', value: jobAppCount || 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
     { label: 'Post Vacancy', value: 'Create', icon: <ClipboardList size={20} color="#3b82f6" />, badge: 'Hiring', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/job-postings' },
   ];
 
@@ -129,46 +154,157 @@ export default function HRDashboard() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main className="dashboard-content">
-        <header className="section-header animate-fade-in" style={{ marginBottom: winWidth < 768 ? '20px' : '40px', flexDirection: winWidth < 640 ? 'column' : 'row', alignItems: winWidth < 640 ? 'flex-start' : 'center', gap: winWidth < 640 ? '15px' : '0' }}>
+      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 40px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
+        <header className="section-header animate-fade-in" style={{ 
+          marginBottom: winWidth < 768 ? '20px' : '40px', 
+          flexDirection: winWidth < 640 ? 'column' : 'row', 
+          alignItems: winWidth < 640 ? 'flex-start' : 'center', 
+          gap: winWidth < 640 ? '15px' : '0',
+          padding: winWidth < 768 ? '15px' : '20px',
+          background: 'rgba(255, 255, 255, 0.4)',
+          borderRadius: '20px',
+          backdropFilter: 'blur(10px)'
+        }}>
           <div>
-            <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900', color: '#1e293b', marginBottom: '4px' }}>
+            <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '850', color: '#0f172a', marginBottom: '4px', letterSpacing: '-1px' }}>
               Titan Dashboard
             </h1>
-            <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '500', marginBottom: '2px' }}>
-              Strength and scale
-            </p>
-            <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px' }}>
-              Empowering Workplace Excellence • <span style={{ color: '#3163aa', fontWeight: '800' }}>6 Active Teams</span>
+            <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '500' }}>
+              Strength and scale • 6 Active Teams
             </p>
           </div>
-
         </header>
 
         {/* Stats Grid */}
-        <section className="stats-grid animate-fade-in" style={{ animationDelay: '0.1s', display: 'grid', gridTemplateColumns: winWidth < 640 ? '1fr' : (winWidth < 1024 ? '1fr 1fr' : 'repeat(4, 1fr)'), gap: winWidth < 768 ? '15px' : '20px', marginBottom: winWidth < 768 ? '20px' : '30px' }}>
-          {hrStats.map((stat, i) => (
-            <div 
-              key={i} 
-              className="stat-card" 
-              style={{ padding: winWidth < 768 ? '20px' : '24px', cursor: stat.path ? 'pointer' : 'default' }}
-              onClick={() => stat.path && navigate(stat.path)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: winWidth < 768 ? '15px' : '20px' }}>
-                <div style={{ 
-                  background: stat.iconBg, width: winWidth < 768 ? '38px' : '42px', height: winWidth < 768 ? '38px' : '42px', borderRadius: '12px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  {stat.icon}
-                </div>
-                <div className={`stat-badge ${stat.badgeClass}`} style={{ fontSize: '10px' }}>{stat.badge}</div>
-              </div>
-              <div>
-                <div className="stat-label" style={{ fontSize: winWidth < 768 ? '12px' : '14px', color: '#64748b', fontWeight: '800' }}>{stat.label}</div>
-                <div className="stat-value" style={{ fontSize: (typeof stat.value === 'string' && isNaN(stat.value)) ? (winWidth < 768 ? '20px' : '24px') : (winWidth < 768 ? '28px' : '38px'), marginTop: '4px', fontWeight: '950', color: '#1e293b' }}>{stat.value}</div>
+        <section className="stats-grid-container" style={{ position: 'relative', marginBottom: winWidth < 768 ? '25px' : '35px' }}>
+          {winWidth < 768 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '0 5px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Quick Stats</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => setCurrentStatIndex(prev => Math.max(0, prev - 1))}
+                  disabled={currentStatIndex === 0}
+                  style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #e2e8f0', 
+                    background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    cursor: 'pointer', opacity: currentStatIndex === 0 ? 0.3 : 1 
+                  }}
+                >
+                  ←
+                </button>
+                <button 
+                  onClick={() => setCurrentStatIndex(prev => Math.min(hrStats.length - 1, prev + 1))}
+                  disabled={currentStatIndex === hrStats.length - 1}
+                  style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #e2e8f0', 
+                    background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    cursor: 'pointer', opacity: currentStatIndex === hrStats.length - 1 ? 0.3 : 1 
+                  }}
+                >
+                  →
+                </button>
               </div>
             </div>
-          ))}
+          )}
+
+          <div style={{ 
+            display: winWidth < 768 ? 'flex' : 'grid', 
+            gridTemplateColumns: winWidth < 480 ? '1fr' : (winWidth < 768 ? '1fr 1fr' : (winWidth < 1200 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)')), 
+            gap: winWidth < 768 ? '0' : '20px',
+            overflow: winWidth < 768 ? 'hidden' : 'visible',
+            width: '100%',
+            padding: winWidth < 768 ? '10px 0' : '0' // Space for shadows
+          }}>
+            {winWidth < 768 ? (
+              <div style={{ 
+                display: 'flex', 
+                gap: '15px',
+                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateX(calc(-${currentStatIndex} * (100% + 15px)))`,
+                width: '100%'
+              }}>
+                {hrStats.map((stat, i) => (
+                  <div 
+                    key={i} 
+                    className="stat-card animate-fade-in" 
+                    style={{ 
+                      padding: '24px', 
+                      cursor: stat.path ? 'pointer' : 'default',
+                      borderRadius: '24px',
+                      background: '#ffffff',
+                      border: '1px solid #f1f5f9',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      minHeight: '160px',
+                      flex: '0 0 100%',
+                      boxSizing: 'border-box'
+                    }}
+                    onClick={() => stat.path && navigate(stat.path)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                      <div style={{ 
+                        background: stat.iconBg, width: '44px', height: '44px', borderRadius: '14px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                      }}>
+                        {stat.icon}
+                      </div>
+                      <div className={`stat-badge ${stat.badgeClass}`} style={{ fontSize: '10px', fontWeight: '800' }}>{stat.badge}</div>
+                    </div>
+                    <div>
+                      <div className="stat-label" style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '6px' }}>{stat.label}</div>
+                      <div className="stat-value" style={{ 
+                        fontSize: (typeof stat.value === 'string' && isNaN(stat.value)) ? '22px' : '32px', 
+                        fontWeight: '900', 
+                        color: '#0f172a',
+                        lineHeight: 1
+                      }}>{stat.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              hrStats.map((stat, i) => (
+                <div 
+                  key={i} 
+                  className="stat-card animate-fade-in" 
+                  style={{ 
+                    padding: '24px', 
+                    cursor: stat.path ? 'pointer' : 'default',
+                    borderRadius: '24px',
+                    background: '#ffffff',
+                    border: '1px solid #f1f5f9',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: '160px'
+                  }}
+                  onClick={() => stat.path && navigate(stat.path)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <div style={{ 
+                      background: stat.iconBg, width: '44px', height: '44px', borderRadius: '12px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {stat.icon}
+                    </div>
+                    <div className={`stat-badge ${stat.badgeClass}`} style={{ fontSize: '10px', fontWeight: '800' }}>{stat.badge}</div>
+                  </div>
+                  <div>
+                    <div className="stat-label" style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '4px' }}>{stat.label}</div>
+                    <div className="stat-value" style={{ 
+                      fontSize: (typeof stat.value === 'string' && isNaN(stat.value)) ? '22px' : '32px', 
+                      fontWeight: '900', 
+                      color: '#0f172a',
+                      lineHeight: 1
+                    }}>{stat.value}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
@@ -186,18 +322,18 @@ export default function HRDashboard() {
             </div>
 
             {/* Attendance Quick Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '15px', borderRadius: '16px', border: '1px solid #dcfce7', textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#15803d', fontWeight: '700', marginBottom: '4px' }}>Present</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#166534' }}>{attendanceStats.present}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '24px' }}>
+              <div style={{ background: '#f0fdf4', padding: '15px', borderRadius: '20px', border: '1px solid #dcfce7', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Present</div>
+                <div style={{ fontSize: '24px', fontWeight: '950', color: '#166534' }}>{attendanceStats.present}</div>
               </div>
-              <div style={{ background: '#fffbeb', padding: '15px', borderRadius: '16px', border: '1px solid #fef3c7', textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#b45309', fontWeight: '700', marginBottom: '4px' }}>On Leave</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#92400e' }}>{attendanceStats.onLeave}</div>
+              <div style={{ background: '#fffbeb', padding: '15px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>On Leave</div>
+                <div style={{ fontSize: '24px', fontWeight: '950', color: '#92400e' }}>{attendanceStats.onLeave}</div>
               </div>
-              <div style={{ background: '#fef2f2', padding: '15px', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#b91c1c', fontWeight: '700', marginBottom: '4px' }}>Late</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#991b1b' }}>{attendanceStats.late}</div>
+              <div style={{ background: '#fef2f2', padding: '15px', borderRadius: '20px', border: '1px solid #fee2e2', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Late</div>
+                <div style={{ fontSize: '24px', fontWeight: '950', color: '#991b1b' }}>{attendanceStats.late}</div>
               </div>
             </div>
 
