@@ -44,11 +44,11 @@ export default function MyLeaves() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data || data.all || []);
+        
         // Filter for current user by ID or EmpCode
         const myData = list.filter(l => 
-          String(l.user_id) === String(user.id) || 
-          String(l.Empcode) === String(user.emp_id) ||
-          String(l.employee_id) === String(user.id)
+          String(l.user_id || l.employee_id) === String(user.id) || 
+          String(l.Empcode || l.employee_id) === String(user.emp_id || user.id)
         );
         setLeaves(myData.sort((a, b) => new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date)));
       }
@@ -58,6 +58,7 @@ export default function MyLeaves() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchMyLeaves();
@@ -112,15 +113,27 @@ export default function MyLeaves() {
     const s = String(status || 'PENDING').toUpperCase();
     if (s.includes('APPROVED')) return { bg: '#f0fdf4', color: '#166534', icon: <CheckCircle size={14} /> };
     if (s.includes('REJECTED')) return { bg: '#fef2f2', color: '#991b1b', icon: <XCircle size={14} /> };
-    return { bg: '#fffbeb', color: '#92400e', icon: <Clock size={14} /> };
+    return { bg: '#fff7ed', color: '#ea580c', icon: <Clock size={14} /> };
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
   };
 
   const stats = [
     { label: 'Total Requests', value: leaves.length, icon: <FileText size={20} color="#6366f1" />, bg: '#eef2ff' },
     { label: 'Approved', value: leaves.filter(l => String(l.status).toUpperCase().includes('APPROVED')).length, icon: <CheckCircle size={20} color="#22c55e" />, bg: '#f0fdf4' },
     { label: 'Pending', value: leaves.filter(l => String(l.status).toUpperCase().includes('PENDING')).length, icon: <Clock size={20} color="#f59e0b" />, bg: '#fffbeb' },
-    { label: 'Rejected', value: leaves.filter(l => String(l.status).toUpperCase().includes('REJECTED')).length, icon: <XCircle size={20} color="#ef4444" />, bg: '#fef2f2' },
+    { label: 'Leave Balance', value: '12 Days', icon: <Calendar size={20} color="#ec4899" />, bg: '#fdf2f8' },
   ];
+
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
@@ -207,10 +220,13 @@ export default function MyLeaves() {
                         </td>
                         <td style={{ padding: '16px 20px' }}>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '13px' }}>{l.start_date} {l.end_date ? `to ${l.end_date}` : ''}</span>
+                            <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '13px' }}>
+                              {formatDate(l.start_date)} {l.end_date ? `to ${formatDate(l.end_date)}` : ''}
+                            </span>
                             {l.is_half_day && <span style={{ fontSize: '11px', color: '#0ea5e9', fontWeight: '800' }}>Half Day</span>}
                           </div>
                         </td>
+
                         <td style={{ padding: '16px 20px' }}>
                           <p style={{ margin: 0, fontSize: '13px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason}</p>
                         </td>
@@ -224,8 +240,9 @@ export default function MyLeaves() {
                           </div>
                         </td>
                         <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '13px', fontWeight: '500' }}>
-                          {l.created_at ? new Date(l.created_at).toLocaleDateString() : '-'}
+                          {formatDate(l.created_at || l.start_date)}
                         </td>
+
                       </tr>
                     );
                   })}
