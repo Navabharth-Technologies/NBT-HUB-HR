@@ -61,7 +61,12 @@ export default function LeaveRequestDetail() {
       else if (finalStage === 'L2') payload.hr_status = payload.status;
       else payload.rm_status = payload.status;
 
-      const response = await fetch(`${BASE_URL}/api/leaves/${id}/status`, {
+      // Ensure all possible ID fields are present in the payload
+      payload.employee_id = user?.employee_id || user?.id;
+      payload.userId = user?.id || user?.employee_id;
+      payload.EmpID = user?.id || user?.employee_id;
+  
+      const response = await fetch(API_ENDPOINTS.UPDATE_LEAVE_STATUS(id), {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -147,7 +152,7 @@ export default function LeaveRequestDetail() {
             id: found.id || found.ID || id,
             employeeName: found.employee_name || found.full_name || found.name || found.emp_name || found.userName || 'Employee',
             empCode: found.user_id || found.emp_id || found.employee_id || found.id || '----',
-            leaveType: found.leave_type || found.type || 'Casual Leave',
+            leaveType: found.leave_type || found.type || 'Casual Leaves',
             startDate: found.start_date || found.startDate || '----',
             endDate: found.end_date || found.endDate || '----',
             duration: calculateDuration(found.start_date, found.end_date),
@@ -191,7 +196,7 @@ export default function LeaveRequestDetail() {
               <div>
                 <h1 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{request.employeeName}</h1>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', fontWeight: '700' }}>
-                   ID: {request.empCode} <span style={{ color: '#cbd5e1', margin: '0 8px' }}>|</span> Subordinate Member
+                   ID: {request.empCode} <span style={{ color: '#cbd5e1', margin: '0 8px' }}>|</span> {request.requesterRole}
                 </p>
               </div>
             </div>
@@ -244,13 +249,21 @@ export default function LeaveRequestDetail() {
                     { role: 'HR Approval', ...request.approvals.l2, stage: 'L2' },
                     { role: 'PM Approval', ...request.approvals.l3, stage: 'L3' }
                   ].filter(step => {
-                    // Logic: Lead software engineers and managers don't have Team Leaders (L1)
                     const role = (request.requesterRole || '').toUpperCase();
-                    const isLeadOrAbove = role.includes('LEAD') || role.includes('MANAGER') || role.includes('CEO') || role.includes('ADMIN') || role.includes('PRINCIPAL');
+                    const isLeadOrAbove = role.includes('LEAD') || role.includes('MANAGER') || role.includes('CEO') || role.includes('ADMIN') || role.includes('PRINCIPAL') || role.includes('PM') || role.includes('HR');
                     
                     if (step.stage === 'L1' && isLeadOrAbove) return false;
                     return true;
                   }).map((app, i) => {
+                    const requesterRole = (request.requesterRole || '').toUpperCase();
+                    const isPMOrHR = requesterRole.includes('PM') || requesterRole.includes('HR');
+                    
+                    let displayRole = app.role;
+                    if (isPMOrHR) {
+                      if (app.stage === 'L2') displayRole = 'HR Verification';
+                      if (app.stage === 'L3') displayRole = 'CEO Verification';
+                    }
+
                     const appStatus = resolveStatus(app.status);
                     const appColor = appStatus === 'APPROVED' ? '#16a34a' : appStatus === 'REJECTED' ? '#ef4444' : '#f59e0b';
                     const appBg = appStatus === 'APPROVED' ? '#f0fdf4' : appStatus === 'REJECTED' ? '#fef2f2' : '#fffbeb';
@@ -258,7 +271,7 @@ export default function LeaveRequestDetail() {
                     return (
                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                           <p style={{ margin: 0, fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{app.role}</p>
+                           <p style={{ margin: 0, fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{displayRole}</p>
                            <p style={{ margin: 0, fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>By: {app.name}</p>
                         </div>
                         <div style={{ padding: '6px 16px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', background: appBg, color: appColor, border: `1px solid ${appBorder}` }}>

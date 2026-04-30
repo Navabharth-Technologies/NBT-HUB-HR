@@ -129,27 +129,17 @@ export default function PerformanceModule() {
     reader.onloadend = () => setProfileImage(reader.result);
     reader.readAsDataURL(file);
 
-    // 2. Upload to server using the DIRECT JSON API
     try {
-      const base64Promise = new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
-      
-      const base64Data = await base64Promise;
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('employee_id', user.employee_id || user.id);
 
-      const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DIRECT, {
+      const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_IMAGE, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}` 
         },
-        body: JSON.stringify({
-          userId: user.employee_id || user.id,
-          profilePicture: base64Data
-        })
+        body: formData
       });
 
       if (res.ok) {
@@ -174,7 +164,7 @@ export default function PerformanceModule() {
           
           // 4. Update Global State
           updateUser({ profile_pic: url, profile_picture: url });
-          setToast({ show: true, message: 'Profile picture updated! ✅', type: 'success' });
+          setToast({ show: true, message: 'profile pic updated successfully ✅', type: 'success' });
           setTimeout(() => setToast({ show: false, message: '' }), 3000);
         }
       }

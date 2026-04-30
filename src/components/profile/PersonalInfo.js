@@ -277,26 +277,16 @@ export default function PersonalInfo({ onBack }) {
       const token = localStorage.getItem('token');
       
       if (key === 'profile_pic') {
-        // Convert to Base64 for the Direct JSON API
-        const reader = new FileReader();
-        const base64Promise = new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = error => reject(error);
-          reader.readAsDataURL(file);
-        });
-        
-        const base64Data = await base64Promise;
-        
-        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DIRECT, {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('employee_id', selectedEmpId);
+
+        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_IMAGE, {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
           },
-          body: JSON.stringify({
-            userId: selectedEmpId,
-            profilePicture: base64Data
-          })
+          body: formData
         });
 
         if (res.ok) {
@@ -330,7 +320,7 @@ export default function PersonalInfo({ onBack }) {
         formData.append('employee_id', selectedEmpId);
         formData.append('type', key);
 
-        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DOC, {
+        const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DOCUMENT, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -341,6 +331,18 @@ export default function PersonalInfo({ onBack }) {
           const url = data.url || data.filePath || data.path || data.record?.path;
           if (url) {
             setForm(prev => ({ ...prev, [key]: url }));
+            
+            // Persist the document URL to the DB immediately
+            await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ 
+                [key]: url, 
+                employee_id: selectedEmpId, 
+                id: selectedEmpId 
+              })
+            });
+
             setToast({ type: 'success', msg: `${key.replace('_', ' ').toUpperCase()} Attached!` });
           }
         } else {

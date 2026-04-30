@@ -19,6 +19,15 @@ export default function MyLeaves() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const [leaveStats, setLeaveStats] = useState({
+    cl_available: 0,
+    cl_taken: 0,
+    lop_taken: 0,
+    half_days: 0
+  });
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
 
   const [formData, setFormData] = useState({
     leave_type: 'Casual Leave',
@@ -59,9 +68,39 @@ export default function MyLeaves() {
     }
   };
 
+  const fetchLeaveStats = async () => {
+    if (!user?.token) return;
+    try {
+      const empId = user.employee_id || user.emp_id || user.id;
+      const res = await fetch(`${API_ENDPOINTS.LEAVE_STATS_MY}?userId=${empId}`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Handle both { stats: [...] } and direct array response
+        const list = Array.isArray(data.stats) ? data.stats : (Array.isArray(data) ? data : (data.stats ? [data.stats] : [data]));
+        
+        // Find current month's record or use the last one
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
+        const latestStats = list.find(s => parseInt(s.month) === currentMonth && parseInt(s.year) === currentYear) || list[list.length - 1] || {};
+
+        setLeaveStats({
+          cl_available: latestStats.leaves_available || 0,
+          cl_taken: latestStats.leaves_taken || 0,
+          lop_taken: latestStats.LOP || latestStats.lop || 0,
+          half_days: latestStats.half_days || 0
+        });
+      }
+    } catch (err) {
+      console.error('Fetch leave stats error:', err);
+    }
+  };
 
   useEffect(() => {
     fetchMyLeaves();
+    fetchLeaveStats();
   }, [user]);
 
   const handleSubmit = async (e) => {
@@ -71,22 +110,61 @@ export default function MyLeaves() {
       return;
     }
 
+    const finalEndDate = formData.end_date || formData.start_date;
+    const start = new Date(formData.start_date);
+    const end = new Date(finalEndDate);
+    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Create DD-MM-YYYY versions for legacy compatibility
+    const startDMY = formData.start_date.split('-').reverse().join('-');
+    const endDMY = finalEndDate.split('-').reverse().join('-');
+
     try {
       setSubmitting(true);
-      const res = await fetch(API_ENDPOINTS.LEAVES_GET.replace('/all', ''), {
+      const res = await fetch(API_ENDPOINTS.LEAVE_REQUEST, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
         body: JSON.stringify({
-          ...formData,
+          // Primary IDs
+          employee_id: user.employee_id || user.id,
+          emp_id: user.employee_id || user.id,
           user_id: user.id,
+          EmpID: user.id,
+          
+          // Basic Info
           employee_name: user.name,
-          status: 'PENDING'
+          leave_type: formData.leave_type,
+          
+          // YYYY-MM-DD format
+          start_date: formData.start_date,
+          end_date: finalEndDate,
+          
+          // DD-MM-YYYY format aliases
+          from_date: startDMY,
+          to_date: endDMY,
+          from: startDMY,
+          to: endDMY,
+          
+          // Reason
+          reason: formData.reason,
+          description: formData.reason,
+          
+          // Status & Ledger Counts
+          status: 'Pending',
+          total_days: totalDays,
+          cl: formData.leave_type.includes('Casual') ? totalDays : 0,
+          lop: formData.leave_type.includes('LOP') ? totalDays : 0,
+          
+          // Flags
+          is_half_day: formData.is_half_day ? 1 : 0,
+          half_day: formData.is_half_day ? 1 : 0
         })
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setShowModal(false);
         setFormData({
@@ -97,9 +175,9 @@ export default function MyLeaves() {
           is_half_day: false
         });
         fetchMyLeaves();
+        fetchLeaveStats();
       } else {
-        const err = await res.json();
-        alert(err.message || 'Failed to submit leave request');
+        alert(data.message || data.error || 'Failed to submit leave request');
       }
     } catch (err) {
       console.error('Submit leave error:', err);
@@ -127,11 +205,14 @@ export default function MyLeaves() {
     }
   };
 
+  const clCount = leaves.filter(l => String(l.leave_type || '').toUpperCase().includes('CASUAL') && String(l.status || '').toUpperCase().includes('APPROVED')).length;
+  const lopCount = leaves.filter(l => String(l.leave_type || '').toUpperCase().includes('LOP') && String(l.status || '').toUpperCase().includes('APPROVED')).length;
+  const balance = 12 - clCount;
+
   const stats = [
-    { label: 'Total Requests', value: leaves.length, icon: <FileText size={20} color="#6366f1" />, bg: '#eef2ff' },
-    { label: 'Approved', value: leaves.filter(l => String(l.status).toUpperCase().includes('APPROVED')).length, icon: <CheckCircle size={20} color="#22c55e" />, bg: '#f0fdf4' },
-    { label: 'Pending', value: leaves.filter(l => String(l.status).toUpperCase().includes('PENDING')).length, icon: <Clock size={20} color="#f59e0b" />, bg: '#fffbeb' },
-    { label: 'Leave Balance', value: '12 Days', icon: <Calendar size={20} color="#ec4899" />, bg: '#fdf2f8' },
+    { label: 'Available Leaves', value: `${leaveStats.cl_available} Days`, icon: <Calendar size={20} color="#ec4899" />, bg: '#fdf2f8' },
+    { label: 'Total taken leaves', value: leaveStats.cl_taken, icon: <CheckCircle size={20} color="#22c55e" />, bg: '#f0fdf4' },
+    { label: 'LOP Leaves', value: leaveStats.lop_taken, icon: <Clock size={20} color="#f59e0b" />, bg: '#fffbeb' },
   ];
 
 
@@ -168,7 +249,7 @@ export default function MyLeaves() {
         </div>
 
         {/* Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '15px', marginBottom: '30px' }}>
           {stats.map((stat, i) => (
             <div key={i} style={{ background: 'white', padding: '20px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -203,6 +284,7 @@ export default function MyLeaves() {
                     <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Leave Type</th>
                     <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Duration</th>
                     <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Reason</th>
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Remark</th>
                     <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
                     <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Applied On</th>
                   </tr>
@@ -211,7 +293,16 @@ export default function MyLeaves() {
                   {leaves.map((l, i) => {
                     const style = getStatusStyle(l.status);
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                      <tr 
+                        key={i} 
+                        onClick={() => {
+                          setSelectedLeave(l);
+                          setShowDetailModal(true);
+                        }}
+                        style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }} 
+                        onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} 
+                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                      >
                         <td style={{ padding: '16px 20px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '10px' }}><Briefcase size={16} color="#64748b" /></div>
@@ -228,7 +319,12 @@ export default function MyLeaves() {
                         </td>
 
                         <td style={{ padding: '16px 20px' }}>
-                          <p style={{ margin: 0, fontSize: '13px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.reason}>{l.reason || '-'}</p>
+                        </td>
+                        <td style={{ padding: '16px 20px' }}>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#0f172a', fontWeight: '700', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.remarks || l.rm_remarks || l.pm_remarks}>
+                            {l.remarks || l.rm_remarks || l.pm_remarks || '-'}
+                          </p>
                         </td>
                         <td style={{ padding: '16px 20px' }}>
                           <div style={{ 
@@ -281,10 +377,8 @@ export default function MyLeaves() {
                   onChange={e => setFormData({...formData, leave_type: e.target.value})}
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontWeight: '700', fontSize: '14px', outline: 'none' }}
                 >
-                  <option>Casual Leave</option>
-                  <option>Sick Leave</option>
-                  <option>Earned Leave</option>
-                  <option>LOP (Loss of Pay)</option>
+                  <option value="Casual Leave">Casual Leaves</option>
+                  <option value="LOP (Loss of Pay)">LOP Leaves</option>
                 </select>
               </div>
 
@@ -349,7 +443,102 @@ export default function MyLeaves() {
         </div>
       )}
 
+      {/* Leave Detail Modal */}
+      {showDetailModal && selectedLeave && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000, padding: '20px' }}>
+          <div className="animate-slide-up" style={{ background: 'white', borderRadius: '32px', width: '100%', maxWidth: '480px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative' }}>
+            {/* Header / Background Glow */}
+            <div style={{ height: '120px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', position: 'relative', display: 'flex', alignItems: 'center', padding: '0 32px' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.1, background: 'radial-gradient(circle at 20% 30%, #3b82f6 0%, transparent 70%)' }}></div>
+              <button onClick={() => setShowDetailModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: 'rgba(255,255,255,0.1)', border: 'none', width: '36px', height: '36px', borderRadius: '50%', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>✕</button>
+              <div style={{ zIndex: 1 }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '950', color: 'white', margin: 0, letterSpacing: '-0.5px' }}>Leave Details</h2>
+                <p style={{ color: 'rgba(255,255,255,0.6)', margin: '4px 0 0', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Request ID: #{selectedLeave.id || 'N/A'}</p>
+              </div>
+            </div>
+
+            <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Type & Status */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#f8fafc', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}><Briefcase size={22} /></div>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Category</div>
+                    <div style={{ fontSize: '16px', fontWeight: '950', color: '#0f172a' }}>{selectedLeave.leave_type}</div>
+                  </div>
+                </div>
+                <div style={{ 
+                  padding: '8px 16px', borderRadius: '100px', 
+                  background: getStatusStyle(selectedLeave.status).bg, 
+                  color: getStatusStyle(selectedLeave.status).color,
+                  fontSize: '11px', fontWeight: '950', textTransform: 'uppercase', letterSpacing: '1px',
+                  display: 'flex', alignItems: 'center', gap: '6px', border: `1.5px solid ${getStatusStyle(selectedLeave.status).color}20`
+                }}>
+                  {getStatusStyle(selectedLeave.status).icon} {String(selectedLeave.status).split(',')[0]}
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div style={{ background: '#f8fafc', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', display: 'flex', gap: '20px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>Duration</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '950', fontSize: '14px' }}>
+                    <Calendar size={16} color="#3b82f6" />
+                    {formatDate(selectedLeave.start_date)} {selectedLeave.end_date ? `— ${formatDate(selectedLeave.end_date)}` : ''}
+                  </div>
+                  {selectedLeave.is_half_day && (
+                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#0ea5e9', fontWeight: '850', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={12} /> Half Day Request
+                    </div>
+                  )}
+                </div>
+                <div style={{ width: '1.5px', background: '#e2e8f0' }}></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>Applied On</div>
+                  <div style={{ color: '#1e293b', fontWeight: '950', fontSize: '14px' }}>
+                    {formatDate(selectedLeave.created_at || selectedLeave.start_date)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason Section */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={14} /> Reason for Leave
+                </div>
+                <div style={{ background: 'white', padding: '16px', borderRadius: '16px', border: '1.5px solid #f1f5f9', color: '#475569', fontSize: '14px', fontWeight: '600', lineHeight: '1.5', fontStyle: 'italic' }}>
+                  "{selectedLeave.reason || 'No specific reason provided.'}"
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle size={14} /> Admin Remarks
+                </div>
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1.5px solid #f1f5f9', color: '#0f172a', fontSize: '14px', fontWeight: '700', lineHeight: '1.5' }}>
+                  {selectedLeave.remarks || selectedLeave.rm_remarks || selectedLeave.pm_remarks || selectedLeave.remark || '-'}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowDetailModal(false)}
+                style={{ width: '100%', padding: '16px', borderRadius: '16px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '950', fontSize: '14px', cursor: 'pointer', transition: '0.2s', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.2)', marginTop: '8px' }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }

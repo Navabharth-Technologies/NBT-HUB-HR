@@ -18,6 +18,27 @@ export default function AppHeader() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [fetchedRole, setFetchedRole] = React.useState('');
+
+  React.useEffect(() => {
+    const getRole = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`);
+        if (res.ok) {
+          const data = await res.json();
+          const users = Array.isArray(data) ? data : (data.value || []);
+          const target = users.find(u => String(u.employee_id || u.id || u.empId) === '202515');
+          if (target) {
+            setFetchedRole(target.role || target.Role);
+          }
+        }
+      } catch (err) {
+        console.error("Fetch Role Error:", err);
+      }
+    };
+    getRole();
+  }, []);
+
   const styles = {
     header: {
       height: winWidth < 768 ? '70px' : '85px',
@@ -110,7 +131,7 @@ export default function AppHeader() {
         {/* User Info moved here */}
         <div style={{ display: winWidth < 600 ? 'none' : 'block', textAlign: 'right', lineHeight: '1.2' }}>
           <div style={styles.userName}>{user?.name || 'NBT User'}</div>
-          <div style={styles.designation}>{theme.label} • Manager</div>
+          <div style={styles.designation}>{fetchedRole || theme.label} • Manager</div>
         </div>
 
         <div
