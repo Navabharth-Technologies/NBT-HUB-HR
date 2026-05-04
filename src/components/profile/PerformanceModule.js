@@ -326,32 +326,36 @@ export default function PerformanceModule() {
   const dashboardStyles = {
     container: {
       minHeight: '100vh',
-      backgroundColor: '#f8fafc',
+      backgroundColor: '#eaeff2',
       paddingTop: winWidth < 768 ? '80px' : '100px',
       paddingBottom: '100px',
       fontFamily: "'Outfit', sans-serif"
     },
+    combinedCard: {
+      margin: '0 0 30px 0',
+      borderRadius: winWidth < 768 ? '24px' : '32px',
+      boxShadow: '0 15px 35px rgba(15, 23, 42, 0.12)',
+      background: 'white',
+      overflow: 'hidden',
+      border: '1px solid #f1f5f9'
+    },
     banner: {
-      height: winWidth < 768 ? '120px' : '180px',
+      height: winWidth < 768 ? '100px' : '130px',
       background: '#0f172a',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: 'white',
-      fontSize: winWidth < 768 ? '20px' : '32px',
+      fontSize: winWidth < 768 ? '18px' : '26px',
       fontWeight: '900',
       letterSpacing: '-0.5px',
-      textAlign: 'center',
-      padding: '0 20px'
+      textAlign: 'center'
     },
     profileCard: {
       width: '100%',
       maxWidth: '100%',
-      margin: winWidth < 768 ? '-40px 0 20px' : '-60px 0 30px',
       background: 'white',
-      borderRadius: winWidth < 768 ? '24px' : '40px',
       padding: winWidth < 768 ? '25px' : '40px',
-      boxShadow: '0 4px 30px rgba(0,0,0,0.03)',
       position: 'relative',
       zIndex: 10
     },
@@ -408,15 +412,17 @@ export default function PerformanceModule() {
 
       <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageUpload} />
 
-      {/* Banner */}
-      <div style={dashboardStyles.banner}>
-        Smarter Solutions for Better Future
-      </div>
+      <main style={{ padding: '0 30px' }}>
 
-      <main style={{ padding: '0 10px' }}>
-
-        {/* Profile Header Card */}
-        <div style={dashboardStyles.profileCard}>
+        {/* Combined Dual-Color Card */}
+        <div style={dashboardStyles.combinedCard}>
+          {/* Banner Top Half */}
+          <div style={dashboardStyles.banner}>
+            Smarter Solutions for Better Future
+          </div>
+          
+          {/* Profile Header Card */}
+          <div style={dashboardStyles.profileCard}>
           <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'center' : 'flex-start', gap: winWidth < 1024 ? '30px' : '0', textAlign: winWidth < 1024 ? 'center' : 'left' }}>
             <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
               <div style={dashboardStyles.avatar}>
@@ -538,6 +544,7 @@ export default function PerformanceModule() {
             </div>
           </div>
         </div>
+      </div>
 
         {/* Basic Stats Row */}
         <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px', display: 'grid', gridTemplateColumns: winWidth < 1024 ? (winWidth < 600 ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)', gap: '24px' }}>

@@ -222,7 +222,7 @@ export default function PaySlipScreen() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <div className="no-print">
                 <AppHeader />
             </div>

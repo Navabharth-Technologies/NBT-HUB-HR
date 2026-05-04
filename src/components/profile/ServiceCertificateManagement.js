@@ -146,7 +146,7 @@ export default function ServiceCertificateManagement() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
             <AppHeader />
             
             <main style={{ flex: 1, padding: '100px 30px 40px', maxWidth: '100%', margin: '0 auto', width: '100%', fontFamily: "'Outfit', sans-serif" }}>

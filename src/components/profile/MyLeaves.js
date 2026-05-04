@@ -217,7 +217,7 @@ export default function MyLeaves() {
 
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       <main style={{ flex: 1, padding: winWidth < 768 ? '15px' : '30px 40px', marginTop: winWidth < 768 ? '80px' : '100px' }}>
@@ -265,10 +265,7 @@ export default function MyLeaves() {
         <div style={{ background: 'white', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
           <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>Leave History</h2>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ padding: '8px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', cursor: 'pointer' }}><Filter size={18} /></button>
-              <button style={{ padding: '8px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', cursor: 'pointer' }}><Download size={18} /></button>
-            </div>
+
           </div>
 
           {loading ? (

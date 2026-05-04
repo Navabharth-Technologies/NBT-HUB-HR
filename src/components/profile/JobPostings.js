@@ -184,7 +184,7 @@ export default function JobPostings() {
 
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2' }}>
       <AppHeader />
 
       <main style={{ paddingTop: '100px', paddingLeft: winWidth < 768 ? '15px' : '40px', paddingRight: winWidth < 768 ? '15px' : '40px', paddingBottom: '100px' }}>

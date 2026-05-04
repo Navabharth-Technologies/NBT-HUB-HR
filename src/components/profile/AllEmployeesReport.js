@@ -122,7 +122,7 @@ export default function AllEmployeesReport() {
   };
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: '70px' }}>

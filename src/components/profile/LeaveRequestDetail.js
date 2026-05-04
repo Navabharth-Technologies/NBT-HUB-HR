@@ -17,6 +17,13 @@ export default function LeaveRequestDetail() {
   const { user } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWinWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleStatusUpdate = async (newStatus) => {
     try {
@@ -33,14 +40,12 @@ export default function LeaveRequestDetail() {
       setIsUpdating(true);
       const userRole = (user?.role || 'HR').toUpperCase();
       const requesterRole = (request.requesterRole || '').toUpperCase();
-      const isLeadRequester = requesterRole.includes('LEAD') || requesterRole.includes('MANAGER') || requesterRole.includes('CEO') || requesterRole.includes('ADMIN');
 
       const payload = { 
         status: targetStatus === 'APPROVED' ? 'Approved' : 'Rejected',
         remarks: remarks,
         role: userRole.includes('HR') ? 'HR' : 'PM',
         userId: user?.id || user?.employee_id || user?.EmpID,
-        // Specific stage flags
         approve_type: userRole.includes('HR') ? 'HR' : 'PM',
       };
 
@@ -112,8 +117,18 @@ export default function LeaveRequestDetail() {
 
   const formatDate = (dateStr) => {
     if (!dateStr || dateStr === '----') return '----';
-    // Return exact DB string, removing time component
-    return String(dateStr).split('T')[0].split(' ')[0];
+    try {
+      if (typeof dateStr === 'string' && dateStr.includes('-') && dateStr.length === 10) {
+        const [y, m, d] = dateStr.split('-');
+        if (y && m && d && y.length === 4) return `${d}-${m}-${y}`;
+      }
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch { return dateStr; }
   };
 
   useEffect(() => {
@@ -157,7 +172,7 @@ export default function LeaveRequestDetail() {
             endDate: found.end_date || found.endDate || '----',
             duration: calculateDuration(found.start_date, found.end_date),
             reason: found.reason || found.remarks || 'No reason provided.',
-            appliedOn: (found.created_at || found.date) ? String(found.created_at || found.date).split('T')[0].split(' ')[0] : 'N/A',
+            appliedOn: (found.created_at || found.date) ? formatDate(found.created_at || found.date) : 'N/A',
             requesterRole: resolvedRole,
             status: resolveStatus([
               found.status,
@@ -166,9 +181,9 @@ export default function LeaveRequestDetail() {
               found.pm_status, found.l3_status
             ].filter(Boolean).join(',')),
             approvals: {
-              l1: { name: dynamicLeadName, status: resolveStatus(found.rm_status || found.l1_status) },
-              l2: { name: found.l2_name || 'Sinchana Hs', status: resolveStatus(found.hr_status || found.l2_status) },
-              l3: { name: found.l3_name || 'Anish V N', status: resolveStatus(found.pm_status || found.l3_status || found.manager_status) }
+              l1: { name: dynamicLeadName, status: resolveStatus(found.rm_status || found.l1_status), stage: 'L1' },
+              l2: { name: found.l2_name || 'Sinchana Hs', status: resolveStatus(found.hr_status || found.l2_status), stage: 'L2' },
+              l3: { name: found.l3_name || 'Anish V N', status: resolveStatus(found.pm_status || found.l3_status || found.manager_status), stage: 'L3' }
             }
           });
         }
@@ -184,23 +199,23 @@ export default function LeaveRequestDetail() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
       <AppHeader />
-      <main style={{ flex: 1, padding: '100px 20px 60px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', background: '#f8fafc' }}>
-        <div style={{ width: '100%', maxWidth: '900px', background: 'white', borderRadius: '32px', padding: '48px', boxShadow: '0 4px 30px rgba(0,0,0,0.06)', border: '1.5px solid #f1f5f9' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '100px 15px 60px' : '100px 20px 60px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', background: '#f8fafc' }}>
+        <div style={{ width: '100%', maxWidth: '900px', background: 'white', borderRadius: '32px', padding: winWidth < 768 ? '24px' : '48px', boxShadow: '0 4px 30px rgba(0,0,0,0.06)', border: '1.5px solid #f1f5f9' }}>
           
           {/* Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '900' }}>
+          <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 600 ? 'center' : 'flex-start', marginBottom: '40px', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', gap: '20px', alignItems: 'center', textAlign: winWidth < 480 ? 'center' : 'left' }}>
+              <div style={{ width: winWidth < 768 ? '60px' : '80px', height: winWidth < 768 ? '60px' : '80px', borderRadius: '24px', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900' }}>
                 {request.employeeName.charAt(0)}
               </div>
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{request.employeeName}</h1>
+                <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{request.employeeName}</h1>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', fontWeight: '700' }}>
                    ID: {request.empCode} <span style={{ color: '#cbd5e1', margin: '0 8px' }}>|</span> {request.requesterRole}
                 </p>
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: winWidth < 600 ? 'center' : 'right' }}>
               <p style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Request Status</p>
               <div style={{ 
                 background: request.status === 'APPROVED' ? '#f0fdf4' : request.status === 'REJECTED' ? '#fef2f2' : '#fffbeb', 
@@ -214,9 +229,9 @@ export default function LeaveRequestDetail() {
           </div>
 
           {/* Details & Verification Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 850 ? '1fr' : '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
             {/* Left Card: Leave Info */}
-            <div style={{ background: '#f8fafc', padding: '30px', borderRadius: '32px', border: '1px solid #f1f5f9' }}>
+            <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '20px' : '30px', borderRadius: '32px', border: '1px solid #f1f5f9' }}>
                <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px' }}>Leave Details</h3>
                <div style={{ marginBottom: '20px' }}>
                   <p style={{ margin: 0, fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{request.leaveType}</p>
@@ -241,7 +256,7 @@ export default function LeaveRequestDetail() {
             </div>
 
             {/* Right Card: Approval Flow */}
-            <div style={{ background: '#f8fafc', padding: '30px', borderRadius: '32px', border: '1px solid #f1f5f9' }}>
+            <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '20px' : '30px', borderRadius: '32px', border: '1px solid #f1f5f9' }}>
                <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px' }}>Official Verification</h3>
                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {[
@@ -287,7 +302,7 @@ export default function LeaveRequestDetail() {
           {/* Reason Section */}
           <div style={{ marginBottom: '40px' }}>
             <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>Reason for Leave</h3>
-            <div style={{ background: '#f8fafc', padding: '40px', borderRadius: '32px', color: '#334155', fontSize: '16px', fontWeight: '800', lineHeight: '1.6', border: '1px solid #f1f5f9' }}>
+            <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '24px' : '40px', borderRadius: '32px', color: '#334155', fontSize: '16px', fontWeight: '800', lineHeight: '1.6', border: '1px solid #f1f5f9' }}>
                {request.reason}
             </div>
           </div>
@@ -304,13 +319,13 @@ export default function LeaveRequestDetail() {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2.8fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1.2fr 2.8fr', gap: '20px' }}>
             <button 
               onClick={() => handleStatusUpdate('REJECTED')}
               disabled={isUpdating}
               style={{ padding: '18px', borderRadius: '20px', border: 'none', background: '#fee2e2', color: '#ef4444', fontSize: '16px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
             >
-              <XCircle size={20} /> Reject Request
+              <XCircle size={20} /> Reject
             </button>
             <button 
               onClick={() => handleStatusUpdate('APPROVED')}

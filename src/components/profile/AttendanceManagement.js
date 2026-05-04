@@ -46,6 +46,7 @@ export default function LeaveAttendanceCenter() {
   const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const [showAllLedger, setShowAllLedger] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -243,6 +244,85 @@ export default function LeaveAttendanceCenter() {
       fetchLeaveStats();
     }
   }, [user, fromDate, toDate]);
+
+  const handleLedgerExport = (type) => {
+    const summaryData = allEmployees
+      .filter(emp => String(emp.id || emp.EmpID) !== '20250')
+      .map(emp => {
+        const statsEntry = allLeaveStats.find(s => String(s.employee_id || s.user_id) === String(emp.id));
+        let cl, lop, balance, year, halfDays;
+        
+        if (statsEntry) {
+          cl = parseFloat(statsEntry.leaves_taken || 0);
+          lop = parseFloat(statsEntry.LOP || statsEntry.lop || 0);
+          balance = parseFloat(statsEntry.leaves_available || statsEntry.available_leaves || statsEntry.Available_Leaves || 0);
+          year = statsEntry.year || new Date().getFullYear();
+          halfDays = statsEntry.half_day || statsEntry.half_days || 0;
+        } else {
+          cl = 0;
+          lop = 0;
+          balance = 0;
+          year = new Date().getFullYear();
+          halfDays = 0;
+        }
+        
+        return { 
+          id: emp.id, 
+          name: emp.name || emp.user_name, 
+          year: year,
+          cl: cl, 
+          lop: lop, 
+          halfDays: halfDays,
+          taken: cl + lop, 
+          available: balance 
+        };
+      });
+
+    if (type === 'excel') {
+      const wsData = summaryData.map(row => ({
+        'Employee ID': row.id,
+        'Name': row.name,
+        'Year': row.year,
+        'Casual Leaves': row.cl,
+        'LOP Leaves': row.lop,
+        'Half Days': row.halfDays,
+        'Total Taken': row.taken,
+        'Available Leaves': row.available
+      }));
+      const ws = XLSX.utils.json_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Leaves Summary");
+      XLSX.writeFile(wb, "NBT_HUB_Leaves_Summary.xlsx");
+    } else if (type === 'pdf') {
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Employee Leave Ledger", 14, 20);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+      
+      autoTable(doc, {
+        startY: 35,
+        head: [['ID', 'Employee Name', 'Year', 'CL', 'LOP', 'Half', 'Taken', 'Balance']],
+        body: summaryData.map(r => [r.id, r.name, r.year, r.cl, r.lop, r.halfDays, r.taken, r.available + ' Days']),
+        theme: 'grid',
+        headStyles: { fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          2: { cellWidth: 15 },
+          3: { cellWidth: 15 },
+          4: { cellWidth: 15 },
+          5: { cellWidth: 15 },
+          6: { cellWidth: 15 },
+          7: { cellWidth: 25, fontStyle: 'bold' }
+        }
+      });
+      doc.save("NBT_HUB_Leaves_Summary.pdf");
+    }
+    setShowExportDropdown(false);
+  };
 
   const fetchLeaves = async () => {
     try {
@@ -713,7 +793,7 @@ export default function LeaveAttendanceCenter() {
     <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
-      <main style={{ flex: 1, padding: winWidth < 768 ? '15px 12px 30px' : '30px 20px 30px', width: '100%', boxSizing: 'border-box', margin: '0 auto', marginTop: winWidth < 768 ? '80px' : '110px', maxWidth: '100%' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '15px 12px 30px' : '30px 26px 30px', width: '100%', boxSizing: 'border-box', margin: '0 auto', marginTop: winWidth < 768 ? '80px' : '110px', maxWidth: '100%' }}>
         <div style={{ maxWidth: '100%', margin: '0 auto', width: '100%' }}>
           <button
             onClick={() => navigate('/dashboard')}
@@ -1243,34 +1323,68 @@ export default function LeaveAttendanceCenter() {
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>Employee Leave Ledger</h3>
                   <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Comprehensive summary of all employee leave balances.</p>
                 </div>
-                <button 
-                  onClick={() => {
-                    const summaryData = allEmployees.map(emp => {
-                      const statsEntry = allLeaveStats.find(s => String(s.employee_id || s.user_id) === String(emp.id));
-                      let cl, lop, balance;
-                      
-                      if (statsEntry) {
-                        cl = parseFloat(statsEntry.leaves_taken || 0);
-                        lop = parseFloat(statsEntry.LOP || statsEntry.lop || 0);
-                        balance = parseFloat(statsEntry.leaves_available || 0);
-                      } else {
-                        const empLeaves = leaveRequests.filter(l => String(l.user_id || l.emp_id || l.employee_id) === String(emp.id) && String(l.status || '').toUpperCase().includes('APPROVED'));
-                        cl = empLeaves.filter(l => String(l.leave_type || '').toUpperCase().includes('CASUAL')).length;
-                        lop = empLeaves.filter(l => String(l.leave_type || '').toUpperCase().includes('LOP')).length;
-                        balance = 12 - cl;
-                      }
-                      
-                      return { 'Employee ID': emp.id, 'Name': emp.name || emp.user_name, 'Casual Leaves': cl, 'LOP Leaves': lop, 'Total Taken': cl + lop, 'Available Leaves': balance };
-                    });
-                    const ws = XLSX.utils.json_to_sheet(summaryData);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, "Leaves Summary");
-                    XLSX.writeFile(wb, "NBT_HUB_Leaves_Summary.xlsx");
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px', background: '#16a34a', color: 'white', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
-                >
-                  <Download size={16} /> Export XL
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <button 
+                    onClick={() => setShowAllLedger(!showAllLedger)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      padding: '10px 20px', 
+                      borderRadius: '12px', 
+                      background: showAllLedger ? '#f1f5f9' : '#0f172a', 
+                      color: showAllLedger ? '#475569' : 'white', 
+                      border: 'none', 
+                      fontWeight: '800', 
+                      fontSize: '13px', 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {showAllLedger ? 'View Less' : 'View All'}
+                  </button>
+                  <div style={{ position: 'relative' }} ref={dropdownRef}>
+                    <button 
+                      onClick={() => setShowExportDropdown(!showExportDropdown)}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        padding: '10px 20px', 
+                        borderRadius: '12px', 
+                        background: '#16a34a', 
+                        color: 'white', 
+                        border: 'none', 
+                        fontWeight: '800', 
+                        fontSize: '13px', 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      <Download size={16} /> Export <ChevronDown size={14} style={{ transform: showExportDropdown ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                    </button>
+                    
+                    {showExportDropdown && (
+                      <div className="animate-fade-in" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', zIndex: 100, minWidth: '160px', overflow: 'hidden' }}>
+                        <button 
+                          onClick={() => handleLedgerExport('excel')}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textAlign: 'left', transition: '0.2s' }}
+                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <FileText size={16} color="#16a34a" /> Export as Excel
+                        </button>
+                        <button 
+                          onClick={() => handleLedgerExport('pdf')}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textAlign: 'left', transition: '0.2s' }}
+                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <FileText size={16} color="#dc2626" /> Export as PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '16px' }}>
@@ -1279,15 +1393,17 @@ export default function LeaveAttendanceCenter() {
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>EMPLOYEE</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>ID</th>
+                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>YEAR</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>CASUAL LEAVES</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>LOP LEAVES</th>
+                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>HALF DAYS</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>TAKEN</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>AVAILABLE LEAVES</th>
                       <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {allEmployees
+                    {(showAllLedger ? allEmployees : allEmployees.slice(0, 7))
                       .filter(emp => String(emp.id || emp.EmpID) !== '20250')
                       .map((emp, idx) => {
                       // Prioritize data from leave_stats table (allLeaveStats)
@@ -1318,8 +1434,10 @@ export default function LeaveAttendanceCenter() {
                             </div>
                           </td>
                           <td style={{ padding: '12px 16px', fontWeight: '700', color: '#000000' }}>#{emp.id}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#64748b' }}>{statsEntry?.year || new Date().getFullYear()}</td>
                           <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{cl}</td>
                           <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{lop}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{statsEntry?.half_day || statsEntry?.half_days || 0}</td>
                           <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{taken}</td>
                           <td style={{ padding: '12px 16px', fontWeight: '950', color: '#16a34a' }}>{balance} Days</td>
                           <td style={{ padding: '12px 16px' }}>

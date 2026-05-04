@@ -29,6 +29,7 @@ export default function AwardsScreen() {
     const [startDate, setStartDate] = React.useState('');
     const [endDate, setEndDate] = React.useState('');
     const [selectedHistoryUser, setSelectedHistoryUser] = React.useState(null);
+    const [showAllFeed, setShowAllFeed] = React.useState(false);
     const [availableAwards] = React.useState([
         { id: 'visionary', title: "Visionary Lead", rep: 200, desc: "Acknowledge exceptional leadership and vision." },
         { id: 'achiever', title: "Goal Achiever", rep: 150, desc: "Recognize consistent goal hitting and performance." },
@@ -227,7 +228,7 @@ export default function AwardsScreen() {
         <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <AppHeader />
 
-            <main style={{ flex: 1, padding: '40px 20px', marginTop: '100px' }}>
+            <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px 20px', marginTop: winWidth < 768 ? '80px' : '100px' }}>
                 <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
                     
                     {/* Header Controls */}
@@ -241,44 +242,45 @@ export default function AwardsScreen() {
                                 <p style={{ margin: 0, fontSize: winWidth < 768 ? '11px' : '13px', color: '#94a3b8', fontWeight: '600' }}>Live achievements at NBT Hub</p>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '20px', width: winWidth < 600 ? '100%' : 'auto', justifyContent: winWidth < 600 ? 'space-between' : 'flex-start', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', justifyContent: winWidth < 600 ? 'flex-start' : 'flex-start', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: winWidth < 480 ? '100%' : 'auto', overflowX: 'auto' }}>
                                 <button 
                                     onClick={() => setView('feed')}
-                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: 'none', background: view === 'feed' ? 'white' : 'transparent', color: view === 'feed' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'feed' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}>
+                                    style={{ flex: winWidth < 480 ? 1 : 'none', padding: winWidth < 480 ? '8px 4px' : '8px 16px', borderRadius: '8px', fontSize: winWidth < 480 ? '10px' : '12px', fontWeight: '800', border: 'none', background: view === 'feed' ? 'white' : 'transparent', color: view === 'feed' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'feed' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', whiteSpace: 'nowrap' }}>
                                     Live Feed
                                 </button>
                                 <button 
                                     onClick={() => setView('leaderboard')}
-                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: 'none', background: view === 'leaderboard' ? 'white' : 'transparent', color: view === 'leaderboard' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'leaderboard' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}>
+                                    style={{ flex: winWidth < 480 ? 1 : 'none', padding: winWidth < 480 ? '8px 4px' : '8px 16px', borderRadius: '8px', fontSize: winWidth < 480 ? '10px' : '12px', fontWeight: '800', border: 'none', background: view === 'leaderboard' ? 'white' : 'transparent', color: view === 'leaderboard' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'leaderboard' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', whiteSpace: 'nowrap' }}>
                                     Leaderboard
                                 </button>
                                 <button 
                                     onClick={() => setView('points')}
-                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: 'none', background: view === 'points' ? 'white' : 'transparent', color: view === 'points' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'points' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}>
-                                    View Reward Points
+                                    style={{ flex: winWidth < 480 ? 1 : 'none', padding: winWidth < 480 ? '8px 4px' : '8px 16px', borderRadius: '8px', fontSize: winWidth < 480 ? '10px' : '12px', fontWeight: '800', border: 'none', background: view === 'points' ? 'white' : 'transparent', color: view === 'points' ? '#0f172a' : '#64748b', cursor: 'pointer', boxShadow: view === 'points' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', whiteSpace: 'nowrap' }}>
+                                    Reward Points
                                 </button>
                             </div>
 
                             {/* Date Filter Integrated into Top Bar */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '6px 15px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>From</span>
-                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '11px', fontWeight: '700', outline: 'none' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #e2e8f0', width: winWidth < 480 ? '100%' : 'auto', justifyContent: winWidth < 480 ? 'center' : 'flex-start' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>From</span>
+                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
                                 </div>
                                 <div style={{ width: '1px', height: '15px', background: '#cbd5e1' }}></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>To</span>
-                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '11px', fontWeight: '700', outline: 'none' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>To</span>
+                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
                                 </div>
                             </div>
                             {(user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'MANAGER') && (
                                 <button 
                                     onClick={() => setShowGrantModal(true)}
                                     style={{ 
-                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', 
+                                        display: 'flex', alignItems: 'center', gap: '8px', padding: winWidth < 480 ? '12px' : '10px 20px', 
                                         background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', 
-                                        fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(15,23,42,0.3)' 
+                                        fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(15,23,42,0.3)',
+                                        width: winWidth < 480 ? '100%' : 'auto', justifyContent: 'center'
                                     }}>
                                     <Plus size={16} /> Grant Award
                                 </button>
@@ -339,7 +341,7 @@ export default function AwardsScreen() {
                                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#1e293b' }}>
                                     {view === 'feed' ? 'Global Rewards' : view === 'leaderboard' ? 'Organization Ranking' : 'Standard Recognition Tiers'}
                                 </h3>
-                                <div style={{ fontSize: '10px', fontWeight: '900', color: '#3863a8', background: '#e0f2fe', padding: '4px 10px', borderRadius: '8px' }}>
+                                <div style={{ fontSize: '9px', fontWeight: '950', color: '#3863a8', background: '#e0f2fe', padding: '6px 12px', borderRadius: '10px', letterSpacing: '0.5px' }}>
                                     {view === 'feed' ? `${rewards.length} ENTRIES` : view === 'leaderboard' ? 'ALL STAFF' : `${availableAwards.length} TIERS`}
                                 </div>
                             </div>
@@ -350,27 +352,56 @@ export default function AwardsScreen() {
                                 <>
                                     {!selectedHistoryUser ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                            {Array.from(new Set(filteredRewards.map(r => r.employee_id))).map(empId => {
-                                                const userRewards = filteredRewards.filter(r => String(r.employee_id) === String(empId));
-                                                const latest = userRewards.reduce((prev, current) => (new Date(prev.created_at || prev.date) > new Date(current.created_at || current.date)) ? prev : current, userRewards[0]);
-                                                return (
-                                                    <div key={empId} onClick={() => setSelectedHistoryUser(empId)} style={{ background: 'white', padding: '20px', borderRadius: '24px', border: '1.5px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                            <div style={{ width: '45px', height: '45px', borderRadius: '15px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #f1f5f9' }}><Award size={22} color="#0369a1" /></div>
-                                                            <div>
-                                                                <div style={{ fontSize: '15px', fontWeight: '1000', color: '#0f172a' }}>{resolveEmployeeName(empId)}</div>
-                                                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>
-                                                                    {userRewards.length} recognitions • Last: {latest.reward_name || 'Excellence'}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                                <div>
+                                                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '1000', color: '#0f172a' }}>Recognition Glimpse</h2>
+                                                    <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>Aggregated results per member</p>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                    {Array.from(new Set(filteredRewards.map(r => r.employee_id))).length > 5 && (
+                                                        <button 
+                                                            onClick={() => setShowAllFeed(!showAllFeed)}
+                                                            style={{ 
+                                                                background: 'none', border: 'none', color: '#3863a8', fontSize: '11px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', textDecoration: 'underline' 
+                                                            }}>
+                                                            {showAllFeed ? 'View Less' : 'View All'}
+                                                        </button>
+                                                    )}
+                                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#3b82f6', background: '#eff6ff', padding: '6px 12px', borderRadius: '10px' }}>
+                                                        {Array.from(new Set(filteredRewards.map(r => r.employee_id))).length} Members Recognized
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {(() => {
+                                                const employeeStats = Array.from(new Set(filteredRewards.map(r => r.employee_id))).map(id => {
+                                                    const userRewards = filteredRewards.filter(r => String(r.employee_id) === String(id));
+                                                    const totalRep = userRewards.reduce((sum, r) => sum + (Number(r.points) || 0), 0);
+                                                    return { id, totalRep, userRewards };
+                                                }).sort((a, b) => b.totalRep - a.totalRep);
+
+                                                const displayedStats = showAllFeed ? employeeStats : employeeStats.slice(0, 5);
+                                                
+                                                return displayedStats.map(({ id: empId, totalRep, userRewards }) => {
+                                                    const latest = userRewards.reduce((prev, current) => (new Date(prev.created_at || prev.date) > new Date(current.created_at || current.date)) ? prev : current, userRewards[0]);
+                                                    return (
+                                                        <div key={empId} onClick={() => setSelectedHistoryUser(empId)} style={{ background: 'white', padding: winWidth < 768 ? '16px' : '20px', borderRadius: winWidth < 768 ? '20px' : '24px', border: '1.5px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '15px' }}>
+                                                                <div style={{ width: winWidth < 768 ? '40px' : '45px', height: winWidth < 768 ? '40px' : '45px', borderRadius: '14px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #f1f5f9' }}><Award size={winWidth < 768 ? 20 : 22} color="#0369a1" /></div>
+                                                                <div>
+                                                                    <div style={{ fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '1000', color: '#0f172a' }}>{resolveEmployeeName(empId)}</div>
+                                                                    <div style={{ fontSize: winWidth < 768 ? '10px' : '11px', color: '#64748b', fontWeight: '700' }}>
+                                                                        {userRewards.length} recognitions • {latest.reward_name || 'Excellence'}
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            <div style={{ textAlign: 'right' }}>
+                                                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '1000', color: '#10b981' }}>+{totalRep}</div>
+                                                                <div style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>REP</div>
+                                                            </div>
                                                         </div>
-                                                        <div style={{ textAlign: 'right' }}>
-                                                            <div style={{ fontSize: '16px', fontWeight: '1000', color: '#10b981' }}>+{userRewards.reduce((s, r) => s + (Number(r.points) || 0), 0)} REP</div>
-                                                            <div style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Total Credit</div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                });
+                                            })()}
                                         </div>
                                     ) : (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -400,7 +431,7 @@ export default function AwardsScreen() {
                                     {leaderboard.map((item, idx) => (
                                         <div key={idx} style={{ 
                                             background: idx === 0 ? 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)' : idx < 3 ? 'white' : '#f8fafc', 
-                                            padding: idx < 3 ? '20px 25px' : '15px 20px', 
+                                            padding: winWidth < 768 ? (idx < 3 ? '15px 15px' : '12px 15px') : (idx < 3 ? '20px 25px' : '15px 20px'), 
                                             borderRadius: idx < 3 ? '20px' : '16px', 
                                             border: idx === 0 ? '2px solid #facc15' : '1px solid #f1f5f9', 
                                             display: 'flex', 
@@ -409,27 +440,27 @@ export default function AwardsScreen() {
                                             boxShadow: idx === 0 ? '0 10px 15px -3px rgba(250, 204, 21, 0.1)' : 'none',
                                             transition: 'transform 0.2s',
                                         }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: idx < 3 ? '20px' : '15px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : (idx < 3 ? '20px' : '15px') }}>
                                                 <div style={{ 
-                                                    width: idx < 3 ? '40px' : '30px', 
-                                                    height: idx < 3 ? '40px' : '30px', 
+                                                    width: winWidth < 768 ? '30px' : (idx < 3 ? '40px' : '30px'), 
+                                                    height: winWidth < 768 ? '30px' : (idx < 3 ? '40px' : '30px'), 
                                                     borderRadius: idx < 3 ? '12px' : '8px', 
                                                     background: idx === 0 ? '#facc15' : idx === 1 ? '#cbd5e1' : idx === 2 ? '#ed8936' : 'transparent',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     color: idx < 3 ? 'white' : '#94a3b8', 
                                                     fontWeight: '1000', 
-                                                    fontSize: idx < 3 ? '18px' : '13px',
+                                                    fontSize: winWidth < 768 ? '13px' : (idx < 3 ? '18px' : '13px'),
                                                     boxShadow: idx < 3 ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
                                                 }}>
                                                     #{idx+1}
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontSize: idx < 3 ? '15px' : '13px', fontWeight: '1000', color: idx < 3 ? '#0f172a' : '#334155' }}>{item.name}</div>
+                                                    <div style={{ fontSize: winWidth < 768 ? '13px' : (idx < 3 ? '15px' : '13px'), fontWeight: '1000', color: idx < 3 ? '#0f172a' : '#334155' }}>{item.name}</div>
                                                     <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>{item.role}</div>
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: idx < 3 ? '18px' : '14px', fontWeight: '1000', color: idx < 3 ? '#0f172a' : '#475569' }}>{item.total_points}</div>
+                                                <div style={{ fontSize: winWidth < 768 ? '14px' : (idx < 3 ? '18px' : '14px'), fontWeight: '1000', color: idx < 3 ? '#0f172a' : '#475569' }}>{item.total_points}</div>
                                                 <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '800' }}>REP</div>
                                             </div>
                                         </div>
@@ -438,15 +469,15 @@ export default function AwardsScreen() {
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     {availableAwards.map((award, i) => (
-                                        <div key={award.id} onClick={() => { setSelectedAward(award); setGrantData({ ...grantData, reward_name: award.title, points: award.rep }); setShowGrantModal(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px', borderRadius: '24px', background: 'white', border: '1.5px solid #f1f5f9', cursor: 'pointer' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                                <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: i < 3 ? '#fff7ed' : '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i < 3 ? <Trophy size={24} color="#f59e0b" /> : <Star size={24} color="#3b82f6" />}</div>
+                                        <div key={award.id} onClick={() => { setSelectedAward(award); setGrantData({ ...grantData, reward_name: award.title, points: award.rep }); setShowGrantModal(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', background: 'white', border: '1.5px solid #f1f5f9', cursor: 'pointer' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px' }}>
+                                                <div style={{ width: winWidth < 768 ? '40px' : '50px', height: winWidth < 768 ? '40px' : '50px', borderRadius: '14px', background: i < 3 ? '#fff7ed' : '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i < 3 ? <Trophy size={winWidth < 768 ? 20 : 24} color="#f59e0b" /> : <Star size={winWidth < 768 ? 20 : 24} color="#3b82f6" />}</div>
                                                 <div>
-                                                    <div style={{ fontSize: '16px', fontWeight: '1000' }}>{award.title}</div>
-                                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>{award.desc}</div>
+                                                    <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '1000' }}>{award.title}</div>
+                                                    <div style={{ fontSize: winWidth < 768 ? '10px' : '12px', color: '#64748b', fontWeight: '700' }}>{award.desc}</div>
                                                 </div>
                                             </div>
-                                            <div style={{ background: '#eff6ff', padding: '10px 25px', borderRadius: '14px', color: '#2563eb', fontWeight: '1000' }}>{award.rep} R</div>
+                                            <div style={{ background: '#eff6ff', padding: winWidth < 768 ? '6px 12px' : '10px 25px', borderRadius: '12px', color: '#2563eb', fontWeight: '1000', fontSize: winWidth < 768 ? '12px' : '14px' }}>{award.rep} R</div>
                                         </div>
                                     ))}
                                 </div>
@@ -457,21 +488,21 @@ export default function AwardsScreen() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', height: '100%' }}>
                             <div style={{ 
                                 background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', 
-                                borderRadius: '40px', padding: '50px 40px', color: 'white', 
+                                borderRadius: winWidth < 768 ? '30px' : '40px', padding: winWidth < 768 ? '40px 25px' : '50px 40px', color: 'white', 
                                 boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.4)',
                                 position: 'relative', overflow: 'hidden',
-                                height: '100%', minHeight: '520px', display: 'flex', flexDirection: 'column', justifyContent: 'center'
+                                height: '100%', minHeight: winWidth < 768 ? 'auto' : '520px', display: 'flex', flexDirection: 'column', justifyContent: 'center'
                             }}>
                                 {/* Decorative elements */}
                                 <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '150px', height: '150px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '50%', filter: 'blur(40px)' }}></div>
                                 <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: '200px', height: '200px', background: 'rgba(250, 204, 21, 0.05)', borderRadius: '50%', filter: 'blur(60px)' }}></div>
 
                                 <div style={{ position: 'relative', zIndex: 1 }}>
-                                    <div style={{ background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '30px' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: winWidth < 768 ? '20px' : '30px' }}>
                                         <Trophy size={30} color="#facc15" />
                                     </div>
-                                    <h3 style={{ margin: 0, fontSize: '28px', fontWeight: '1000', letterSpacing: '-0.8px', color: '#ffffff', lineHeight: '1.2' }}>Recognition Spotlight</h3>
-                                    <p style={{ margin: '15px 0 40px 0', fontSize: '15px', color: '#94a3b8', fontWeight: '600', lineHeight: '1.7' }}>Celebrate the champions pushing our organization forward with exceptional dedication and vision.</p>
+                                    <h3 style={{ margin: 0, fontSize: winWidth < 768 ? '24px' : '28px', fontWeight: '1000', letterSpacing: '-0.8px', color: '#ffffff', lineHeight: '1.2' }}>Recognition Spotlight</h3>
+                                    <p style={{ margin: winWidth < 768 ? '10px 0 30px 0' : '15px 0 40px 0', fontSize: winWidth < 768 ? '14px' : '15px', color: '#94a3b8', fontWeight: '600', lineHeight: '1.7' }}>Celebrate the champions pushing our organization forward with exceptional dedication and vision.</p>
                                     
                                     {leaderboard.length > 0 && (
                                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '25px', borderRadius: '24px', border: '1.5px solid rgba(255,255,255,0.1)', marginBottom: '40px' }}>
@@ -508,7 +539,7 @@ export default function AwardsScreen() {
 
             {showGrantModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div style={{ background: 'white', borderRadius: '30px', padding: '40px', width: '100%', maxWidth: '500px' }}>
+                    <div style={{ background: 'white', borderRadius: '30px', padding: winWidth < 768 ? '25px' : '40px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
                         <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', marginBottom: '30px', textAlign: 'center' }}>Grant Recognition</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>

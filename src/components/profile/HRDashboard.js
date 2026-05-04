@@ -6,8 +6,7 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
 import { 
-  Users, UserPlus, FileText, BarChart2, 
-  MessageSquare, Briefcase, TrendingUp, AlertCircle,
+  Users, MessageSquare, Briefcase, 
   ChevronRight, ArrowRight, User, CheckSquare, Hourglass, Sparkles,
   Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList
 } from 'lucide-react';
@@ -154,7 +153,7 @@ export default function HRDashboard() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 40px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
+      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 30px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
         <header className="section-header animate-fade-in" style={{ 
           marginBottom: winWidth < 768 ? '20px' : '40px', 
           flexDirection: winWidth < 640 ? 'column' : 'row', 
@@ -236,7 +235,7 @@ export default function HRDashboard() {
                       cursor: stat.path ? 'pointer' : 'default',
                       borderRadius: '24px',
                       background: '#ffffff',
-                      border: '1px solid #f1f5f9',
+                      border: '3px solid #cbd5e1',
                       boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -278,7 +277,7 @@ export default function HRDashboard() {
                     cursor: stat.path ? 'pointer' : 'default',
                     borderRadius: '24px',
                     background: '#ffffff',
-                    border: '1px solid #f1f5f9',
+                    border: '3px solid #cbd5e1',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -349,7 +348,7 @@ export default function HRDashboard() {
                 leaveRequests.filter(r => String(r.status || '').toUpperCase().includes('PENDING')).slice(0, 3).map(request => (
                   <div key={request.id} onClick={() => navigate(`/attendance/leave/${request.id}`)} style={{ 
                     display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
-                    borderRadius: '16px', background: '#ffffff', border: '1px solid #f1f5f9',
+                    borderRadius: '16px', background: '#ffffff', border: '3px solid #cbd5e1',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'pointer'
                   }}>
                     <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '12px' }}>
@@ -428,13 +427,13 @@ export default function HRDashboard() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
-               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '1.5px solid #f1f5f9', cursor: 'pointer' }}>
+               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '3px solid #cbd5e1', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                      <PartyPopper size={18} color="#ef4444" />
                      <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b' }}>Upcoming Recognition</div>
                   </div>
                </div>
-               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '1.5px solid #f1f5f9', cursor: 'pointer' }}>
+               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '3px solid #cbd5e1', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                      <Star size={18} color="#f59e0b" />
                      <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b' }}>Total Badges</div>

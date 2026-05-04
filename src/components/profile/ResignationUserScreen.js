@@ -24,6 +24,14 @@ export default function ResignationUserScreen() {
         letter_content: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWinWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
 
     useEffect(() => {
         if (!user) { navigate('/login'); return; }
@@ -181,8 +189,13 @@ export default function ResignationUserScreen() {
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <AppHeader />
-
-            <main style={{ flex: 1, padding: '150px 40px 40px', maxWidth: '100%', width: '100%', fontFamily: "'Outfit', sans-serif" }}>
+            <main style={{ 
+                flex: 1, 
+                padding: winWidth < 768 ? '100px 20px 40px' : '150px 40px 40px', 
+                maxWidth: '100%', 
+                width: '100%', 
+                fontFamily: "'Outfit', sans-serif" 
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
                     <button
                         onClick={() => navigate(-1)}
@@ -193,17 +206,44 @@ export default function ResignationUserScreen() {
                     <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Exit Management</h1>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', background: '#d1d9e0', padding: '6px', borderRadius: '14px', width: 'fit-content', marginBottom: '40px' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    gap: winWidth < 768 ? '4px' : '8px', 
+                    background: '#d1d9e0', 
+                    padding: '6px', 
+                    borderRadius: '14px', 
+                    width: winWidth < 768 ? '100%' : 'fit-content', 
+                    marginBottom: '40px',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    msOverflowStyle: 'none'
+                }}>
                     {tabList.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '800', transition: '0.3s',
-                                background: activeTab === tab.id ? 'white' : 'transparent', color: activeTab === tab.id ? '#0f172a' : '#64748b',
-                                boxShadow: activeTab === tab.id ? '0 4px 6px rgba(0,0,0,0.05)' : 'none'
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '8px', 
+                                padding: winWidth < 768 ? '10px 10px' : '10px 24px', 
+                                borderRadius: '10px', 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                fontSize: winWidth < 768 ? '12px' : '14px', 
+                                fontWeight: '800', 
+                                transition: '0.3s',
+                                background: activeTab === tab.id ? 'white' : 'transparent', 
+                                color: activeTab === tab.id ? '#0f172a' : '#64748b',
+                                boxShadow: activeTab === tab.id ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
+                                flex: winWidth < 768 ? 1 : 'none',
+                                whiteSpace: 'nowrap',
+                                minWidth: winWidth < 768 ? '140px' : 'auto'
                             }}
                         >
+
                             {tab.icon} {tab.label}
                         </button>
                     ))}
@@ -217,69 +257,65 @@ export default function ResignationUserScreen() {
                         border: '1px solid #f1f5f9',
                         overflow: 'hidden'
                     }}>
-                        {/* Red top stripe */}
                         <div style={{ height: '7px', background: 'linear-gradient(90deg, #ef4444 0%, #fca5a5 100%)' }} />
-
-                        {/* Letter Header */}
-                        <div style={{ padding: '36px 50px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-                                <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <LogOut color="#ef4444" size={26} />
+                        <div style={{ 
+                            padding: winWidth < 768 ? '25px 20px 0' : '36px 50px 0', 
+                            display: 'flex', 
+                            flexDirection: winWidth < 768 ? 'column' : 'row',
+                            justifyContent: 'space-between', 
+                            alignItems: winWidth < 768 ? 'flex-start' : 'center',
+                            gap: winWidth < 768 ? '20px' : '0'
+                        }}>
+                            <div style={{ display: 'flex', gap: winWidth < 768 ? '12px' : '18px', alignItems: 'center' }}>
+                                <div style={{ width: winWidth < 768 ? '48px' : '60px', height: winWidth < 768 ? '48px' : '60px', borderRadius: '16px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <LogOut color="#ef4444" size={winWidth < 768 ? 20 : 26} />
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>Resignation Request</div>
-                                    <h2 style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.4px' }}>Resignation Letter</h2>
-                                    <p style={{ color: '#64748b', fontSize: '14px', margin: '3px 0 0', fontWeight: '600' }}>Formal Exit Documentation</p>
+                                    <div style={{ fontSize: '10px', fontWeight: '900', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>Resignation Request</div>
+                                    <h2 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.4px' }}>Resignation Letter</h2>
+                                    <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', margin: '3px 0 0', fontWeight: '600' }}>Formal Exit Documentation</p>
                                 </div>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Submission Date</div>
-                                <div style={{ fontSize: '16px', color: '#0f172a', fontWeight: '900' }}>{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                            <div style={{ textAlign: winWidth < 768 ? 'left' : 'right' }}>
+                                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Submission Date</div>
+                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
                             </div>
                         </div>
-
-                        {/* Form Body */}
-                        <div style={{ padding: '30px 50px 50px' }}>
-                            {/* FROM / TO Block */}
-                            <div style={{ background: '#f8fafc', borderRadius: '20px', border: '1px dashed #e2e8f0', padding: '28px 32px', marginBottom: '24px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0', rowGap: '16px' }}>
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '4px' }}>FROM</span>
-                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '800', color: '#0f172a', minWidth: '160px' }}>
+                        <div style={{ padding: winWidth < 768 ? '25px 20px 40px' : '30px 50px 50px' }}>
+                            <div style={{ background: '#f8fafc', borderRadius: '20px', border: '1px dashed #e2e8f0', padding: winWidth < 768 ? '20px' : '28px 32px', marginBottom: '24px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : '120px 1fr', gap: winWidth < 480 ? '8px' : '0', rowGap: '16px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '4px' }}>FROM</span>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: '800', color: '#0f172a', minWidth: winWidth < 768 ? '100%' : '160px' }}>
                                             {user?.name || 'Employee'}
                                         </div>
-                                        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '700', color: '#64748b' }}>
+                                        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: '700', color: '#64748b' }}>
                                             ID: {user?.employee_id || user?.id || '—'}
                                         </div>
                                     </div>
-
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '4px' }}>TO</span>
-                                    <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'inline-flex', width: 'fit-content' }}>
-                                        HR Department / Management Team
+                                    <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '4px' }}>TO</span>
+                                    <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: '800', color: '#0f172a', display: 'inline-flex', width: 'fit-content' }}>
+                                        HR / Management Team
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Date Fields */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 500 ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Resignation Date</label>
-                                    <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Resignation Date</label>
+                                    <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>
                                         {new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Proposed Last Working Day <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Proposed LWD <span style={{ color: '#ef4444' }}>*</span></label>
                                     <input
                                         type="date"
                                         value={formData.last_working_day}
                                         onChange={(e) => setFormData({ ...formData, last_working_day: e.target.value })}
-                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', color: '#0f172a', fontWeight: '700', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', color: '#0f172a', fontWeight: '700', fontSize: '13px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                                     />
                                 </div>
                             </div>
-
-                            {/* Reason to Resign */}
                             <div style={{ marginBottom: '24px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Reason to Resign <span style={{ color: '#ef4444' }}>*</span></label>
                                 <select
@@ -294,8 +330,6 @@ export default function ResignationUserScreen() {
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-
-                            {/* Letter Content */}
                             <div style={{ marginBottom: '32px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Formal Letter Content</label>
                                 <textarea
@@ -310,16 +344,12 @@ export default function ResignationUserScreen() {
                                     }}
                                 />
                             </div>
-
-                            {/* Sincerely */}
                             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '24px', marginBottom: '32px' }}>
                                 <p style={{ fontSize: '15px', color: '#334155', fontWeight: '500', margin: 0 }}>
                                     Sincerely,<br />
                                     <span style={{ fontWeight: '900', color: '#0f172a', fontSize: '16px' }}>{user?.name}</span>
                                 </p>
                             </div>
-
-                            {/* Submit Button */}
                             <button
                                 onClick={handleFormSubmit}
                                 disabled={submitting}
@@ -339,7 +369,6 @@ export default function ResignationUserScreen() {
                 ) : (
                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                         <h3 style={{ fontSize: '12px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>History of Resignations</h3>
-
                         {loading ? (
                             <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', background: 'white', borderRadius: '24px' }}>Syncing history...</div>
                         ) : requests.length === 0 ? (
@@ -348,11 +377,7 @@ export default function ResignationUserScreen() {
                                 <p style={{ margin: 0, fontWeight: '700' }}>No resignation records found.</p>
                             </div>
                         ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '20px'
-                            }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                                 {requests.map((req, i) => {
                                     const statusColors = {
                                         Approved: { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
@@ -360,7 +385,6 @@ export default function ResignationUserScreen() {
                                         Pending: { bg: '#fffbeb', text: '#d97706', border: '#fef3c7' }
                                     };
                                     const sc = statusColors[req.status] || statusColors.Pending;
-
                                     return (
                                         <div
                                             key={i}
@@ -383,7 +407,6 @@ export default function ResignationUserScreen() {
                                             onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                                         >
                                             <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: req.status === 'Approved' ? '#16a34a' : (req.status === 'Rejected' ? '#dc2626' : '#d97706') }} />
-
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <User size={20} color="#64748b" />
@@ -392,12 +415,10 @@ export default function ResignationUserScreen() {
                                                     {req.status || 'Pending'}
                                                 </span>
                                             </div>
-
                                             <div>
                                                 <div style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginBottom: '2px' }}>{req.employee_name || 'Employee'}</div>
                                                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {req.employee_id}</div>
                                             </div>
-
                                             <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8' }}>
                                                     <Calendar size={12} />
@@ -412,17 +433,23 @@ export default function ResignationUserScreen() {
                         )}
                     </div>
                 )}
-
-                {/* DETAILED MODAL */}
                 {selectedRequest && (
                     <div 
                         className="no-scrollbar"
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '100px 20px 40px', overflowY: 'auto' }} 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: winWidth < 768 ? 'center' : 'flex-start', justifyContent: 'center', padding: winWidth < 768 ? '10px' : '100px 20px 40px', overflowY: 'auto' }} 
                         onClick={() => setSelectedRequest(null)}
                     >
                         <div
                             style={{
-                                background: 'white', borderRadius: '32px', width: '95%', maxWidth: '800px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', animation: 'modalSlideUp 0.3s ease-out'
+                                background: 'white', 
+                                borderRadius: winWidth < 768 ? '24px' : '32px', 
+                                width: '100%', 
+                                maxWidth: '800px', 
+                                position: 'relative', 
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', 
+                                animation: 'modalSlideUp 0.3s ease-out',
+                                maxHeight: winWidth < 768 ? '90vh' : 'auto',
+                                overflowY: winWidth < 768 ? 'auto' : 'visible'
                             }}
                             onClick={e => e.stopPropagation()}
                         >
@@ -432,68 +459,60 @@ export default function ResignationUserScreen() {
                             >
                                 <X size={18} color="#64748b" />
                             </button>
-
                             <div style={{ height: '4px', background: 'linear-gradient(90deg, #ef4444, #fca5a5)' }} />
-
-                            <div style={{ padding: '50px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', paddingRight: '20px' }}>
+                            <div style={{ padding: winWidth < 768 ? '30px 20px' : '50px' }}>
+                                <div style={{ display: 'flex', flexDirection: winWidth < 500 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 500 ? 'flex-start' : 'flex-start', marginBottom: winWidth < 768 ? '25px' : '40px', paddingRight: winWidth < 768 ? '0' : '20px', gap: winWidth < 500 ? '15px' : '0' }}>
                                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                        <div style={{ width: '48px', height: '48px', borderRadius: '15px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <LogOut color="#ef4444" size={24} />
+                                        <div style={{ width: winWidth < 768 ? '40px' : '48px', height: winWidth < 768 ? '40px' : '48px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <LogOut color="#ef4444" size={winWidth < 768 ? 20 : 24} />
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: '18px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.5px' }}>Resignation Letter</div>
-                                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Formal Exit Documentation</div>
+                                            <div style={{ fontSize: winWidth < 768 ? '16px' : '18px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.5px' }}>Resignation Letter</div>
+                                            <div style={{ fontSize: winWidth < 768 ? '11px' : '12px', color: '#64748b', fontWeight: '600' }}>Formal Exit Documentation</div>
                                         </div>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', marginBottom: '6px' }}></div>
+                                    <div style={{ textAlign: winWidth < 500 ? 'left' : 'right' }}>
                                         <span style={{
-                                            padding: '6px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '950', textTransform: 'uppercase',
-                                            background: selectedRequest.status === 'Approved' ? '#f0fdf4' : (selectedRequest.status === 'Rejected' ? '#fef2f2' : '#fffbeb'),
-                                            color: selectedRequest.status === 'Approved' ? '#16a34a' : (selectedRequest.status === 'Rejected' ? '#dc2626' : '#d97706'),
+                                            padding: '6px 16px', borderRadius: '10px', fontSize: '11px', fontWeight: '950', textTransform: 'uppercase',
+                                            background: (selectedRequest.status === 'Approved' ? '#f0fdf4' : (selectedRequest.status === 'Rejected' ? '#fef2f2' : '#fffbeb')),
+                                            color: (selectedRequest.status === 'Approved' ? '#16a34a' : (selectedRequest.status === 'Rejected' ? '#dc2626' : '#d97706')),
                                             border: `1px solid ${selectedRequest.status === 'Approved' ? '#bbf7d0' : (selectedRequest.status === 'Rejected' ? '#fee2e2' : '#fef3c7')}`
                                         }}>
                                             {selectedRequest.status || 'Pending'}
                                         </span>
                                     </div>
                                 </div>
-
-                                <div style={{ background: '#f8fafc', padding: '15px 20px', borderRadius: '20px', border: '1px dashed #e2e8f0' }}>
+                                <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '15px' : '15px 20px', borderRadius: '20px', border: '1px dashed #e2e8f0' }}>
                                     <div style={{ marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '10px', marginBottom: '6px' }}>
-                                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8' }}>TO:</span>
-                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>HR Department</span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '10px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8' }}>TO:</span>
+                                            <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>HR Department</span>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '10px', marginBottom: '6px' }}>
-                                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8' }}>FROM:</span>
-                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{selectedRequest.employee_name}</span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '10px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8' }}>FROM:</span>
+                                            <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>{selectedRequest.employee_name}</span>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '10px' }}>
-                                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8' }}>SUBJECT:</span>
-                                            <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase' }}>Formal Resignation</span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '10px' }}>
+                                            <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8' }}>SUBJECT:</span>
+                                            <span style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase' }}>Formal Resignation</span>
                                         </div>
                                     </div>
-
-                                    <p style={{ fontSize: '20px', color: '#334155', fontWeight: '500', lineHeight: '1.9', margin: '0 0 25px 0' }}>Dear HR Team,</p>
-                                    <p style={{ fontSize: '20px', color: '#334155', fontWeight: '500', lineHeight: '1.9', margin: '0 0 25px 0' }}>
-                                        Resigning from my position due to&nbsp;<span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedRequest.reason || 'N/A'}</span>.
+                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', margin: '0 0 15px 0' }}>Dear HR Team,</p>
+                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', margin: '0 0 15px 0' }}>
+                                        Resigning due to&nbsp;<span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedRequest.reason || 'N/A'}</span>.
                                         LWD:&nbsp;<span style={{ fontWeight: '900', color: '#ef4444' }}>{selectedRequest.last_working_day ? new Date(selectedRequest.last_working_day).toLocaleDateString() : 'N/A'}</span>.
                                     </p>
-
                                     {selectedRequest.letter_content && (
-                                        <div style={{ marginTop: '25px' }}>
-                                            <div style={{ background: 'white', padding: '25px', borderRadius: '18px', border: '1.5px solid #e2e8f0', fontSize: '20px', color: '#334155', fontWeight: '500', lineHeight: '1.9', whiteSpace: 'pre-wrap' }}>
+                                        <div style={{ marginTop: '15px' }}>
+                                            <div style={{ background: 'white', padding: winWidth < 768 ? '15px' : '25px', borderRadius: '18px', border: '1.5px solid #e2e8f0', fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
                                                 {selectedRequest.letter_content}
                                             </div>
                                         </div>
                                     )}
-
-                                    <p style={{ fontSize: '20px', color: '#334155', fontWeight: '500', margin: '30px 0 0 0' }}>
+                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', margin: '20px 0 0 0' }}>
                                         Sincerely,<br />
-                                        <span style={{ fontWeight: '900', color: '#0f172a', fontSize: '22px' }}>{selectedRequest.employee_name}</span>
+                                        <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '16px' : '20px' }}>{selectedRequest.employee_name}</span>
                                     </p>
-
                                     {isAdmin && (
                                         <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
@@ -518,18 +537,6 @@ export default function ResignationUserScreen() {
                                                 >
                                                     {updating ? '...' : 'Approved'}
                                                 </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {(selectedRequest.reporting_manager_remark || selectedRequest.project_manager_remark || selectedRequest.hr_remark) && (
-                                        <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                                            <div style={{ display: 'grid', gap: '8px' }}>
-                                                {selectedRequest.hr_remark && (
-                                                    <div style={{ background: '#f0f9ff', padding: '8px 12px', borderRadius: '10px', border: '1px solid #bae6fd' }}>
-                                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#0c4a6e' }}>HR: {selectedRequest.hr_remark}</span>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     )}

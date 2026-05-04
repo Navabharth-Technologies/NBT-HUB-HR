@@ -379,7 +379,7 @@ export default function EmployeeAttendanceManagement() {
   };
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#f4f7fa', display: 'flex', flexDirection: 'column' }}>
+    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px 30px' : '30px 40px 30px', maxWidth: '1600px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>

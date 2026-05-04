@@ -170,7 +170,7 @@ export default function EngagementModule() {
     const styles = {
         container: { 
             minHeight: '100vh', 
-            backgroundColor: 'transparent', 
+            backgroundColor: '#eaeff2', 
             display: 'flex', 
             flexDirection: 'column', 
             gap: isMobile ? '12px' : '20px', 

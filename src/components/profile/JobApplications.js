@@ -314,7 +314,7 @@ export default function JobApplications() {
 
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: "'Outfit', sans-serif" }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', fontFamily: "'Outfit', sans-serif" }}>
       <AppHeader />
 
       <main style={{

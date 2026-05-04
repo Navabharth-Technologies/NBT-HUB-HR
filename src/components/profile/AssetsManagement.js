@@ -279,7 +279,7 @@ export default function AssetsManagement() {
   });
 
   return (
-    <div className="assets-management-container" style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', fontFamily: "'Outfit', sans-serif" }}>
+    <div className="assets-management-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', fontFamily: "'Outfit', sans-serif" }}>
       <AppHeader />
       
       <main className="dashboard-content" style={{ 
