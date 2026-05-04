@@ -128,7 +128,6 @@ export default function TeamDetail() {
                   const leader = team.members.find(m => /lead|manager|head/i.test(m.role));
                   return (
                     <div
-                      onClick={() => navigate(`/reports?id=${leader.id}`)}
                       className="member-report-card"
                       style={{
                         padding: winWidth < 480 ? '20px' : '24px',
@@ -195,7 +194,6 @@ export default function TeamDetail() {
                   .map((member, i) => (
                     <div
                       key={i}
-                      onClick={() => navigate(`/reports?id=${member.id}`)}
                       className="member-report-card"
                       style={{
                         padding: winWidth < 480 ? '12px' : '16px',

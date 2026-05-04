@@ -547,14 +547,14 @@ export default function PerformanceModule() {
       </div>
 
         {/* Basic Stats Row */}
-        <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px', display: 'grid', gridTemplateColumns: winWidth < 1024 ? (winWidth < 600 ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)', gap: '24px' }}>
-          <div style={dashboardStyles.statBox}>
-            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} /></div>
-            <div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Team</p>
-              <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>Navabharatha Team</p>
-            </div>
-          </div>
+        <div style={{ 
+          width: '100%', 
+          maxWidth: '100%', 
+          margin: '0 auto 40px', 
+          display: 'grid', 
+          gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', 
+          gap: '24px' 
+        }}>
           <div style={dashboardStyles.statBox}>
             <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Mail size={20} /></div>
             <div>
@@ -562,7 +562,7 @@ export default function PerformanceModule() {
               <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900', wordBreak: 'break-all' }}>{user?.email || 'sahana@navabharathtechnologies.com'}</p>
             </div>
           </div>
-          <div style={{ ...dashboardStyles.statBox, gridColumn: winWidth < 1024 && winWidth >= 600 ? 'span 2' : 'auto' }}>
+          <div style={dashboardStyles.statBox}>
             <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={20} /></div>
             <div>
               <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date of Joining</p>

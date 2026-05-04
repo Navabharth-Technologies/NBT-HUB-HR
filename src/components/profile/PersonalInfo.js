@@ -35,9 +35,9 @@ const SECTIONS = [
       { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: '1234 5678 9012' },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof', type: 'file' },
       { key: 'voter_id', label: 'Voter ID Number', type: 'text' },
-      { key: 'voter_card', label: 'Voter ID Proof', type: 'file' },
+      { key: 'voter_id_photo', label: 'Voter ID', type: 'file' },
       { key: 'passport_no', label: 'Passport No', type: 'text' },
-      { key: 'passport', label: 'Passport Proof', type: 'file' },
+      { key: 'passport_photo', label: 'Passport Proof', type: 'file' },
     ]
   },
   {
@@ -84,7 +84,7 @@ const SECTIONS = [
       { key: 'college', label: 'College', type: 'text' },
       { key: 'university', label: 'University', type: 'text' },
       { key: 'previous_org', label: 'Previous Organization', type: 'text' },
-      { key: 'previous_exp', label: 'Previous Experience', type: 'text' },
+      { key: 'experience_letter_photo', label: 'Previous Experience', type: 'file' },
       { key: 'source', label: 'Source', type: 'text' },
       { key: 'languages_known', label: 'Languages Known', type: 'text' },
     ]
@@ -300,14 +300,23 @@ export default function PersonalInfo({ onBack }) {
       } else {
         const formData = new FormData();
         formData.append('fileData', file);
+        formData.append('file', file);
+        formData.append('image', file);
+        formData.append('document', file);
         formData.append('userId', selectedEmpId);
-        
+        formData.append('employeeId', selectedEmpId);
+
         let docType = key;
         if (key === 'pancard_photo') docType = 'pan_card';
         if (key === 'adharcard_photo') docType = 'aadhar_card';
         if (key === 'voter_card') docType = 'voter_id_proof';
         if (key === 'passport') docType = 'passport_proof';
-        formData.append('docType', docType); 
+        if (key === 'experience_letter') docType = 'experience_letter';
+        if (key === 'previous_payslip') docType = 'previous_payslip';
+
+        formData.append('docType', docType);
+        formData.append('type', key);
+        formData.append('employee_id', selectedEmpId);
 
         const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_DOCUMENT, {
           method: 'POST',
@@ -318,10 +327,26 @@ export default function PersonalInfo({ onBack }) {
         if (res.ok) {
           const data = await res.json();
           const url = data.url || data.filePath || data.path || data.record?.path || data.data?.url || data.data?.path || data.fileUrl || data.document_path || data.file;
-          
+
           if (url) {
             setForm(prev => ({ ...prev, [key]: url }));
-            const updatePayload = { employee_id: selectedEmpId, id: selectedEmpId, [key]: url, [docType]: url };
+
+            // Standardize the update payload with multiple key variations for robustness
+            const updatePayload = {
+              employee_id: selectedEmpId,
+              id: selectedEmpId,
+              [key]: url,
+              [docType]: url,
+              // Add common aliases for backend column names
+              experience_letter_photo: key === 'experience_letter' ? url : undefined,
+              previous_payslip_photo: key === 'previous_payslip' ? url : undefined,
+              exp_letter: key === 'experience_letter' ? url : undefined,
+              payslip: key === 'previous_payslip' ? url : undefined
+            };
+
+            // Remove undefined fields
+            Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
+
             await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token || token}` },
@@ -391,7 +416,7 @@ export default function PersonalInfo({ onBack }) {
     <div style={{ minHeight: '100vh', backgroundColor: '#f4f7fa', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
-      <div style={{ flex: 1, padding: isMobile ? '15px' : '40px 26px', boxSizing: 'border-box', overflowX: 'hidden', width: '100%', marginTop: isMobile ? '80px' : '70px' }}>
+      <div style={{ flex: 1, padding: isMobile ? '16px' : '40px 26px', boxSizing: 'border-box', overflowX: 'hidden', width: '100%', marginTop: isMobile ? '80px' : '70px' }}>
         <AnimatePresence>
           {toast && (
             <motion.div
@@ -448,41 +473,50 @@ export default function PersonalInfo({ onBack }) {
                   <Trash2 size={20} />
                 </button>
 
-                <div style={{ maxHeight: '80vh', overflowY: 'auto', borderRadius: '20px' }}>
-                  {previewDoc.url.toLowerCase().endsWith('.pdf') ? (
-                    <iframe 
-                      src={previewDoc.url} 
-                      style={{ width: isMobile ? '80vw' : '600px', height: '80vh', border: 'none', borderRadius: '20px' }} 
+                <div style={{ maxHeight: '80vh', overflowY: 'auto', borderRadius: '20px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                  {(previewDoc.url.toLowerCase().endsWith('.pdf') || previewDoc.url.includes('application/pdf')) ? (
+                    <iframe
+                      src={previewDoc.url}
+                      style={{ width: isMobile ? '80vw' : '600px', height: '80vh', border: 'none', borderRadius: '20px' }}
                       title="Document Preview"
                     />
-                  ) : (
+                  ) : (previewDoc.url.includes('image/') || previewDoc.url.startsWith('data:image/') || !previewDoc.url.startsWith('data:')) ? (
                     <img
                       src={previewDoc.url}
                       alt="Proof Preview"
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: '80vh', 
-                        display: 'block', 
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '80vh',
+                        display: 'block',
                         borderRadius: '20px',
                         objectFit: 'contain'
                       }}
                       onError={(e) => {
-                        console.error("Image load error:", previewDoc.url);
-                        // If it fails with BASE_URL prepended, try without it if it looks like base64
-                        if (previewDoc.url.includes('base64') && previewDoc.url.startsWith('http')) {
-                          const actualBase64 = previewDoc.url.substring(previewDoc.url.indexOf('data:image'));
-                          e.target.src = actualBase64;
-                        }
+                        // If image fails, show the fallback download UI
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `
+                          <div style="display: flex; flex-direction: column; align-items: center; padding: 40px; text-align: center;">
+                            <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+                            <div style="font-weight: 700; color: #0B1E3F; margin-bottom: 8px;">Preview Not Available</div>
+                            <div style="font-size: 14px; color: #64748b;">This file type cannot be viewed directly.</div>
+                          </div>
+                        `;
                       }}
                     />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📁</div>
+                      <div style={{ fontWeight: '700', color: '#0B1E3F', marginBottom: '8px' }}>Preview Not Available</div>
+                      <div style={{ fontSize: '14px', color: '#64748b' }}>This file type cannot be viewed directly.</div>
+                    </div>
                   )}
                 </div>
                 <div style={{ padding: '15px', textAlign: 'center' }}>
                   <div style={{ fontWeight: '900', color: '#0B1E3F', fontSize: '14px', textTransform: 'uppercase' }}>{previewDoc.label}</div>
-                  <a 
-                    href={previewDoc.url} 
-                    target="_blank" 
-                    rel="noreferrer" 
+                  <a
+                    href={previewDoc.url}
+                    target="_blank"
+                    rel="noreferrer"
                     style={{ fontSize: '12px', color: '#315A9E', fontWeight: '800', textDecoration: 'none', marginTop: '5px', display: 'inline-block' }}
                   >
                     OPEN IN NEW TAB
@@ -550,9 +584,9 @@ export default function PersonalInfo({ onBack }) {
 
         <div style={{ display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : 'row', gridTemplateColumns: isMobile ? 'none' : '280px 1fr', gap: isMobile ? '20px' : '24px', alignItems: 'start', width: '100%', boxSizing: 'border-box' }}>
           <div style={{ width: '100%', margin: '0', boxSizing: 'border-box', flexShrink: 0 }}>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: isMobile ? 'row' : 'column', 
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'row' : 'column',
               gap: '10px',
               overflowX: isMobile ? 'auto' : 'visible',
               paddingBottom: isMobile ? '15px' : '0',
@@ -569,16 +603,16 @@ export default function PersonalInfo({ onBack }) {
                     whileHover={!isMobile ? { x: 4 } : {}}
                     onClick={() => setActiveSection(sec.id)}
                     style={{
-                      padding: isMobile ? '10px 18px' : '16px 20px', 
-                      borderRadius: isMobile ? '12px' : '18px', 
+                      padding: isMobile ? '10px 18px' : '16px 20px',
+                      borderRadius: isMobile ? '12px' : '18px',
                       cursor: 'pointer',
                       backgroundColor: isActive ? '#0B1E3F' : 'white',
                       color: isActive ? 'white' : '#475569',
-                      display: 'flex', 
-                      alignItems: 'center', 
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: isMobile ? '10px' : '14px',
-                      fontWeight: '800', 
-                      fontSize: isMobile ? '12px' : '15px', 
+                      fontWeight: '800',
+                      fontSize: isMobile ? '12px' : '15px',
                       textAlign: 'left',
                       border: `3px solid ${isActive ? '#0B1E3F' : '#cbd5e1'}`,
                       transition: 'all 0.2s',
@@ -677,12 +711,12 @@ export default function PersonalInfo({ onBack }) {
                         {form[field.key] ? (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                             <FileCheck size={24} color="#10b981" />
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const rawUrl = form[field.key];
                                 if (!rawUrl) return;
-                                
+
                                 let url = rawUrl;
                                 // Fix case where backend mistakenly prepends BASE_URL to base64 string
                                 if (typeof url === 'string' && url.includes('data:') && url.includes('base64')) {
@@ -692,8 +726,8 @@ export default function PersonalInfo({ onBack }) {
                                 }
                                 setPreviewDoc({ url, label: field.label });
                               }}
-                              style={{ 
-                                border: 'none', background: 'transparent', fontSize: '12px', 
+                              style={{
+                                border: 'none', background: 'transparent', fontSize: '12px',
                                 color: '#315A9E', fontWeight: '900', cursor: 'pointer',
                                 padding: '4px 8px', borderRadius: '8px'
                               }}

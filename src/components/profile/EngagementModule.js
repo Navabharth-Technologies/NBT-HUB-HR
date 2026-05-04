@@ -174,8 +174,8 @@ export default function EngagementModule() {
             display: 'flex', 
             flexDirection: 'column', 
             gap: isMobile ? '12px' : '20px', 
-            padding: isMobile ? '15px' : (isTablet ? '25px' : '40px'), 
-            paddingTop: isMobile ? '85px' : '110px',
+            padding: isMobile ? '20px 15px' : (isTablet ? '20px 25px' : '20px 40px'), 
+            marginTop: isMobile ? '85px' : '110px',
             maxWidth: '100%', 
             margin: '0', 
             boxSizing: 'border-box' 
@@ -488,7 +488,7 @@ export default function EngagementModule() {
                                 >
                                     <div style={styles.commentBadge} onClick={() => handleOpenComments(post.id)}>
                                         <MessageSquare size={16} /> 
-                                        <span>COMMENT ({post.commentCount || 0})</span>
+                                        <span>COMMENT ({Math.max(post.commentCount || 0, (postComments[post.id] || []).length)})</span>
                                     </div>
 
                                     <Smile 
@@ -528,23 +528,23 @@ export default function EngagementModule() {
                                             <>
                                                 <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '-5px' }}>Conversation Thread</div>
                                                 {(postComments[post.id] || []).map(c => {
-                                                    const cUser = userProfiles[c.user_id || c.userId]?.name || c.user_name || c.userName || c.name || 'User';
-                                                    const cText = c.content || c.text || c.comment || c.message || '...';
-                                                    const commentAuthorId = c.userId || c.user_id;
-                                                    const isMyComment = (authorId && commentAuthorId && String(authorId) === String(commentAuthorId)) || (user?.name === cUser);
+                                                    const cUid = c.userId || c.user_id || c.employee_id || c.EmpID;
+                                                    const profile = userProfiles[cUid] || Object.values(userProfiles).find(p => p.name === (c.userName || c.user_name || c.name));
+                                                    const cUser = profile?.name || c.userName || c.user_name || c.name || 'User';
+                                                    const cText = c.content || c.comment_text || c.text_content || c.text || c.comment || c.message || '...';
+                                                    const isMyComment = (user?.id && cUid && String(user.id) === String(cUid)) || (user?.employee_id && cUid && String(user.employee_id) === String(cUid)) || (user?.name === cUser);
                                                     
                                                     return (
                                                         <div key={c.id} style={{ display: 'flex', gap: '12px' }}>
                                                             <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)', overflow: 'hidden' }}>
-                                                                {userProfiles[commentAuthorId]?.profile_pic || userProfiles[commentAuthorId]?.profile_picture ? (
-                                                                    <img 
-                                                                        src={getFullUrl(userProfiles[commentAuthorId]?.profile_pic || userProfiles[commentAuthorId]?.profile_picture)} 
-                                                                        alt="User" 
-                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                                                    />
-                                                                ) : (
-                                                                    cUser.charAt(0).toUpperCase()
-                                                                )}
+                                                                {(() => {
+                                                                    const pic = profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.profile_picture || profile?.avatar;
+                                                                    if (pic) {
+                                                                        const src = pic.startsWith('http') ? pic : `${BASE_URL}${pic.startsWith('/') ? pic : '/' + pic}`;
+                                                                        return <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />;
+                                                                    }
+                                                                    return cUser.charAt(0).toUpperCase();
+                                                                })()}
                                                             </div>
                                                             <div style={{ flex: 1, padding: '15px', background: 'white', borderRadius: '20px', border: '1.5px solid #f1f5f9', position: 'relative' }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>

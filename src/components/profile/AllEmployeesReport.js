@@ -199,84 +199,154 @@ export default function AllEmployeesReport() {
              </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Employee</th>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>ID</th>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In</th>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out</th>
-                  <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div style={{ overflowX: winWidth < 768 ? 'hidden' : 'auto' }}>
+            {winWidth < 768 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', background: '#eaeff2' }}>
                 {loading ? (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>Generating organizational report...</td></tr>
+                  <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', background: 'white', borderRadius: '24px' }}>Generating report...</div>
                 ) : filteredEmployees.length > 0 ? (
-                  filteredEmployees.map((emp) => (
-                    <tr key={emp.id} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px 25px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <User size={20} color="#3863a8" />
+                  filteredEmployees.map((emp) => {
+                    const d = new Date(emp.date);
+                    const isSunday = d.getDay() === 0;
+                    const month = d.toLocaleDateString('en-US', { month: 'short' });
+                    const dateDay = String(d.getDate()).padStart(2, '0');
+                    const dayMonth = `${month} ${dateDay}`;
+                    const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+                    const isHoliday = holidays.includes(dayMonth);
+
+                    let statusText = String(emp.status || 'ABSENT').toUpperCase();
+                    if (emp.punchIn === '----' || statusText === 'ABSENT') {
+                      if (isSunday) statusText = 'WO';
+                      else if (isHoliday) statusText = 'NH';
+                      else statusText = 'ABSENT';
+                    }
+
+                    const isPresent = statusText.includes('PRESENT');
+                    const isWO = statusText === 'WO';
+                    const isNH = statusText === 'NH';
+
+                    return (
+                      <div key={emp.id} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <User size={20} color="#3863a8" />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>{emp.name}</div>
+                              <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>#{emp.id} • {emp.role}</div>
+                            </div>
                           </div>
-                          <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '15px' }}>{emp.name}</div>
+                          <span style={{ 
+                            fontSize: '10px', fontWeight: '950', padding: '6px 12px', borderRadius: '100px', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
+                            color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
+                            border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`
+                          }}>
+                            {statusText}
+                          </span>
                         </div>
-                      </td>
-                      <td style={{ padding: '20px 25px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b' }}>#{emp.id}</div>
-                      </td>
-                      <td style={{ padding: '20px 25px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>{emp.date}</div>
-                      </td>
-                      <td style={{ padding: '20px 25px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#1d4ed8' }}>{emp.punchIn}</div>
-                      </td>
-                      <td style={{ padding: '20px 25px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#475569' }}>{emp.punchOut}</div>
-                      </td>
-                      <td style={{ padding: '20px 25px' }}>
-                        {(() => {
-                           const d = new Date(emp.date);
-                           const isSunday = d.getDay() === 0;
-                           
-                           const month = d.toLocaleDateString('en-US', { month: 'short' });
-                           const dateDay = String(d.getDate()).padStart(2, '0');
-                           const dayMonth = `${month} ${dateDay}`;
-                           const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
-                           const isHoliday = holidays.includes(dayMonth);
 
-                           let statusText = String(emp.status || 'ABSENT').toUpperCase();
-                           if (emp.punchIn === '----' || statusText === 'ABSENT') {
-                             if (isSunday) statusText = 'WO';
-                             else if (isHoliday) statusText = 'NH';
-                             else statusText = 'ABSENT';
-                           }
-
-                           const isPresent = statusText.includes('PRESENT');
-                           const isWO = statusText === 'WO';
-                           const isNH = statusText === 'NH';
-
-                           return (
-                            <span style={{ 
-                              fontSize: '10px', fontWeight: '900', padding: '6px 12px', borderRadius: '8px', textTransform: 'uppercase', letterSpacing: '0.5px',
-                              background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
-                              color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
-                              border: `1px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`
-                            }}>
-                              {statusText}
-                            </span>
-                           );
-                        })()}
-                      </td>
-                    </tr>
-                  ))
+                        <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                           <div>
+                              <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Date</div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Calendar size={14} color="#64748b" /> {emp.date}
+                              </div>
+                           </div>
+                           <div>
+                              <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Timeline</div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Clock size={14} color="#64748b" /> {emp.punchIn} - {emp.punchOut}
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '100px', color: '#64748b' }}>No employees found matching the search criteria.</td></tr>
+                  <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', background: 'white', borderRadius: '24px' }}>No matching results</div>
                 )}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Employee</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>ID</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>Generating organizational report...</td></tr>
+                  ) : filteredEmployees.length > 0 ? (
+                    filteredEmployees.map((emp) => (
+                      <tr key={emp.id} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px 25px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <User size={20} color="#3863a8" />
+                            </div>
+                            <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '15px' }}>{emp.name}</div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b' }}>#{emp.id}</div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>{emp.date}</div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#1d4ed8' }}>{emp.punchIn}</div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#475569' }}>{emp.punchOut}</div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          {(() => {
+                            const d = new Date(emp.date);
+                            const isSunday = d.getDay() === 0;
+                            
+                            const month = d.toLocaleDateString('en-US', { month: 'short' });
+                            const dateDay = String(d.getDate()).padStart(2, '0');
+                            const dayMonth = `${month} ${dateDay}`;
+                            const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+                            const isHoliday = holidays.includes(dayMonth);
+
+                            let statusText = String(emp.status || 'ABSENT').toUpperCase();
+                            if (emp.punchIn === '----' || statusText === 'ABSENT') {
+                              if (isSunday) statusText = 'WO';
+                              else if (isHoliday) statusText = 'NH';
+                              else statusText = 'ABSENT';
+                            }
+
+                            const isPresent = statusText.includes('PRESENT');
+                            const isWO = statusText === 'WO';
+                            const isNH = statusText === 'NH';
+
+                            return (
+                              <span style={{ 
+                                fontSize: '10px', fontWeight: '900', padding: '6px 12px', borderRadius: '100px', textTransform: 'uppercase', letterSpacing: '0.5px',
+                                background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
+                                color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
+                                border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`
+                              }}>
+                                {statusText}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '100px', color: '#64748b' }}>No employees found matching the search criteria.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
       </main>

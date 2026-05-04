@@ -284,8 +284,8 @@ export default function AssetsManagement() {
       
       <main className="dashboard-content" style={{ 
         paddingTop: winWidth < 768 ? '80px' : '100px',
-        paddingLeft: winWidth < 768 ? '15px' : '30px',
-        paddingRight: winWidth < 768 ? '15px' : '30px',
+        paddingLeft: winWidth < 768 ? '16px' : '26px',
+        paddingRight: winWidth < 768 ? '16px' : '26px',
         paddingBottom: '100px',
         boxSizing: 'border-box'
       }}>
@@ -348,66 +348,113 @@ export default function AssetsManagement() {
           </select>
         </div>
 
-        {/* Table View */}
-        <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '350px' }}>Member Details</th>
-                  <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '300px' }}>Designation</th>
-                  <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '250px' }}>Configuration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <tr key={i}><td colSpan="5" style={{ padding: '25px', textAlign: 'center', color: '#94a3b8' }}>Establishing neural link...</td></tr>
-                  ))
-                ) : filteredEmployees.map((emp, i) => {
-                  const empId = emp.id || emp.EmpID;
-                  const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
-                  const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
-                  return (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: '0.2s', backgroundColor: i % 2 === 0 ? 'transparent' : '#fcfdfe' }}>
-                      <td style={{ padding: '15px 25px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '14px' }}>
-                            {emp.name.charAt(0)}
-                          </div>
-                          <div style={{ overflow: 'hidden' }}>
-                            <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
-                            <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {emp.id || emp.EmpID}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '15px 25px' }}>
-                        <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{asset.designation || emp.role || 'Unspecified'}</span>
-                      </td>
-                      <td style={{ padding: '15px 25px', textAlign: 'center' }}>
-                        {hasAsset ? (
-                          <button 
-                            onClick={() => handleEdit(emp, true)}
-                            style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', color: '#64748b', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                          >
-                            <Package size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>View Details</span>
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleEdit(emp, false)}
-                            style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '10px', padding: '8px 12px', color: '#2563eb', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                          >
-                            <Edit3 size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>Configure</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Table/Card View */}
+        {winWidth < 768 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '24px' }}>Establishing neural link...</div>
+            ) : filteredEmployees.map((emp, i) => {
+              const empId = emp.id || emp.EmpID;
+              const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+              const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
+              return (
+                <div key={i} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '16px' }}>
+                      {emp.name.charAt(0)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '900', fontSize: '16px', color: '#1e293b' }}>{emp.name}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ID: {emp.id || emp.EmpID}</div>
+                    </div>
+                    <div style={{ padding: '4px 12px', borderRadius: '100px', fontSize: '10px', fontWeight: '900', background: hasAsset ? '#f0fdf4' : '#eff6ff', color: hasAsset ? '#16a34a' : '#2563eb', border: `1px solid ${hasAsset ? '#bbf7d0' : '#dbeafe'}` }}>
+                      {hasAsset ? 'CONFIGURED' : 'PENDING'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Designation</div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#334155' }}>{asset.designation || emp.role || 'Unspecified'}</div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleEdit(emp, hasAsset)}
+                    style={{ 
+                      width: '100%', padding: '12px', borderRadius: '14px', border: 'none', 
+                      background: hasAsset ? '#f1f5f9' : '#3163aa', 
+                      color: hasAsset ? '#475569' : 'white', 
+                      fontWeight: '800', fontSize: '13px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    {hasAsset ? <Package size={16} /> : <Edit3 size={16} />}
+                    {hasAsset ? 'View Asset Details' : 'Configure Hardware'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
+                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '350px' }}>Member Details</th>
+                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '300px' }}>Designation</th>
+                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '250px' }}>Configuration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array(5).fill(0).map((_, i) => (
+                      <tr key={i}><td colSpan="5" style={{ padding: '25px', textAlign: 'center', color: '#94a3b8' }}>Establishing neural link...</td></tr>
+                    ))
+                  ) : filteredEmployees.map((emp, i) => {
+                    const empId = emp.id || emp.EmpID;
+                    const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+                    const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: '0.2s', backgroundColor: i % 2 === 0 ? 'transparent' : '#fcfdfe' }}>
+                        <td style={{ padding: '15px 25px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '14px' }}>
+                              {emp.name.charAt(0)}
+                            </div>
+                            <div style={{ overflow: 'hidden' }}>
+                              <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {emp.id || emp.EmpID}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '15px 25px' }}>
+                          <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{asset.designation || emp.role || 'Unspecified'}</span>
+                        </td>
+                        <td style={{ padding: '15px 25px', textAlign: 'center' }}>
+                          {hasAsset ? (
+                            <button 
+                              onClick={() => handleEdit(emp, true)}
+                              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', color: '#64748b', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            >
+                              <Package size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>View Details</span>
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleEdit(emp, false)}
+                              style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '10px', padding: '8px 12px', color: '#2563eb', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            >
+                              <Edit3 size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>Configure</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Edit Modal */}

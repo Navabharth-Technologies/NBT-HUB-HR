@@ -319,8 +319,8 @@ export default function JobApplications() {
 
       <main style={{
         paddingTop: winWidth < 768 ? '80px' : '100px',
-        paddingLeft: winWidth < 768 ? '15px' : '30px',
-        paddingRight: winWidth < 768 ? '15px' : '30px',
+        paddingLeft: winWidth < 768 ? '16px' : '26px',
+        paddingRight: winWidth < 768 ? '16px' : '26px',
         paddingBottom: '100px',
         boxSizing: 'border-box'
       }}>

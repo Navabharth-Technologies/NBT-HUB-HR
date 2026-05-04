@@ -11,7 +11,7 @@ import EmployeeModule from './components/profile/EmployeeModule';
 import NewJoineeModule from './components/profile/NewJoineeModule';
 import LoginScreen from './components/profile/LoginScreen';
 import AlertScreen from './components/profile/AlertScreen';
-import ReportScreen from './components/profile/ReportScreen';
+
 import TeamsModule from './components/profile/TeamsModule';
 import TicketManagement from './components/profile/TicketManagement';
 import AttendanceManagement from './components/profile/AttendanceManagement';
@@ -56,7 +56,7 @@ function AppRoutes() {
       <Route path="/employees" element={<EmployeeModule />} />
       <Route path="/new-joinees" element={<NewJoineeModule />} />
       <Route path="/alerts" element={<AlertScreen />} />
-      <Route path="/reports" element={<ReportScreen />} />
+
       <Route path="/teams" element={<TeamsModule />} />
       <Route path="/teams/:id" element={<TeamDetail />} />
       <Route path="/tickets" element={<TicketManagement />} />

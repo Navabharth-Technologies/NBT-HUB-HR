@@ -27,6 +27,13 @@ export default function ServiceCertificateManagement() {
         certificate_url: ''
     });
     const [updating, setUpdating] = useState(false);
+    const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWinWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -203,7 +210,7 @@ export default function ServiceCertificateManagement() {
                     ) : filteredRequests.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8', fontSize: '15px', fontWeight: '600', background: 'white', borderRadius: '24px', border: '1px solid #f1f5f9' }}>No requests found.</div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
                             {filteredRequests.map(req => {
                                 const statusStyle = getStatusColor(req.status);
                                 

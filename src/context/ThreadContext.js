@@ -291,8 +291,10 @@ export const ThreadProvider = ({ children }) => {
           'Authorization': `Bearer ${user.token}` 
         },
         body: JSON.stringify({ 
-          userId: user?.id || user?.employee_id,
-          user_id: user?.id || user?.employee_id,
+          userId: user?.id || user?.employee_id || user?.EmpID || user?.userId,
+          user_id: user?.id || user?.employee_id || user?.EmpID || user?.userId,
+          employee_id: user?.id || user?.employee_id || user?.EmpID || user?.userId,
+          EmpID: user?.id || user?.employee_id || user?.EmpID || user?.userId,
           userName: user?.name,
           content
         })

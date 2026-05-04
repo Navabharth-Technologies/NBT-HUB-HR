@@ -28,6 +28,13 @@ export default function ResignationManagement() {
         hr_remark: ''
     });
     const [updating, setUpdating] = useState(false);
+    const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWinWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -228,7 +235,7 @@ export default function ResignationManagement() {
                                             <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '20px', border: '1px dashed #e2e8f0', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                                                 {/* FROM / TO row */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '16px' }}>
                                                     <div>
                                                         <div style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>FROM</div>
                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -249,7 +256,7 @@ export default function ResignationManagement() {
                                                 </div>
 
                                                 {/* Dates row */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '16px' }}>
                                                     <div>
                                                         <div style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Resignation Date</div>
                                                         <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>

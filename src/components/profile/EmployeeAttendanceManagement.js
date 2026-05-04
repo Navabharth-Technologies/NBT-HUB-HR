@@ -14,7 +14,8 @@ import {
   FileText,
   Clock3,
   ChevronRight,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
@@ -382,7 +383,7 @@ export default function EmployeeAttendanceManagement() {
     <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px 30px' : '30px 40px 30px', maxWidth: '1600px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 40px' : '30px 26px 40px', margin: '0', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>
         
 
 
@@ -434,9 +435,7 @@ export default function EmployeeAttendanceManagement() {
             </div>
             
             <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
-              <button style={{ flex: 1, height: '44px', borderRadius: '12px', background: 'white', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
-                <RefreshCw size={16} />
-              </button>
+
               
               <div style={{ position: 'relative', flex: 2 }}>
                 <button 
@@ -505,81 +504,71 @@ export default function EmployeeAttendanceManagement() {
         </div>
 
         {/* Main Table Content */}
-        <div style={{ background: 'white', borderRadius: '28px', border: '1.5px solid #f1f5f9', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.03)', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1.5px solid #f1f5f9' }}>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>EMPLOYEE</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>DATE</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>PUNCH IN</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>PUNCH OUT</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>WORK HRS</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>STATUS</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In Location</th>
-                <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out Location</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div style={{ background: winWidth < 768 ? 'transparent' : 'white', borderRadius: '28px', border: winWidth < 768 ? 'none' : '1.5px solid #f1f5f9', boxShadow: winWidth < 768 ? 'none' : '0 20px 25px -5px rgba(0,0,0,0.03)', overflowX: winWidth < 768 ? 'hidden' : 'auto' }}>
+          {winWidth < 768 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {loading ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: '100px', textAlign: 'center' }}>
-                     <div className="animate-spin" style={{ margin: '0 auto', width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #3b82f6', borderRadius: '50%' }}></div>
-                     <p style={{ marginTop: '20px', fontWeight: '700', color: '#64748b' }}>Loading Comprehensive Records...</p>
-                  </td>
-                </tr>
+                <div style={{ padding: '60px', textAlign: 'center', background: 'white', borderRadius: '24px' }}>
+                  <div className="animate-spin" style={{ margin: '0 auto', width: '32px', height: '32px', border: '3px solid #f3f3f3', borderTop: '3px solid #3b82f6', borderRadius: '50%' }}></div>
+                  <p style={{ marginTop: '16px', fontWeight: '700', color: '#64748b' }}>Loading records...</p>
+                </div>
               ) : error ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: '60px', textAlign: 'center' }}>
-                     <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto' }} />
-                     <p style={{ marginTop: '16px', fontWeight: '800', color: '#ef4444' }}>{error}</p>
-                     <button onClick={() => window.location.reload()} style={{ marginTop: '12px', padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}>Retry</button>
-                  </td>
-                </tr>
+                <div style={{ padding: '40px', textAlign: 'center', background: 'white', borderRadius: '24px' }}>
+                  <AlertCircle size={32} color="#ef4444" style={{ margin: '0 auto' }} />
+                  <p style={{ marginTop: '12px', fontWeight: '800', color: '#ef4444' }}>{error}</p>
+                </div>
               ) : logs.length > 0 ? (
                 getFilteredLogs().map((log, idx) => {
-                  const style = getStatusStyle(log.status || (log.in_time ? 'PRESENT' : 'ABSENT'));
+                  const punchIn = log.in_time || '----';
+                  const punchOut = log.out_time || '----';
+                  const workHrs = log.work_hrs || '00:00';
+                  const pDate = log.punch_date || log.date || log.created_at;
+
                   return (
-                    <tr key={idx} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px 30px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ebeef3', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '900' }}>
-                            {String(employee?.name || log.user_name || 'E').charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>{employee?.name || log.user_name || 'Individual Employee'}</div>
-                            <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {id || '00000'}</div>
+                    <div key={idx} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950' }}>
+                          {String(employee?.name || log.user_name || 'E').charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{employee?.name || log.user_name || 'Employee'}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{id} • {employee?.role || 'Staff'}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Date</div>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Hours</div>
+                          <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>
+                            {workHrs?.replace(/\s:\s/g, ':') || '00:00'} <span style={{ fontSize: '10px', color: '#94a3b8' }}>HRS</span>
                           </div>
                         </div>
-                      </td>
-                      <td style={{ padding: '20px 30px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '700', color: '#475569' }}>
-                          <Calendar size={16} color="#94a3b8" />
-                          {(() => {
-                            const pDate = log.punch_date || log.PunchDate || log.date || log.created_at;
-                            return pDate ? String(pDate).split('T')[0].split(' ')[0] : 'N/A';
-                          })()}
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch In</div>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchIn}</div>
                         </div>
-                      </td>
-                      <td style={{ padding: '20px 30px', fontSize: '14px', fontWeight: '800', color: '#3b82f6', whiteSpace: 'nowrap' }}>{log.in_time || '----'}</td>
-                      <td style={{ padding: '20px 30px', fontSize: '14px', fontWeight: '800', color: '#64748b', whiteSpace: 'nowrap' }}>{log.out_time || '----'}</td>
-                      <td style={{ padding: '20px 30px', whiteSpace: 'nowrap' }}>
-                         <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>
-                           {log.work_hrs || '00:00'}
-                           <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '4px' }}>HOURS</span>
-                         </div>
-                      </td>
-                      <td style={{ padding: '20px 30px' }}>
+                        <div>
+                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch Out</div>
+                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchOut}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <MapPin size={12} /> {log.in_location || log.location || '----'}
+                        </div>
                         {(() => {
                           const logDate = log.punch_date || log.date || log.created_at || '';
                           const d = new Date(logDate);
-                          
-                          // Defensive check for invalid date to prevent crash
-                          if (isNaN(d.getTime())) {
-                            return (
-                              <div style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', background: '#fef2f2', padding: '6px 14px', borderRadius: '100px' }}>
-                                INVALID DATE
-                              </div>
-                            );
-                          }
+                          if (isNaN(d.getTime())) return null;
 
                           const isSunday = d.getDay() === 0;
                           const month = d.toLocaleDateString('en-US', { month: 'short' });
@@ -589,7 +578,6 @@ export default function EmployeeAttendanceManagement() {
                           const isHoliday = holidays.includes(dayMonth);
 
                           let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
-                          
                           if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
                             if (isSunday) statusText = 'WO';
                             else if (isHoliday) statusText = 'NH';
@@ -604,7 +592,7 @@ export default function EmployeeAttendanceManagement() {
                             <div style={{ 
                               display: 'inline-flex', 
                               alignItems: 'center', 
-                              gap: '8px', 
+                              gap: '6px', 
                               padding: '6px 14px', 
                               borderRadius: '100px', 
                               background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'), 
@@ -612,34 +600,159 @@ export default function EmployeeAttendanceManagement() {
                               color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
                               fontSize: '11px',
                               fontWeight: '950',
-                              whiteSpace: 'nowrap'
+                              textTransform: 'uppercase'
                             }}>
-                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isPresent ? '#22c55e' : (isWO || isNH ? '#3b82f6' : '#ef4444') }}></div>
                               {statusText}
                             </div>
                           );
                         })()}
-                      </td>
-                      <td style={{ padding: '20px 30px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.in_location}>
-                        {log.in_location || '----'}
-                      </td>
-                      <td style={{ padding: '20px 30px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.out_location}>
-                        {log.out_location || '----'}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan="8" style={{ padding: '40px', textAlign: 'center' }}>
-                     <AlertCircle size={48} color="#cbd5e1" style={{ margin: '0 auto' }} />
-                     <h3 style={{ marginTop: '20px', fontSize: '18px', fontWeight: '800', color: '#1e293b' }}>No Records Found</h3>
-                     <p style={{ color: '#64748b', fontSize: '14px' }}>This employee hasn't logged any biometric data yet.</p>
-                  </td>
-                </tr>
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '24px', border: '1.5px solid #f1f5f9' }}>
+                  <AlertCircle size={40} color="#cbd5e1" style={{ margin: '0 auto' }} />
+                  <p style={{ marginTop: '16px', color: '#64748b', fontWeight: '900' }}>No records found.</p>
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid #f1f5f9' }}>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>EMPLOYEE</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>DATE</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>PUNCH IN</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>PUNCH OUT</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>WORK HRS</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>STATUS</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In Location</th>
+                  <th style={{ padding: '24px 30px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" style={{ padding: '100px', textAlign: 'center' }}>
+                       <div className="animate-spin" style={{ margin: '0 auto', width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #3b82f6', borderRadius: '50%' }}></div>
+                       <p style={{ marginTop: '20px', fontWeight: '700', color: '#64748b' }}>Loading Comprehensive Records...</p>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="8" style={{ padding: '60px', textAlign: 'center' }}>
+                       <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto' }} />
+                       <p style={{ marginTop: '16px', fontWeight: '800', color: '#ef4444' }}>{error}</p>
+                       <button onClick={() => window.location.reload()} style={{ marginTop: '12px', padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}>Retry</button>
+                    </td>
+                  </tr>
+                ) : logs.length > 0 ? (
+                  getFilteredLogs().map((log, idx) => {
+                    const style = getStatusStyle(log.status || (log.in_time ? 'PRESENT' : 'ABSENT'));
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px 30px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ebeef3', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '900' }}>
+                              {String(employee?.name || log.user_name || 'E').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>{employee?.name || log.user_name || 'Individual Employee'}</div>
+                              <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {id || '00000'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px 30px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '700', color: '#475569' }}>
+                            <Calendar size={16} color="#94a3b8" />
+                            {(() => {
+                              const pDate = log.punch_date || log.PunchDate || log.date || log.created_at;
+                              return pDate ? String(pDate).split('T')[0].split(' ')[0] : 'N/A';
+                            })()}
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px 30px', fontSize: '14px', fontWeight: '800', color: '#3b82f6', whiteSpace: 'nowrap' }}>{log.in_time || '----'}</td>
+                        <td style={{ padding: '20px 30px', fontSize: '14px', fontWeight: '800', color: '#64748b', whiteSpace: 'nowrap' }}>{log.out_time || '----'}</td>
+                        <td style={{ padding: '20px 30px', whiteSpace: 'nowrap' }}>
+                           <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>
+                             {log.work_hrs || '00:00'}
+                             <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '4px' }}>HOURS</span>
+                           </div>
+                        </td>
+                        <td style={{ padding: '20px 30px' }}>
+                          {(() => {
+                            const logDate = log.punch_date || log.date || log.created_at || '';
+                            const d = new Date(logDate);
+                            
+                            // Defensive check for invalid date to prevent crash
+                            if (isNaN(d.getTime())) {
+                              return (
+                                <div style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', background: '#fef2f2', padding: '6px 14px', borderRadius: '100px' }}>
+                                  INVALID DATE
+                                </div>
+                              );
+                            }
+
+                            const isSunday = d.getDay() === 0;
+                            const month = d.toLocaleDateString('en-US', { month: 'short' });
+                            const dateDay = String(d.getDate()).padStart(2, '0');
+                            const dayMonth = `${month} ${dateDay}`;
+                            const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+                            const isHoliday = holidays.includes(dayMonth);
+
+                            let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
+                            
+                            if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
+                              if (isSunday) statusText = 'WO';
+                              else if (isHoliday) statusText = 'NH';
+                              else statusText = 'ABSENT';
+                            }
+
+                            const isPresent = statusText.includes('PRESENT') || statusText === 'P';
+                            const isWO = statusText === 'WO';
+                            const isNH = statusText === 'NH';
+
+                            return (
+                              <div style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '8px', 
+                                padding: '6px 14px', 
+                                borderRadius: '100px', 
+                                background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'), 
+                                border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`,
+                                color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
+                                fontSize: '11px',
+                                fontWeight: '950',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isPresent ? '#22c55e' : (isWO || isNH ? '#3b82f6' : '#ef4444') }}></div>
+                                {statusText}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '20px 30px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.in_location}>
+                          {log.in_location || '----'}
+                        </td>
+                        <td style={{ padding: '20px 30px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.out_location}>
+                          {log.out_location || '----'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="8" style={{ padding: '40px', textAlign: 'center' }}>
+                       <AlertCircle size={48} color="#cbd5e1" style={{ margin: '0 auto' }} />
+                       <h3 style={{ marginTop: '20px', fontSize: '18px', fontWeight: '800', color: '#1e293b' }}>No Records Found</h3>
+                       <p style={{ color: '#64748b', fontSize: '14px' }}>This employee hasn't logged any biometric data yet.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
       

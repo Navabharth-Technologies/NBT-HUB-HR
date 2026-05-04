@@ -227,7 +227,7 @@ export default function PaySlipScreen() {
                 <AppHeader />
             </div>
 
-            <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px 20px', marginTop: winWidth < 768 ? '80px' : '110px' }}>
+            <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '20px 20px', marginTop: winWidth < 768 ? '85px' : '110px' }}>
                 <div style={{ maxWidth: '800px', margin: '0 auto' }}>
 
                     {/* Top Action Bar */}

@@ -274,73 +274,129 @@ export default function MyLeaves() {
               <p style={{ color: '#64748b', fontSize: '14px', fontWeight: '600' }}>Fetching your leaves...</p>
             </div>
           ) : leaves.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Leave Type</th>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Duration</th>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Reason</th>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Remark</th>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
-                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Applied On</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div style={{ overflowX: winWidth < 768 ? 'hidden' : 'auto' }}>
+              {winWidth < 768 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', background: '#eaeff2' }}>
                   {leaves.map((l, i) => {
                     const style = getStatusStyle(l.status);
                     return (
-                      <tr 
+                      <div 
                         key={i} 
                         onClick={() => {
                           setSelectedLeave(l);
                           setShowDetailModal(true);
                         }}
-                        style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }} 
-                        onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} 
-                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                        style={{ background: 'white', padding: '20px', borderRadius: '24px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', cursor: 'pointer' }}
                       >
-                        <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '10px' }}><Briefcase size={16} color="#64748b" /></div>
-                            <span style={{ fontWeight: '700', color: '#1e293b' }}>{l.leave_type}</span>
+                            <div style={{ width: '40px', height: '40px', background: '#f1f5f9', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Briefcase size={18} color="#64748b" />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: '900', color: '#0f172a', fontSize: '15px' }}>{l.leave_type}</div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>#{l.id || 'N/A'}</div>
+                            </div>
                           </div>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '13px' }}>
-                              {formatDate(l.start_date)} {l.end_date ? `to ${formatDate(l.end_date)}` : ''}
-                            </span>
-                            {l.is_half_day && <span style={{ fontSize: '11px', color: '#0ea5e9', fontWeight: '800' }}>Half Day</span>}
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '16px 20px' }}>
-                          <p style={{ margin: 0, fontSize: '13px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.reason}>{l.reason || '-'}</p>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
-                          <p style={{ margin: 0, fontSize: '13px', color: '#0f172a', fontWeight: '700', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.remarks || l.rm_remarks || l.pm_remarks}>
-                            {l.remarks || l.rm_remarks || l.pm_remarks || '-'}
-                          </p>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
                           <div style={{ 
-                            display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', 
-                            borderRadius: '10px', background: style.bg, color: style.color, fontSize: '11px', fontWeight: '900' 
+                            padding: '6px 12px', borderRadius: '100px', 
+                            background: style.bg, color: style.color, 
+                            fontSize: '10px', fontWeight: '950', textTransform: 'uppercase', letterSpacing: '0.5px'
                           }}>
-                            {style.icon}
                             {String(l.status).split(',')[0]}
                           </div>
-                        </td>
-                        <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '13px', fontWeight: '500' }}>
-                          {formatDate(l.created_at || l.start_date)}
-                        </td>
+                        </div>
 
-                      </tr>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>From</div>
+                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>{formatDate(l.start_date)}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>To</div>
+                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>{l.end_date ? formatDate(l.end_date) : formatDate(l.start_date)}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ height: '1.5px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Clock size={14} color="#94a3b8" /> {l.is_half_day ? 'Half Day' : 'Full Day'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#3863a8', fontWeight: '900' }}>View Details ›</div>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Leave Type</th>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Duration</th>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Reason</th>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Remark</th>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Applied On</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaves.map((l, i) => {
+                      const style = getStatusStyle(l.status);
+                      return (
+                        <tr 
+                          key={i} 
+                          onClick={() => {
+                            setSelectedLeave(l);
+                            setShowDetailModal(true);
+                          }}
+                          style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }} 
+                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} 
+                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '10px' }}><Briefcase size={16} color="#64748b" /></div>
+                              <span style={{ fontWeight: '700', color: '#1e293b' }}>{l.leave_type}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '13px' }}>
+                                {formatDate(l.start_date)} {l.end_date ? `to ${formatDate(l.end_date)}` : ''}
+                              </span>
+                              {l.is_half_day && <span style={{ fontSize: '11px', color: '#0ea5e9', fontWeight: '800' }}>Half Day</span>}
+                            </div>
+                          </td>
+
+                          <td style={{ padding: '16px 20px' }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.reason}>{l.reason || '-'}</p>
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#0f172a', fontWeight: '700', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.remarks || l.rm_remarks || l.pm_remarks}>
+                              {l.remarks || l.rm_remarks || l.pm_remarks || '-'}
+                            </p>
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ 
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', 
+                              borderRadius: '100px', background: style.bg, color: style.color, fontSize: '11px', fontWeight: '900' 
+                            }}>
+                              {style.icon}
+                              {String(l.status).split(',')[0]}
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '13px', fontWeight: '500' }}>
+                            {formatDate(l.created_at || l.start_date)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           ) : (
             <div style={{ padding: '80px 20px', textAlign: 'center' }}>

@@ -168,21 +168,7 @@ export default function EmployeeModule() {
                       </div>
                    </div>
 
-                   <button 
-                     onClick={() => navigate(`/reports?id=${emp.id}`)}
-                     className="btn-ghost"
-                     style={{
-                      marginTop: winWidth < 480 ? '15px' : '25px', 
-                      width: '100%', 
-                      border: '1px solid var(--border)', 
-                      background: 'var(--bg)',
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.5px', 
-                      fontSize: winWidth < 480 ? '10px' : '12px',
-                      padding: winWidth < 480 ? '10px' : '14px'
-                    }}>
-                      View Focus Report
-                    </button>
+
                 </div>
               ))}
            </div>
