@@ -153,13 +153,13 @@ export default function HRDashboard() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 30px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
+      <main className="dashboard-content" style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 40px' : '20px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0', marginTop: winWidth < 768 ? '85px' : '110px' }}>
         <header className="section-header animate-fade-in" style={{ 
           marginBottom: winWidth < 768 ? '20px' : '40px', 
           flexDirection: winWidth < 640 ? 'column' : 'row', 
           alignItems: winWidth < 640 ? 'flex-start' : 'center', 
           gap: winWidth < 640 ? '15px' : '0',
-          padding: winWidth < 768 ? '15px' : '20px',
+          padding: winWidth < 768 ? '16px' : '20px',
           background: 'rgba(255, 255, 255, 0.4)',
           borderRadius: '20px',
           backdropFilter: 'blur(10px)'
