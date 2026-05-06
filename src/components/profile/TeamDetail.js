@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -88,7 +89,7 @@ export default function TeamDetail() {
     <div className="hr-dashboard-container" style={{ backgroundColor: '#eaeff2', minHeight: '100vh' }}>
       <AppHeader />
 
-      <main className="dashboard-content" style={{ paddingBottom: '120px', maxWidth: '1400px', margin: '0 auto' }}>
+      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '100px 16px 120px' : '120px 26px 120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header" style={{
           marginBottom: '30px',
           flexDirection: winWidth < 768 ? 'column' : 'row',
@@ -96,12 +97,11 @@ export default function TeamDetail() {
           gap: winWidth < 768 ? '15px' : '0'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button
-              onClick={() => navigate('/teams')}
-              className="btn-outline"
-              style={{ padding: '8px 12px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', fontWeight: '700' }}
+            <button 
+              onClick={() => navigate('/teams')} 
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
             >
-              ← Back
+              <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '30px', fontWeight: '900', color: '#1e293b', margin: 0 }}>{team.name}</h1>

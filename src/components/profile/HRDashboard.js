@@ -153,9 +153,9 @@ export default function HRDashboard() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main className="dashboard-content" style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 40px' : '20px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0', marginTop: winWidth < 768 ? '85px' : '110px' }}>
+      <main className="dashboard-content" style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header animate-fade-in" style={{ 
-          marginBottom: winWidth < 768 ? '20px' : '40px', 
+          marginBottom: winWidth < 768 ? '10px' : '15px', 
           flexDirection: winWidth < 640 ? 'column' : 'row', 
           alignItems: winWidth < 640 ? 'flex-start' : 'center', 
           gap: winWidth < 640 ? '15px' : '0',

@@ -327,7 +327,7 @@ export default function PerformanceModule() {
     container: {
       minHeight: '100vh',
       backgroundColor: '#eaeff2',
-      paddingTop: winWidth < 768 ? '80px' : '100px',
+      paddingTop: winWidth < 768 ? '100px' : '120px',
       paddingBottom: '100px',
       fontFamily: "'Outfit', sans-serif"
     },
@@ -412,7 +412,7 @@ export default function PerformanceModule() {
 
       <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageUpload} />
 
-      <main style={{ padding: '0 30px' }}>
+      <main style={{ padding: winWidth < 768 ? '0 16px' : '0 26px' }}>
 
         {/* Combined Dual-Color Card */}
         <div style={dashboardStyles.combinedCard}>

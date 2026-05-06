@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -62,10 +63,9 @@ export default function EmployeeModule() {
           <div style={{display: 'flex', alignItems: 'center', gap: winWidth < 480 ? '8px' : '15px', flexWrap: 'wrap'}}>
             <button 
               onClick={() => navigate(-1)} 
-              className="btn-outline"
-              style={{ padding: winWidth < 480 ? '6px 10px' : '8px 12px', fontSize: winWidth < 480 ? '12px' : '14px' }}
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
             >
-              ←
+              <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
               <h1 style={{fontSize: winWidth < 480 ? '20px' : (winWidth < 600 ? '22px' : '26px'), fontWeight: '800', color: '#1e293b', margin: 0}}>Workforce Directory</h1>

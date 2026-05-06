@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config';
 import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, User, Mail, Phone, FileText, Calendar,
-  MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3
+  MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -318,7 +318,7 @@ export default function JobApplications() {
       <AppHeader />
 
       <main style={{
-        paddingTop: winWidth < 768 ? '80px' : '100px',
+        paddingTop: winWidth < 768 ? '100px' : '120px',
         paddingLeft: winWidth < 768 ? '16px' : '26px',
         paddingRight: winWidth < 768 ? '16px' : '26px',
         paddingBottom: '100px',
@@ -341,6 +341,12 @@ export default function JobApplications() {
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', flexDirection: winWidth < 480 ? 'column' : 'row', gap: winWidth < 480 ? '10px' : '18px' }}>
+            <button 
+              onClick={() => navigate(-1)} 
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ArrowLeft size={18} color="#64748b" />
+            </button>
             <div style={{ 
               background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', 
               padding: winWidth < 768 ? '10px' : '14px', 

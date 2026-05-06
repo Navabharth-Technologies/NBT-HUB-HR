@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   PROFILE_UPLOAD_DOCUMENT: `${BASE_URL}/api/profile/upload-document`,
   PROFILE_UPLOAD_DIRECT: `${BASE_URL}/api/profile/upload-direct`,
   PROFILE_UPLOAD_IMAGE: `${BASE_URL}/api/profile/upload-image`,
+  MANAGER_UPLOAD_IMAGE: `${BASE_URL}/api/managers/upload-image`,
   EMPLOYEE_PROFILE_GET: (id) => `${BASE_URL}/api/employee-profile/${id}`,
   EMPLOYEE_PROFILE_ALL: `${BASE_URL}/api/admin/employee-profiles`,
   EMPLOYEE_PROFILE_UPDATE: `${BASE_URL}/api/employee-profile/update`,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -45,9 +46,15 @@ export default function TeamsModule() {
     <div className="hr-dashboard-container">
       <AppHeader />
       
-      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '15px' : '20px 40px', paddingBottom: '120px', marginTop: winWidth < 768 ? '70px' : '85px' }}>
+      <main className="dashboard-content" style={{ padding: winWidth < 768 ? '100px 16px 120px' : '120px 26px 120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header" style={{ marginBottom: '30px' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+            <button 
+              onClick={() => navigate(-1)} 
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+            >
+              <ArrowLeft size={18} color="#64748b" />
+            </button>
             <div>
               <h1 style={{fontSize: '26px', fontWeight: '900', color: '#1e293b', margin: 0}}>Total Teams</h1>
               <p style={{color: '#64748b', margin: '4px 0 0 0', fontWeight: '500'}}>Active Operations and Department Units</p>

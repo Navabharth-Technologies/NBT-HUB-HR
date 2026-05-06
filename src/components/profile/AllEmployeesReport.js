@@ -129,10 +129,12 @@ export default function AllEmployeesReport() {
         
         {/* Header Section */}
         <header style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', cursor: 'pointer' }} onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} color="#3863a8" />
-            <span style={{ fontSize: '14px', fontWeight: '800', color: '#3863a8' }}>Back to Management</span>
-          </div>
+          <button 
+            onClick={() => navigate(-1)} 
+            style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '16px', width: 'fit-content' }}
+          >
+            <ArrowLeft size={18} color="#64748b" />
+          </button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Organization Attendance Report</h1>

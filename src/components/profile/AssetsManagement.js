@@ -5,9 +5,9 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import { 
-  Package, Search, Filter, Edit3, Save, X, Plus,
+  Package, Search, Edit3, Save, X, Plus,
   Laptop, MousePointer, Keyboard, Smartphone, 
-  Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, Calendar
+  Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, ArrowLeft
 } from 'lucide-react';
 
 export default function AssetsManagement() {
@@ -283,7 +283,7 @@ export default function AssetsManagement() {
       <AppHeader />
       
       <main className="dashboard-content" style={{ 
-        paddingTop: winWidth < 768 ? '80px' : '100px',
+        paddingTop: winWidth < 768 ? '100px' : '120px',
         paddingLeft: winWidth < 768 ? '16px' : '26px',
         paddingRight: winWidth < 768 ? '16px' : '26px',
         paddingBottom: '100px',
@@ -291,6 +291,12 @@ export default function AssetsManagement() {
       }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '25px', width: '100%', flexWrap: 'wrap', marginBottom: '30px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <button 
+                onClick={() => navigate(-1)} 
+                style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ArrowLeft size={18} color="#64748b" />
+              </button>
               <div style={{ background: 'white', padding: '12px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                 <Package size={24} color="#3163aa" />
               </div>

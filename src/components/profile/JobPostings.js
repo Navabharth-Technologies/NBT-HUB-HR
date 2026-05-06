@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config';
 import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, FileText, Calendar, MapPin, 
-  Trash2, Edit3, Filter, ClipboardList
+  Trash2, Edit3, Filter, ClipboardList, ArrowLeft
 } from 'lucide-react';
 
 const FormField = ({ label, icon, type = 'text', name, placeholder, value, onChange, required, fullWidth }) => (
@@ -187,13 +187,21 @@ export default function JobPostings() {
     <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2' }}>
       <AppHeader />
 
-      <main style={{ paddingTop: '100px', paddingLeft: winWidth < 768 ? '15px' : '40px', paddingRight: winWidth < 768 ? '15px' : '40px', paddingBottom: '100px' }}>
+      <main style={{ paddingTop: winWidth < 768 ? '100px' : '120px', paddingLeft: winWidth < 768 ? '16px' : '26px', paddingRight: winWidth < 768 ? '16px' : '26px', paddingBottom: '100px' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Job Vacancies</h1>
-            <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>Manage internal and external job openings</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button 
+              onClick={() => navigate(-1)} 
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ArrowLeft size={18} color="#64748b" />
+            </button>
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Job Vacancies</h1>
+              <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>Manage internal and external job openings</p>
+            </div>
           </div>
           <button
             onClick={() => { resetForm(); setShowAddModal(true); }}

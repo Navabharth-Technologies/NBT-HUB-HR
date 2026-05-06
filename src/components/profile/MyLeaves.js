@@ -6,7 +6,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { 
   Calendar, Clock, CheckCircle, XCircle, 
-  ChevronLeft, Plus, Info, AlertCircle,
+  ArrowLeft, Plus, Info, AlertCircle,
   FileText, Briefcase, User, Send,
   ArrowRight, Filter, Download
 } from 'lucide-react';
@@ -225,10 +225,10 @@ export default function MyLeaves() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
           <div>
             <button 
-              onClick={() => navigate(-1)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '8px', padding: 0 }}
+              onClick={() => navigate(-1)} 
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '10px' }}
             >
-              <ChevronLeft size={16} /> Back
+              <ArrowLeft size={18} color="#64748b" />
             </button>
             <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-1px' }}>My Leaves</h1>
           </div>
