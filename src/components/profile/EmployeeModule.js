@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { API_ENDPOINTS } from '../../config';
 import './Dashboard.css';
 
@@ -54,6 +56,43 @@ export default function EmployeeModule() {
     return matchesSearch && matchesDept;
   });
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add Title
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Workforce Directory', 14, 22);
+    
+    // Add Subtitle
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Total Members: ${filteredEmployees.length}`, 14, 30);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 37);
+
+    const tableColumn = ["ID", "Name", "Role", "Team", "Email", "Status"];
+    const tableRows = filteredEmployees.map(emp => [
+      emp.id || 'N/A',
+      emp.name || 'N/A',
+      emp.role || 'N/A',
+      emp.team || 'N/A',
+      emp.email || 'N/A',
+      (emp.status || 'Active').toUpperCase()
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [56, 99, 168], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { top: 45 }
+    });
+
+    doc.save('Workforce_Directory.pdf');
+  };
+
   return (
     <div className="hr-dashboard-container">
       <AppHeader />
@@ -73,7 +112,13 @@ export default function EmployeeModule() {
             </div>
           </div>
           <div style={{display: 'flex', gap: '8px', width: winWidth < 600 ? '100%' : 'auto', marginTop: winWidth < 480 ? '12px' : '0'}}>
-             <button className="btn-outline" style={{ flex: winWidth < 600 ? 1 : 'none', justifyContent: 'center', padding: winWidth < 480 ? '8px' : '10px', fontSize: winWidth < 480 ? '12px' : '13px' }}>Export CSV</button>
+             <button 
+               onClick={exportToPDF}
+               className="btn-outline" 
+               style={{ flex: winWidth < 600 ? 1 : 'none', justifyContent: 'center', padding: winWidth < 480 ? '8px' : '10px', fontSize: winWidth < 480 ? '12px' : '13px' }}
+             >
+               Export PDF
+             </button>
           </div>
         </header>
 
