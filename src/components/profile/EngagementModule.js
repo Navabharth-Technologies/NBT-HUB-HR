@@ -175,7 +175,7 @@ export default function EngagementModule() {
             flexDirection: 'column', 
             gap: isMobile ? '12px' : '20px', 
             padding: isMobile ? '20px 15px' : (isTablet ? '20px 25px' : '20px 40px'), 
-            marginTop: isMobile ? '85px' : '110px',
+            marginTop: isMobile ? '100px' : '130px',
             maxWidth: '100%', 
             margin: '0', 
             boxSizing: 'border-box' 

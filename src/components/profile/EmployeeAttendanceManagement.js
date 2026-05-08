@@ -21,7 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
-import './PMDashboard.css';
+import './HRDashboard.css';
 
 export default function EmployeeAttendanceManagement() {
   const { id } = useParams();
@@ -380,7 +380,7 @@ export default function EmployeeAttendanceManagement() {
   };
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
+    <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       <main style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 40px' : '30px 26px 40px', margin: '0', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>
@@ -700,15 +700,15 @@ export default function EmployeeAttendanceManagement() {
                             const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
                             const isHoliday = holidays.includes(dayMonth);
 
-                            let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
+                            let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'P' : 'A')).toUpperCase();
                             
-                            if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
+                            if ((!log.in_time || log.in_time === '----') || statusText === 'A' || statusText === 'ABSENT') {
                               if (isSunday) statusText = 'WO';
                               else if (isHoliday) statusText = 'NH';
-                              else statusText = 'ABSENT';
+                              else statusText = 'A';
                             }
 
-                            const isPresent = statusText.includes('PRESENT') || statusText === 'P';
+                            const isPresent = statusText === 'P' || statusText.includes('PRESENT');
                             const isWO = statusText === 'WO';
                             const isNH = statusText === 'NH';
 

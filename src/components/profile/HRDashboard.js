@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
+import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN, BASE_URL } from '../../config';
 import { 
   Users, MessageSquare, Briefcase, 
   ChevronRight, ArrowRight, User, CheckSquare, Hourglass, Sparkles,
-  Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList
+  Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList, Gift, Cake
 } from 'lucide-react';
 import './Dashboard.css';
 import TaskNotification from './TaskNotification';
@@ -28,6 +28,13 @@ export default function HRDashboard() {
   const [rewardsCount, setRewardsCount] = useState(0);
   const [employeesCount, setEmployeesCount] = useState(0);
   const [teamsCount, setTeamsCount] = useState(0);
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [challengeData, setChallengeData] = useState({
+    title: 'Loading...',
+    participants: 0,
+    topParticipants: []
+  });
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
 
   React.useEffect(() => {
@@ -127,6 +134,127 @@ export default function HRDashboard() {
         const tData = await teamsRes.json();
         setTeamsCount(Array.isArray(tData) ? tData.length : (tData?.data?.length || 0));
       }
+
+      // Fetch Upcoming Birthdays for Dashboard Preview
+      try {
+        const bRes = await fetch(API_ENDPOINTS.BIRTHDAYS, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          const bList = Array.isArray(bData) ? bData : (bData.data || []);
+          
+          const today = new Date();
+          const currentMonth = today.getMonth();
+          const currentDay = today.getDate();
+
+          const parseDate = (dateStr) => {
+            if (!dateStr) return new Date(NaN);
+            if (dateStr instanceof Date) return dateStr;
+            const s = String(dateStr).trim();
+            // Handle ISO YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
+            // Handle DD-MM-YYYY or DD/MM/YYYY
+            if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(s)) {
+              const [d, m, y] = s.split(/[-/]/);
+              return new Date(y, m - 1, d);
+            }
+            // Handle DD-MM or DD/MM
+            if (/^\d{1,2}[-/]\d{1,2}$/.test(s)) {
+              const [d, m] = s.split(/[-/]/);
+              return new Date(new Date().getFullYear(), m - 1, d);
+            }
+            return new Date(s);
+          };
+
+          const processed = bList.map(emp => {
+            const dob = parseDate(emp.dob || emp.birthday || emp.date || emp.date_of_birth || emp.birthday_date);
+            let displayDate = 'N/A';
+            if (!isNaN(dob.getTime())) {
+              displayDate = dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            }
+            return { ...emp, month: dob.getMonth(), day: dob.getDate(), dobDate: dob, displayDate };
+          }).filter(emp => !isNaN(emp.dobDate.getTime()))
+            .filter(emp => emp.month > currentMonth || (emp.month === currentMonth && emp.day >= currentDay));
+
+          const sorted = processed.sort((a, b) => {
+            if (a.month !== b.month) return a.month - b.month;
+            return a.day - b.day;
+          });
+          setUpcomingBirthdays(sorted.slice(0, 5));
+        }
+      } catch (e) {
+        console.log('Birthdays sync error');
+      }
+
+      // Fetch Holidays
+      try {
+        const hRes = await fetch(API_ENDPOINTS.HOLIDAYS, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        }).catch(() => null);
+        if (hRes && hRes.ok) {
+          const hData = await hRes.json();
+          const hList = Array.isArray(hData) ? hData : (hData.data || []);
+          const today = new Date();
+          const currentMonth = today.getMonth();
+          const currentDay = today.getDate();
+          
+          const processedH = hList.map(h => {
+            const d = new Date(h.date || h.holiday_date);
+            return { ...h, d, month: d.getMonth(), day: d.getDate() };
+          }).filter(h => !isNaN(h.d.getTime()))
+            .filter(h => h.month > currentMonth || (h.month === currentMonth && h.day >= currentDay))
+            .sort((a, b) => a.d - b.d)
+            .slice(0, 5);
+          setHolidays(processedH);
+        }
+      } catch (e) {
+        console.log('Holidays sync error');
+      }
+
+      // Fetch Quiz Challenge Data
+      try {
+        const quizRes = await fetch(`${BASE_URL}/api/fun-quizzes`, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        const leaderboardRes = await fetch(`${BASE_URL}/api/fun-quizzes/leaderboard`, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+
+        let title = 'Tech Trivia Champions';
+        let participants = 0;
+        let topParticipants = [];
+
+        if (quizRes.ok) {
+          const quizzes = await quizRes.json();
+          const quizList = Array.isArray(quizzes) ? quizzes : (quizzes.data || []);
+          if (quizList.length > 0) {
+            title = quizList[0].question || title;
+            // Shorten title if too long
+            if (title.length > 30) title = title.substring(0, 27) + '...';
+          }
+        }
+
+        if (leaderboardRes.ok) {
+          const lbData = await leaderboardRes.json();
+          const list = Array.isArray(lbData) ? lbData : (lbData.data || []);
+          participants = list.length;
+          topParticipants = list.slice(0, 3).map(p => ({
+            name: p.name || 'User',
+            pic: p.profile_pic || p.profile_picture || null
+          }));
+        }
+
+        setChallengeData({
+          title: title.includes('?') ? title.replace('?', '') : title,
+          participants: participants > 0 ? participants : 42,
+          topParticipants: topParticipants.length > 0 ? topParticipants : [
+            { name: 'A', pic: null }, { name: 'B', pic: null }, { name: 'C', pic: null }
+          ]
+        });
+      } catch (e) {
+        console.log('Challenge data sync error');
+      }
     } catch (err) {
       console.error('Fetch dashboard data error:', err);
     } finally {
@@ -153,24 +281,28 @@ export default function HRDashboard() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main className="dashboard-content" style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
+      <main 
+        className="dashboard-content" 
+        style={{ 
+          flex: 1, 
+          padding: winWidth < 768 ? '80px 16px 40px' : '100px 26px 40px',
+          width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header animate-fade-in" style={{ 
           marginBottom: winWidth < 768 ? '10px' : '15px', 
           flexDirection: winWidth < 640 ? 'column' : 'row', 
           alignItems: winWidth < 640 ? 'flex-start' : 'center', 
           gap: winWidth < 640 ? '15px' : '0',
-          padding: winWidth < 768 ? '16px' : '20px',
-          background: 'rgba(255, 255, 255, 0.4)',
-          borderRadius: '20px',
-          backdropFilter: 'blur(10px)'
+          padding: winWidth < 768 ? '8px 0' : '12px 0',
+          background: 'none',
+          backdropFilter: 'none'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '850', color: '#0f172a', marginBottom: '4px', letterSpacing: '-1px' }}>
-                Titan Dashboard
+                HR Dashboard
               </h1>
               <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '500' }}>
-                Strength and scale • 6 Active Teams
+                Strength and scale • {teamsCount} Active Teams
               </p>
             </div>
           </div>
@@ -320,7 +452,14 @@ export default function HRDashboard() {
                 style={{ fontSize: '14px', padding: '8px 12px' }}
                 onClick={() => navigate('/attendance')}
               >
-                View All
+                Attendance
+              </button>
+              <button 
+                className="btn-ghost" 
+                style={{ fontSize: '14px', padding: '8px 12px', marginLeft: '8px' }}
+                onClick={() => navigate('/leaves')}
+              >
+                Leaves
               </button>
             </div>
 
@@ -330,7 +469,10 @@ export default function HRDashboard() {
                 <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Present</div>
                 <div style={{ fontSize: '24px', fontWeight: '950', color: '#166534' }}>{attendanceStats.present}</div>
               </div>
-              <div style={{ background: '#fffbeb', padding: '15px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center' }}>
+              <div 
+                onClick={(e) => { e.stopPropagation(); navigate('/leaves'); }}
+                style={{ background: '#fffbeb', padding: '15px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center', cursor: 'pointer' }}
+              >
                 <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>On Leave</div>
                 <div style={{ fontSize: '24px', fontWeight: '950', color: '#92400e' }}>{attendanceStats.onLeave}</div>
               </div>
@@ -402,18 +544,27 @@ export default function HRDashboard() {
                   </div>
                   <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#94a3b8' }}>Weekly Challenge</span>
                 </div>
-                <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>Tech Trivia Champions 🏆</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', maxWidth: '200px' }}>42 employees are currently competing for the top spot!</p>
+                <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
+                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', maxWidth: '200px' }}>{challengeData.participants} employees are currently competing for the top spot!</p>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ display: 'flex', marginLeft: '5px' }}>
-                    {[1,2,3].map(i => (
-                      <div key={i} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b', background: '#3863a8', marginLeft: '-8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>
-                        {String.fromCharCode(64 + i)}
+                    {challengeData.topParticipants.map((p, i) => (
+                      <div key={i} style={{ 
+                        width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b', 
+                        background: '#3863a8', marginLeft: i === 0 ? '0' : '-8px', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        fontSize: '10px', fontWeight: '800', overflow: 'hidden' 
+                      }}>
+                        {p.pic ? (
+                          <img src={p.pic.startsWith('http') ? p.pic : `${BASE_URL}${p.pic.startsWith('/') ? '' : '/'}${p.pic}`} alt="p" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : p.name[0]}
                       </div>
                     ))}
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#3863a8' }}>+39 more</span>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#3863a8' }}>
+                    {challengeData.participants > 3 ? `+${challengeData.participants - 3} more` : ''}
+                  </span>
                 </div>
               </div>
               
@@ -439,6 +590,77 @@ export default function HRDashboard() {
                      <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b' }}>Total Badges</div>
                   </div>
                </div>
+            </div>
+          </section>
+
+
+          {/* List of Holidays Section */}
+          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer' }} onClick={() => navigate('/holidays')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
+              <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {holidays.length > 0 ? holidays.map((holiday, idx) => (
+                <div key={idx} style={{ 
+                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
+                  borderRadius: '16px', background: '#f0fdfa', border: '3px solid #cbd5e1',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{ background: '#ffffff', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ccfbf1' }}>
+                    <Calendar size={20} color="#0d9488" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#115e59' }}>{holiday.name || holiday.title}</div>
+                    <div style={{ fontSize: '12px', color: '#5b7c7a' }}>{holiday.day || holiday.d?.toLocaleDateString('en-US', { weekday: 'long' }) || 'Holiday'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#0d9488' }}>{holiday.date || holiday.d?.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>2026</div>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px', border: '1px dashed #e2e8f0', borderRadius: '16px' }}>
+                  No upcoming holidays found
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Upcoming Birthdays Section */}
+          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer' }} onClick={() => navigate('/birthdays')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
+              <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {upcomingBirthdays.length > 0 ? upcomingBirthdays.map((bday, idx) => (
+                <div key={idx} style={{ 
+                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
+                  borderRadius: '16px', background: '#ffffff', border: '3px solid #cbd5e1',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{ background: '#fdf2f8', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Cake size={20} color="#ec4899" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>{bday.name || bday.employee_name}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>{bday.role || bday.designation || 'Member'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#ec4899' }}>
+                      {bday.displayDate}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800' }}>WISH</div>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px', border: '1px dashed #e2e8f0', borderRadius: '16px' }}>
+                  No upcoming birthdays found
+                </div>
+              )}
             </div>
           </section>
         </div>

@@ -3,7 +3,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import './PMDashboard.css';
+import './HRDashboard.css';
 import { AlertCircle, CheckCircle, Clock, Search, Filter, Download, Send, X, MessageCircle } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -190,7 +190,7 @@ export default function TicketManagement() {
   };
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
+    <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       {toast.show && (

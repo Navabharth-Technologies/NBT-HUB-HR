@@ -6,7 +6,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import './PMDashboard.css';
+import './HRDashboard.css';
 
 export default function NewJoineeModule() {
   const navigate = useNavigate();
@@ -387,7 +387,7 @@ export default function NewJoineeModule() {
   });
 
   return (
-    <div className="pm-dashboard-container">
+    <div className="hr-dashboard-container">
       <AppHeader />
 
       <main className="dashboard-content" style={{ flex: 1, paddingTop: isMobile ? '100px' : '120px', paddingLeft: isMobile ? '16px' : '26px', paddingRight: isMobile ? '16px' : '26px', paddingBottom: '120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>

@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import './PMDashboard.css';
+import './HRDashboard.css';
 
 export default function AllEmployeesReport() {
   const { user } = useAuth();
@@ -122,7 +122,7 @@ export default function AllEmployeesReport() {
   };
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
+    <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
       <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: '70px' }}>

@@ -11,10 +11,13 @@ import EmployeeModule from './components/profile/EmployeeModule';
 import NewJoineeModule from './components/profile/NewJoineeModule';
 import LoginScreen from './components/profile/LoginScreen';
 import AlertScreen from './components/profile/AlertScreen';
+import BirthdayScreen from './components/profile/BirthdayScreen';
+import HolidayScreen from './components/profile/HolidayScreen';
 
 import TeamsModule from './components/profile/TeamsModule';
 import TicketManagement from './components/profile/TicketManagement';
 import AttendanceManagement from './components/profile/AttendanceManagement';
+import LeaveManagement from './components/profile/LeaveManagement';
 import EmployeeAttendanceManagement from './components/profile/EmployeeAttendanceManagement';
 import AllEmployeesReport from './components/profile/AllEmployeesReport';
 import FunQuiz from './components/profile/FunQuiz';
@@ -61,6 +64,7 @@ function AppRoutes() {
       <Route path="/teams/:id" element={<TeamDetail />} />
       <Route path="/tickets" element={<TicketManagement />} />
       <Route path="/attendance" element={<AttendanceManagement />} />
+      <Route path="/leaves" element={<LeaveManagement />} />
       <Route path="/attendance/detail/:id" element={<EmployeeAttendanceManagement />} />
       <Route path="/attendance/leave/:id" element={<LeaveRequestDetail />} />
       <Route path="/all-employees" element={<AllEmployeesReport />} />
@@ -78,6 +82,8 @@ function AppRoutes() {
       <Route path="/job-applications" element={<JobApplications />} />
       <Route path="/job-postings" element={<JobPostings />} />
       <Route path="/my-leaves" element={<MyLeaves />} />
+      <Route path="/birthdays" element={<BirthdayScreen />} />
+      <Route path="/holidays" element={<HolidayScreen />} />
 
     </Routes>
   );

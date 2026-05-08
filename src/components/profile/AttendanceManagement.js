@@ -9,44 +9,28 @@ import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
-import './PMDashboard.css';
+import './HRDashboard.css';
 
-export default function LeaveAttendanceCenter() {
+export default function AttendanceManagement() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState(location.state?.tab || 'attendance');
-
-  useEffect(() => {
-    if (location.state?.tab) {
-      setActiveTab(location.state.tab);
-    }
-  }, [location.state]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [allEmployees, setAllEmployees] = useState([]);
-  const [viewAll, setViewAll] = useState(false);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [personalAttendance, setPersonalAttendance] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [attendanceError, setAttendanceError] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [leaveRequests, setLeaveRequests] = useState([]);
-  const [allLeaveStats, setAllLeaveStats] = useState([]);
-  const [leavesLoading, setLeavesLoading] = useState(true);
-
+  const [allEmployees, setAllEmployees] = useState([]);
   const [userLocation, setUserLocation] = useState(localStorage.getItem('savedUserLocation') || 'Fetching location...');
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [filterSubMode, setFilterSubMode] = useState(null); // 'name' or 'date'
   const dropdownRef = useRef(null);
-  const filterDropdownRef = useRef(null);
   const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
-  const [showAllLedger, setShowAllLedger] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -54,32 +38,16 @@ export default function LeaveAttendanceCenter() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [showLateLoginsModal, setShowLateLoginsModal] = useState(false);
+  const [showEarlyLogoutsModal, setShowEarlyLogoutsModal] = useState(false);
+  const [lateLoginSearch, setLateLoginSearch] = useState('');
+  const [earlyLogoutSearch, setEarlyLogoutSearch] = useState('');
   const [showHalfDaysModal, setShowHalfDaysModal] = useState(false);
   const [halfDaySearch, setHalfDaySearch] = useState('');
   const [showPunchEditModal, setShowPunchEditModal] = useState(false);
   const [punchEditData, setPunchEditData] = useState({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
 
-  const [showLeaveEditModal, setShowLeaveEditModal] = useState(false);
-  const [leaveEditData, setLeaveEditData] = useState({ 
-    empId: '', 
-    empName: '', 
-    cl: 0, 
-    lop: 0, 
-    month: 4,
-    year: 2026,
-    available: 0,
-    halfDays: 0,
-    oldCl: 0,
-    oldBalance: 0,
-    remark: ''
-  });
-
-
   const [isPunchFetching, setIsPunchFetching] = useState(false);
-  const [showLateLoginsModal, setShowLateLoginsModal] = useState(false);
-  const [showEarlyLogoutsModal, setShowEarlyLogoutsModal] = useState(false);
-  const [lateLoginSearch, setLateLoginSearch] = useState('');
-  const [earlyLogoutSearch, setEarlyLogoutSearch] = useState('');
 
 
   const handlePunchEditEmpChange = async (empId, dateOverride) => {
@@ -105,7 +73,6 @@ export default function LeaveAttendanceCenter() {
       const actualTime = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || 'Not Punched Yet';
       setPunchEditData(prev => ({ ...prev, actualTime }));
     } catch (e) {
-      // Fallback: search in already-loaded attendanceLogs
       const todayStr = new Date().toISOString().split('T')[0];
       const log = (attendanceLogs || []).find(l => {
         const lDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
@@ -157,7 +124,6 @@ export default function LeaveAttendanceCenter() {
   };
 
 
-  // Helper to calculate elapsed time
   const calculateElapsed = (startTimeStr) => {
     if (!startTimeStr || startTimeStr === '--:--' || startTimeStr === '----') return '00:00:00';
     try {
@@ -186,7 +152,6 @@ export default function LeaveAttendanceCenter() {
     }
   };
 
-  // Timer Effect
   useEffect(() => {
     let interval;
     const isActive = personalAttendance?.in_time &&
@@ -206,21 +171,16 @@ export default function LeaveAttendanceCenter() {
     return () => clearInterval(interval);
   }, [personalAttendance]);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowExportDropdown(false);
-      }
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
-        setShowFilterDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Location detection on mount
   useEffect(() => {
     if (!localStorage.getItem('savedUserLocation')) {
       getUserCurrentLocation();
@@ -229,7 +189,6 @@ export default function LeaveAttendanceCenter() {
 
   useEffect(() => {
     if (user?.token) {
-      // Fetch Employees
       fetch(API_ENDPOINTS.USERS, {
         headers: { 'Authorization': `Bearer ${user.token}` }
       })
@@ -240,186 +199,8 @@ export default function LeaveAttendanceCenter() {
         .catch(err => console.error("Error fetching users:", err));
 
       fetchAttendance();
-      fetchLeaves();
-      fetchLeaveStats();
     }
   }, [user, fromDate, toDate]);
-
-  const handleLedgerExport = (type) => {
-    const summaryData = allEmployees
-      .filter(emp => String(emp.id || emp.EmpID) !== '20250')
-      .map(emp => {
-        const statsEntry = allLeaveStats.find(s => String(s.employee_id || s.user_id) === String(emp.id));
-        let cl, lop, balance, year, halfDays;
-        
-        if (statsEntry) {
-          cl = parseFloat(statsEntry.leaves_taken || 0);
-          lop = parseFloat(statsEntry.LOP || statsEntry.lop || 0);
-          balance = parseFloat(statsEntry.leaves_available || statsEntry.available_leaves || statsEntry.Available_Leaves || 0);
-          year = statsEntry.year || new Date().getFullYear();
-          halfDays = statsEntry.half_day || statsEntry.half_days || 0;
-        } else {
-          cl = 0;
-          lop = 0;
-          balance = 0;
-          year = new Date().getFullYear();
-          halfDays = 0;
-        }
-        
-        return { 
-          id: emp.id, 
-          name: emp.name || emp.user_name, 
-          year: year,
-          cl: cl, 
-          lop: lop, 
-          halfDays: halfDays,
-          taken: cl + lop, 
-          available: balance 
-        };
-      });
-
-    if (type === 'excel') {
-      const wsData = summaryData.map(row => ({
-        'Employee ID': row.id,
-        'Name': row.name,
-        'Year': row.year,
-        'Casual Leaves': row.cl,
-        'LOP Leaves': row.lop,
-        'Half Days': row.halfDays,
-        'Total Taken': row.taken,
-        'Available Leaves': row.available
-      }));
-      const ws = XLSX.utils.json_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Leaves Summary");
-      XLSX.writeFile(wb, "NBT_HUB_Leaves_Summary.xlsx");
-    } else if (type === 'pdf') {
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.setTextColor(15, 23, 42);
-      doc.text("Employee Leave Ledger", 14, 20);
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
-      
-      autoTable(doc, {
-        startY: 35,
-        head: [['ID', 'Employee Name', 'Year', 'CL', 'LOP', 'Half', 'Taken', 'Balance']],
-        body: summaryData.map(r => [r.id, r.name, r.year, r.cl, r.lop, r.halfDays, r.taken, r.available + ' Days']),
-        theme: 'grid',
-        headStyles: { fillColor: [29, 78, 216], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 8, cellPadding: 3 },
-        columnStyles: {
-          0: { cellWidth: 20 },
-          2: { cellWidth: 15 },
-          3: { cellWidth: 15 },
-          4: { cellWidth: 15 },
-          5: { cellWidth: 15 },
-          6: { cellWidth: 15 },
-          7: { cellWidth: 25, fontStyle: 'bold' }
-        }
-      });
-      doc.save("NBT_HUB_Leaves_Summary.pdf");
-    }
-    setShowExportDropdown(false);
-  };
-
-  const fetchLeaves = async () => {
-    try {
-      setLeavesLoading(true);
-      const res = await fetch(API_ENDPOINTS.LEAVES_GET, {
-        headers: {
-          'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}`,
-          'Accept': 'application/json'
-        }
-      });
-      const responseData = await res.json();
-      const list = Array.isArray(responseData) ? responseData : (responseData?.all || responseData?.data || responseData?.requests || []);
-
-      // Robust parsing for various backend response styles
-      // De-duplicate list by ID to prevent UI glitches
-      const uniqueList = [];
-      const seenIds = new Set();
-      if (Array.isArray(list)) {
-        list.forEach(item => {
-          if (item && item.id && !seenIds.has(item.id)) {
-            seenIds.add(item.id);
-            uniqueList.push(item);
-          } else if (item && !item.id) {
-            uniqueList.push(item);
-          }
-        });
-      }
-
-      setLeaveRequests(uniqueList);
-    } finally {
-      setLeavesLoading(false);
-    }
-  };
-
-  const fetchLeaveStats = async () => {
-    if (!user?.token) return;
-    try {
-      const currentMonth = 4; // Specifically fetching 4th month as requested
-      const currentYear = new Date().getFullYear();
-      const res = await fetch(`${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${currentMonth}&year=${currentYear}`, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.stats || data.data || []);
-        setAllLeaveStats(list);
-      }
-    } catch (err) {
-      console.error("Error fetching all leave stats:", err);
-    }
-  };
-
-  const submitLeaveAdjustments = async () => {
-    if (!user?.token || !leaveEditData.empId) return;
-    setIsProcessing(true);
-    try {
-      const userRole = (user?.role || '').toUpperCase();
-      const finalRole = userRole.includes('HR') ? 'HR' : (userRole.includes('ADMIN') || userRole.includes('CEO') || userRole.includes('PM') || userRole.includes('MANAGER') ? 'ADMIN' : 'PM');
-
-      const response = await fetch(API_ENDPOINTS.ADMIN_LEAVE_STATS_UPDATE, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${user.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          employeeId: leaveEditData.empId,
-          employee_id: leaveEditData.empId,
-          userId: leaveEditData.empId,
-          EmpID: leaveEditData.empId,
-          leaves_taken: leaveEditData.cl,
-          leaves_available: leaveEditData.available,
-          LOP: leaveEditData.lop,
-          month: leaveEditData.month,
-          year: leaveEditData.year,
-          halfDays: leaveEditData.halfDays,
-          remarks: leaveEditData.remark || 'Manual adjustment',
-          role: finalRole,
-          adminId: user?.id || user?.employee_id
-        })
-      });
-      
-      const result = await response.json().catch(() => ({}));
-      if (response.ok || result.success) {
-        alert(`✅ Leave adjustments for ${leaveEditData.empName} saved successfully!`);
-        setShowLeaveEditModal(false);
-        fetchLeaveStats(); // Refresh the table data
-      } else {
-        alert(`❌ Failed to save adjustments: ${result.message || result.error || 'Server Error (' + response.status + ')'}`);
-      }
-    } catch (err) {
-      console.error("Error saving leave adjustments:", err);
-      alert("❌ System error while saving adjustments.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const fetchAttendance = async () => {
     try {
@@ -453,7 +234,6 @@ export default function LeaveAttendanceCenter() {
 
         const todayStr = new Date().toISOString().split('T')[0];
         const myTodayLogs = validLogs.filter(log => {
-          // Normalized date comparison
           const logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0];
           const isToday = logDate === todayStr;
           const isMe = String(log?.user_id) === String(user?.id) || String(log?.Empcode) === String(user?.id) || String(log?.EmpID) === String(user?.id) || log?.email === user?.email;
@@ -461,11 +241,9 @@ export default function LeaveAttendanceCenter() {
         }).sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
 
         if (myTodayLogs.length > 0) {
-          // Robust session merging for biometric & manual punches
           const firstLog = myTodayLogs[0];
           const lastLog = myTodayLogs[myTodayLogs.length - 1];
 
-          // Normalize times from all possible field names
           const in_time = firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time || firstLog?.PunchTime;
           let out_time = '----';
 
@@ -498,14 +276,12 @@ export default function LeaveAttendanceCenter() {
   const handleCheckIn = async () => {
     setIsProcessing(true);
     try {
-      // 1. Get exact current location first
       let currentLoc = userLocation;
       try {
         const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
         const locRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
         const locData = await locRes.json();
 
-        // Official Office Geofence Mapping - Priority Descriptive Address
         currentLoc = locData.display_name || "Office Area";
         const lowerLoc = currentLoc.toLowerCase();
         if (lowerLoc.includes('navabharath') || lowerLoc.includes('chitrabhanu') || lowerLoc.includes('kuvempu nagara')) {
@@ -525,7 +301,16 @@ export default function LeaveAttendanceCenter() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchAttendance(); // Reload data
+        // Optimistic update for immediate feedback
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        setPersonalAttendance(prev => ({
+          ...prev,
+          in_time: timeStr,
+          out_time: '----',
+          punch_date: now.toISOString()
+        }));
+        fetchAttendance();
       } else {
         alert(data.message || 'Check-in failed');
       }
@@ -539,14 +324,12 @@ export default function LeaveAttendanceCenter() {
   const handleCheckOut = async () => {
     setIsProcessing(true);
     try {
-      // 1. Get exact current location first to ensure accuracy at the moment of logout
       let currentLoc = userLocation;
       try {
         const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
         const locRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
         const locData = await locRes.json();
 
-        // Official Office Geofence Mapping - Priority Descriptive Address
         currentLoc = locData.display_name || "Office Area";
         const lowerLoc = currentLoc.toLowerCase();
         if (lowerLoc.includes('navabharath') || lowerLoc.includes('chitrabhanu') || lowerLoc.includes('kuvempu nagara')) {
@@ -556,7 +339,6 @@ export default function LeaveAttendanceCenter() {
         localStorage.setItem('savedUserLocation', currentLoc);
       } catch (e) { console.log("Location refresh failed, using last known."); }
 
-      // 2. Explicitly send OUT punch with fresh timestamp and precise location
       const res = await fetch((API_ENDPOINTS.ATTENDANCE_LOGS_GET || '').split('/api/')[0] + '/api/attendance_logs/punch', {
         method: 'POST',
         headers: {
@@ -572,6 +354,12 @@ export default function LeaveAttendanceCenter() {
       });
       const data = await res.json();
       if (data.success) {
+        // Optimistic update for immediate feedback
+        const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        setPersonalAttendance(prev => ({
+          ...prev,
+          out_time: timeStr
+        }));
         fetchAttendance();
       } else {
         alert(data.message || 'Check-out failed');
@@ -632,7 +420,6 @@ export default function LeaveAttendanceCenter() {
 
     const dateRangeDisplay = `${fromDate} to ${toDate}`;
 
-    // --- Premium Header ---
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 297, 45, 'F');
     doc.setTextColor(255, 255, 255);
@@ -728,16 +515,6 @@ export default function LeaveAttendanceCenter() {
     const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
     const presentCount = uniquePresentToday;
 
-    const allReqs = leaveRequests || [];
-    const totalLeaves = allReqs.length;
-    const casualCount = allReqs.filter(r => String(r?.leave_type || r?.type || '').toUpperCase().includes('CASUAL')).length;
-    const lopCount = allReqs.filter(r => String(r?.leave_type || r?.type || '').toUpperCase().includes('LOP')).length;
-    const halfDays = allReqs.filter(r => String(r?.leave_type || r?.type || '').toUpperCase().includes('HALF')).length;
-    const earnedCount = allReqs.filter(r => {
-      const type = String(r?.leave_type || r?.type || '').toUpperCase();
-      return type.includes('EARNED') || type.includes('EL');
-    }).length;
-
     const parseTimeStr = (tStr) => {
       if (!tStr || tStr === '----' || tStr === '--:--' || tStr.includes('00:00')) return -1;
       let s = String(tStr).trim();
@@ -763,13 +540,8 @@ export default function LeaveAttendanceCenter() {
     const halfDayLogs = (attendanceLogs || []).filter(l => {
       const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
       const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
-      
-      // Case 1: Login after 1:30 PM
       if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
-      
-      // Case 2: Logout after 2:30 PM and before 5:00 PM
       if (pOut !== -1 && pOut > (14 * 60 + 30) && pOut < (17 * 60)) return true;
-      
       return false;
     });
 
@@ -779,18 +551,15 @@ export default function LeaveAttendanceCenter() {
       return pOut < (17 * 60);
     });
 
-    return { total: totalCount, present: presentCount, totalLeaves, halfDay: halfDayLogs.length, casual: casualCount, lop: lopCount, earned: earnedCount, lateLogins, earlyLogouts, halfDayLogs };
+    return { total: totalCount, present: presentCount, halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs };
   };
 
   const metrics = calculateMetrics();
 
-  const displayedEmployees = allEmployees.filter(emp => {
-    const term = searchTerm.toLowerCase();
-    return !term || (emp.name || emp.user_name || '').toLowerCase().includes(term);
-  });
+  const displayedEmployees = allEmployees;
 
   return (
-    <div className="pm-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
+    <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
       <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
@@ -812,29 +581,9 @@ export default function LeaveAttendanceCenter() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button
-                onClick={() => navigate('/my-leaves')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                  color: 'white',
-                  border: 'none',
-                  fontWeight: '800',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)',
-                  transition: 'all 0.3s'
-                }}
-              >
-                <Calendar size={18} /> My Leaves
-              </button>
+
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexDirection: winWidth < 640 ? 'column' : 'row' }}>
-                {/* Date Range Picker Pill */}
                 <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '4px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', width: winWidth < 640 ? '100%' : 'auto', justifyContent: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input
@@ -881,7 +630,6 @@ export default function LeaveAttendanceCenter() {
           </div>
 
 
-          {/* Biometric Check-in Card */}
           <div style={{ 
             background: 'white', 
             borderRadius: '24px', 
@@ -933,7 +681,6 @@ export default function LeaveAttendanceCenter() {
               flexDirection: winWidth < 480 ? 'column' : 'row',
               justifyContent: 'space-between'
             }}>
-              {/* General Calendar Display */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1046,14 +793,14 @@ export default function LeaveAttendanceCenter() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? 'repeat(2, 1fr)' : (winWidth < 1200 ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)'), gap: winWidth < 768 ? '12px' : '20px', marginBottom: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? 'repeat(2, 1fr)' : (winWidth < 1200 ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)'), gap: winWidth < 768 ? '12px' : '20px', marginBottom: '40px' }}>
             {[
               { label: 'PRESENT', value: metrics.present, icon: UserCheck, color: '#059669', bg: '#ecfdf5' },
-              { label: 'LEAVES', value: metrics.totalLeaves, icon: Calendar, color: '#dc2626', bg: '#fef2f2' },
+
               { label: 'HALF DAYS', value: metrics.halfDay, icon: Clock, color: '#f97316', bg: '#fff7ed' },
               { label: 'Early logout', value: metrics.earlyLogouts.length, icon: Coffee, color: '#3b82f6', bg: '#eff6ff', isEarlyAction: true },
               { label: 'Late Login', value: metrics.lateLogins.length, icon: Sparkles, color: '#7c3aed', bg: '#f5f3ff', isLateAction: true },
-              { label: 'Punch-in Edit', value: metrics.lop, icon: AlertTriangle, color: '#db2777', bg: '#fdf2f8', isAction: true }
+              { label: 'Punch-in Edit', value: 'EDIT', icon: AlertTriangle, color: '#db2777', bg: '#fdf2f8', isAction: true }
             ].map((m, i) => (
               <div 
                 key={i} 
@@ -1062,11 +809,11 @@ export default function LeaveAttendanceCenter() {
                   else if (m.isLateAction) setShowLateLoginsModal(true);
                   else if (m.isEarlyAction) setShowEarlyLogoutsModal(true);
                   else if (m.label === 'HALF DAYS') setShowHalfDaysModal(true);
-                  else if (m.label === 'LEAVES') setActiveTab('leave');
+                  else if (m.isLeaveAction) navigate('/leaves');
                 }}
-                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: (m.isAction || m.isLateAction || m.isEarlyAction || m.label === 'LEAVES' || m.label === 'HALF DAYS') ? 'pointer' : 'default', transition: 'all 0.2s' }}
-                onMouseOver={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.label === 'LEAVES' || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(-4px)', e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.05)') : null}
-                onMouseOut={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.label === 'LEAVES' || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)') : null}
+                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? 'pointer' : 'default', transition: 'all 0.2s' }}
+                onMouseOver={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(-4px)', e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.05)') : null}
+                onMouseOut={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)') : null}
               >
                 <div style={{ width: winWidth < 768 ? '38px' : '48px', height: winWidth < 768 ? '38px' : '48px', borderRadius: '12px', background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><m.icon size={winWidth < 768 ? 18 : 22} /></div>
                 <div>
@@ -1084,505 +831,234 @@ export default function LeaveAttendanceCenter() {
           )}
 
           <div style={{ display: 'flex', gap: winWidth < 600 ? '12px' : '24px', borderBottom: '1.5px solid #e2e8f0', marginBottom: '24px', overflowX: 'auto', paddingBottom: '4px' }}>
-            <button onClick={() => setActiveTab('attendance')} style={{ padding: '0 0 12px 0', background: 'transparent', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid #1d4ed8' : '3px solid transparent', color: activeTab === 'attendance' ? '#1d4ed8' : '#64748b', fontWeight: '800', fontSize: winWidth < 600 ? '12px' : '14px', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }} > Attendance Log </button>
-            <button onClick={() => setActiveTab('leave')} style={{ padding: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderBottom: activeTab === 'leave' ? '3px solid #1d4ed8' : '3px solid transparent', color: activeTab === 'leave' ? '#1d4ed8' : '#64748b', fontWeight: '800', fontSize: winWidth < 600 ? '12px' : '14px', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }} > Leave Requests <span style={{ background: '#1d4ed8', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '11px' }}>{leaveRequests.length}</span> </button>
-            <button onClick={() => setActiveTab('summary')} style={{ padding: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderBottom: activeTab === 'summary' ? '3px solid #1d4ed8' : '3px solid transparent', color: activeTab === 'summary' ? '#1d4ed8' : '#64748b', fontWeight: '800', fontSize: winWidth < 600 ? '12px' : '14px', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }} > <Table size={14} /> Leaves Summary (XL) </button>
-
+            <button style={{ padding: '0 0 12px 0', background: 'transparent', border: 'none', borderBottom: '3px solid #1d4ed8', color: '#1d4ed8', fontWeight: '800', fontSize: winWidth < 600 ? '12px' : '14px', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }} > Attendance Log </button>
           </div>
 
-          {activeTab === 'attendance' ? (
-            <>
-              <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'center', marginBottom: '24px', gap: '16px' }}>
-                <div style={{ position: 'relative', width: winWidth < 1024 ? '100%' : '320px' }}>
-                  <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={16} />
-                  <input type="text" placeholder="Filter employee, role or department..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 44px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: 'white', outline: 'none', fontSize: '13px', fontWeight: '600', boxSizing: 'border-box' }} />
-                </div>
+          <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'center', marginBottom: '24px', gap: '16px' }}>
+            <div style={{ position: 'relative', width: winWidth < 1024 ? '100%' : '320px' }}>
+              <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={16} />
+              <input type="text" placeholder="Filter employee, role or department..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 44px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: 'white', outline: 'none', fontSize: '13px', fontWeight: '600', boxSizing: 'border-box' }} />
+            </div>
+          </div>
 
+          <section style={{ background: winWidth < 768 ? 'transparent' : 'white', borderRadius: '24px', border: winWidth < 768 ? 'none' : '1.5px solid #f1f5f9', boxShadow: winWidth < 768 ? 'none' : '0 4px 20px -5px rgba(0,0,0,0.02)', overflowX: winWidth < 768 ? 'hidden' : 'auto' }}>
+            {winWidth < 768 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {displayedEmployees.length > 0 ? (
+                  displayedEmployees.map((emp, idx) => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const log = (attendanceLogs || [])
+                      .filter(l => {
+                        if (!l) return false;
+                        const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                        const empId = String(emp?.id || '').trim();
+                        return empId && logUserId && (logUserId === empId);
+                      })
+                      .sort((a, b) => {
+                        const getD = x => new Date(x?.punch_date || x?.date || x?.created_at || 0).getTime();
+                        return getD(b) - getD(a);
+                      })[0];
+
+                    const todayLog = (attendanceLogs || []).find(l => {
+                      if (!l) return false;
+                      const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                      const empId = String(emp?.id || '').trim();
+                      const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+                      return empId && logUserId && logUserId === empId && logDate === todayStr;
+                    });
+
+                    const punchIn = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || '----';
+                    const punchOut = log?.out_time || log?.OUTTime || log?.PunchOut || (log?.in_time || log?.INTime ? '----' : log?.punch_time) || '----';
+                    const workHrs = log?.work_time || log?.work_hrs || log?.WorkTime || '00:00';
+                    const pDate = log?.punch_date || log?.date || log?.created_at;
+
+                    return (
+                      <div key={idx} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950' }}>
+                            {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div 
+                            onClick={() => navigate(`/attendance/detail/${emp.id}`)}
+                            style={{ flex: 1, cursor: 'pointer' }}
+                          >
+                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown User'}</div>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{emp.id} • {emp.role || 'Employee'}</div>
+                          </div>
+                          <button 
+                            onClick={() => navigate(`/attendance/detail/${emp.id}`)}
+                            style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3b82f6' }}
+                          >
+                            <Info size={18} />
+                          </button>
+                        </div>
+
+                        <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Date</div>
+                            <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Hours</div>
+                            <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>
+                              {workHrs?.replace(/\s:\s/g, ':') || '00:00'} <span style={{ fontSize: '10px', color: '#94a3b8' }}>HRS</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch In</div>
+                            <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchIn}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch Out</div>
+                            <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchOut}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Remark</div>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                            {log?.remarks || log?.rm_remarks || log?.pm_remarks || '-'}
+                          </div>
+                        </div>
+
+                        <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <MapPin size={12} /> {log?.in_location || log?.location || '----'}
+                          </div>
+                          {(() => {
+                            const todayPunchIn = todayLog?.in_time || todayLog?.INTime || todayLog?.PunchIn || todayLog?.punch_time;
+                            const today = new Date();
+                            const isSunday = today.getDay() === 0;
+                            const month = today.toLocaleDateString('en-US', { month: 'short' });
+                            const dateDay = String(today.getDate()).padStart(2, '0');
+                            const dayMonth = `${month} ${dateDay}`;
+                            const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+                            const isHoliday = holidays.includes(dayMonth);
+
+                            let rawStatus = todayPunchIn ? 'PRESENT' : 'ABSENT';
+                            if (!todayPunchIn) {
+                              if (isSunday) rawStatus = 'WO';
+                              else if (isHoliday) rawStatus = 'NH';
+                              else rawStatus = 'ABSENT';
+                            }
+
+                            const isPresent = rawStatus.includes('PRESENT');
+                            const isWO = rawStatus === 'WO';
+                            const isNH = rawStatus === 'NH';
+
+                            return (
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 14px',
+                                borderRadius: '100px',
+                                background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
+                                border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`,
+                                color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
+                                fontSize: '11px',
+                                fontWeight: '950',
+                                textTransform: 'uppercase'
+                              }}>
+                                {rawStatus}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '24px', border: '1.5px solid #f1f5f9' }}>
+                    <p style={{ color: '#64748b', fontWeight: '900' }}>No matching records found.</p>
+                  </div>
+                )}
               </div>
-
-              <section style={{ background: winWidth < 768 ? 'transparent' : 'white', borderRadius: '24px', border: winWidth < 768 ? 'none' : '1.5px solid #f1f5f9', boxShadow: winWidth < 768 ? 'none' : '0 4px 20px -5px rgba(0,0,0,0.02)', overflowX: winWidth < 768 ? 'hidden' : 'auto' }}>
-                {winWidth < 768 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {displayedEmployees.length > 0 ? (
-                      displayedEmployees.map((emp, idx) => {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const log = (attendanceLogs || [])
-                          .filter(l => {
-                            if (!l) return false;
-                            const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-                            const empId = String(emp?.id || '').trim();
-                            return empId && logUserId && (logUserId === empId);
-                          })
-                          .sort((a, b) => {
-                            const getD = x => new Date(x?.punch_date || x?.date || x?.created_at || 0).getTime();
-                            return getD(b) - getD(a);
-                          })[0];
-
-                        // Today's log specifically — used for status badge
-                        const todayLog = (attendanceLogs || []).find(l => {
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Employee</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>ID</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Work Hrs</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>IN Location</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>OUT Location</th></tr>
+                </thead>
+                <tbody>
+                  {displayedEmployees.length > 0 ? (
+                    displayedEmployees.map((emp, idx) => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const log = (attendanceLogs || [])
+                        .find(l => {
                           if (!l) return false;
                           const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
                           const empId = String(emp?.id || '').trim();
                           const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
-                          return empId && logUserId && logUserId === empId && logDate === todayStr;
+                          return empId && logUserId && (logUserId === empId) && (logDate === todayStr || (fromDate === toDate && logDate === fromDate));
                         });
 
-                        const punchIn = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || '----';
-                        const punchOut = log?.out_time || log?.OUTTime || log?.PunchOut || (log?.in_time || log?.INTime ? '----' : log?.punch_time) || '----';
-                        const workHrs = log?.work_time || log?.work_hrs || log?.WorkTime || '00:00';
-                        const pDate = log?.punch_date || log?.date || log?.created_at;
-
-                        return (
-                          <div key={idx} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950' }}>
-                                {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown User'}</div>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{emp.id} • {emp.role || 'Employee'}</div>
-                              </div>
-                              <button 
-                                onClick={() => navigate(`/attendance/detail/${emp.id}`)}
-                                style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3b82f6' }}
-                              >
-                                <Info size={18} />
-                              </button>
-                            </div>
-
-                            <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Date</div>
-                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}</div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Hours</div>
-                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>
-                                  {workHrs?.replace(/\s:\s/g, ':') || '00:00'} <span style={{ fontSize: '10px', color: '#94a3b8' }}>HRS</span>
-                                </div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch In</div>
-                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchIn}</div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch Out</div>
-                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchOut}</div>
-                              </div>
-                            </div>
-
-                            <div style={{ marginBottom: '20px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Remark</div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                                {log?.remarks || log?.rm_remarks || log?.pm_remarks || '-'}
-                              </div>
-                            </div>
-
-                            <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                <MapPin size={12} /> {log?.in_location || log?.location || '----'}
-                              </div>
-                              {(() => {
-                                const todayPunchIn = todayLog?.in_time || todayLog?.INTime || todayLog?.PunchIn || todayLog?.punch_time;
-                                const today = new Date();
-                                const isSunday = today.getDay() === 0;
-                                const month = today.toLocaleDateString('en-US', { month: 'short' });
-                                const dateDay = String(today.getDate()).padStart(2, '0');
-                                const dayMonth = `${month} ${dateDay}`;
-                                const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
-                                const isHoliday = holidays.includes(dayMonth);
-
-                                let rawStatus = todayPunchIn ? 'PRESENT' : 'ABSENT';
-                                if (!todayPunchIn) {
-                                  if (isSunday) rawStatus = 'WO';
-                                  else if (isHoliday) rawStatus = 'NH';
-                                  else rawStatus = 'ABSENT';
-                                }
-
-                                const isPresent = rawStatus.includes('PRESENT');
-                                const isWO = rawStatus === 'WO';
-                                const isNH = rawStatus === 'NH';
-
-                                return (
-                                  <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '6px 14px',
-                                    borderRadius: '100px',
-                                    background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
-                                    border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`,
-                                    color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
-                                    fontSize: '11px',
-                                    fontWeight: '950',
-                                    textTransform: 'uppercase'
-                                  }}>
-                                    {rawStatus}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '24px', border: '1.5px solid #f1f5f9' }}>
-                        <p style={{ color: '#64748b', fontWeight: '900' }}>No matching records found.</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Employee</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>ID</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Date</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Work Hrs</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>IN Location</th><th style={{ padding: '24px 20px', fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>OUT Location</th></tr>
-                    </thead>
-                    <tbody>
-                      {displayedEmployees.length > 0 ? (
-                        displayedEmployees.map((emp, idx) => {
-                          const todayStr = new Date().toISOString().split('T')[0];
-                          const log = (attendanceLogs || [])
-                            .filter(l => {
-                              if (!l) return false;
-                              const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-                              const empId = String(emp?.id || '').trim();
-                              return empId && logUserId && (logUserId === empId);
-                            })
-                            .sort((a, b) => {
-                              const getD = x => new Date(x?.punch_date || x?.date || x?.created_at || 0).getTime();
-                              return getD(b) - getD(a);
-                            })[0];
-
-                          // Today's log specifically — used for status badge
-                          const todayLog = (attendanceLogs || []).find(l => {
-                            if (!l) return false;
-                            const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-                            const empId = String(emp?.id || '').trim();
-                            const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
-                            return empId && logUserId && logUserId === empId && logDate === todayStr;
-                          });
-
-                          const punchIn = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || '----';
-                          const punchOut = log?.out_time || log?.OUTTime || log?.PunchOut || (log?.in_time || log?.INTime ? '----' : log?.punch_time) || '----';
-                          const workHrs = log?.work_time || log?.work_hrs || log?.WorkTime || '00:00';
-                          const pDate = log?.punch_date || log?.date || log?.created_at;
-
-                          return (
-                            <tr key={idx} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                  <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
-                                    {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', cursor: 'pointer' }} onClick={() => navigate(`/attendance/detail/${emp.id}`)}> {emp.name || emp.user_name || 'Unknown User'} </div>
-                                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '2px' }}>{emp.role || emp.department || 'Employee'}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '20px', fontSize: '13px', fontWeight: '900', color: '#3863a8' }}>#{emp.id || idx + 101}</td>
-                              <td style={{ padding: '20px', fontSize: '13px', fontWeight: '800', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Calendar size={14} color="#cbd5e1" />
-                                  {pDate ? new Date(pDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '----'}
-                                </div>
-                              </td>
-                              <td style={{ padding: '20px', fontSize: '14px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap' }}>{punchIn}</td>
-                              <td style={{ padding: '20px', fontSize: '14px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap' }}>{punchOut}</td>
-                              <td style={{ padding: '20px', whiteSpace: 'nowrap' }}>
-                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>
-                                  {workHrs?.replace(/\s:\s/g, ':') || '00:00'} <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>HOURS</span>
-                                </div>
-                              </td>
-                              <td style={{ padding: '20px' }}>
-                                {(() => {
-                                  const todayPunchIn = todayLog?.in_time || todayLog?.INTime || todayLog?.PunchIn || todayLog?.punch_time;
-                                  const today = new Date();
-                                  const isSunday = today.getDay() === 0;
-                                  const month = today.toLocaleDateString('en-US', { month: 'short' });
-                                  const dateDay = String(today.getDate()).padStart(2, '0');
-                                  const dayMonth = `${month} ${dateDay}`;
-                                  const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
-                                  const isHoliday = holidays.includes(dayMonth);
-
-                                  let rawStatus = todayPunchIn ? 'PRESENT' : 'ABSENT';
-                                  if (!todayPunchIn) {
-                                    if (isSunday) rawStatus = 'WO';
-                                    else if (isHoliday) rawStatus = 'NH';
-                                    else rawStatus = 'ABSENT';
-                                  }
-
-                                  const isPresent = rawStatus.includes('PRESENT');
-                                  const isWO = rawStatus === 'WO';
-                                  const isNH = rawStatus === 'NH';
-
-                                  return (
-                                    <div style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '8px',
-                                      padding: '6px 14px',
-                                      borderRadius: '100px',
-                                      background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'),
-                                      border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`,
-                                      color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
-                                      fontSize: '11px',
-                                      fontWeight: '900',
-                                      whiteSpace: 'nowrap'
-                                    }}>
-                                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isPresent ? '#22c55e' : (isWO || isNH ? '#3b82f6' : '#ef4444') }}></div>
-                                      {rawStatus}
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                              <td style={{ padding: '20px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log?.in_location || log?.location || '----'}>
-                                {log?.in_location || log?.location || '----'}
-                              </td>
-                              <td style={{ padding: '20px', fontSize: '12px', fontWeight: '800', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log?.out_location || '----'}>
-                                {log?.out_location || '----'}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr><td colSpan="9" style={{ textAlign: 'center', padding: '100px', color: '#64748b', fontWeight: '900' }}> No matching data found for selected range. </td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </section>
-            </>
-          ) : activeTab === 'summary' ? (
-            <div className="animate-fade-in" style={{ background: 'white', borderRadius: '24px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 20px -5px rgba(0,0,0,0.02)', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>Employee Leave Ledger</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Comprehensive summary of all employee leave balances.</p>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <button 
-                    onClick={() => setShowAllLedger(!showAllLedger)}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px', 
-                      padding: '10px 20px', 
-                      borderRadius: '12px', 
-                      background: showAllLedger ? '#f1f5f9' : '#0f172a', 
-                      color: showAllLedger ? '#475569' : 'white', 
-                      border: 'none', 
-                      fontWeight: '800', 
-                      fontSize: '13px', 
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {showAllLedger ? 'View Less' : 'View All'}
-                  </button>
-                  <div style={{ position: 'relative' }} ref={dropdownRef}>
-                    <button 
-                      onClick={() => setShowExportDropdown(!showExportDropdown)}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        padding: '10px 20px', 
-                        borderRadius: '12px', 
-                        background: '#16a34a', 
-                        color: 'white', 
-                        border: 'none', 
-                        fontWeight: '800', 
-                        fontSize: '13px', 
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      <Download size={16} /> Export <ChevronDown size={14} style={{ transform: showExportDropdown ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
-                    </button>
-                    
-                    {showExportDropdown && (
-                      <div className="animate-fade-in" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', zIndex: 100, minWidth: '160px', overflow: 'hidden' }}>
-                        <button 
-                          onClick={() => handleLedgerExport('excel')}
-                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textAlign: 'left', transition: '0.2s' }}
-                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <FileText size={16} color="#16a34a" /> Export as Excel
-                        </button>
-                        <button 
-                          onClick={() => handleLedgerExport('pdf')}
-                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', color: '#1e293b', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textAlign: 'left', transition: '0.2s' }}
-                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <FileText size={16} color="#dc2626" /> Export as PDF
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '16px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>EMPLOYEE</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>ID</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>YEAR</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>CASUAL LEAVES</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>LOP LEAVES</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>HALF DAYS</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>TAKEN</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>AVAILABLE LEAVES</th>
-                      <th style={{ padding: '16px', fontWeight: '900', color: '#64748b' }}>ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(showAllLedger ? allEmployees : allEmployees.slice(0, 7))
-                      .filter(emp => String(emp.id || emp.EmpID) !== '20250')
-                      .map((emp, idx) => {
-                      // Prioritize data from leave_stats table (allLeaveStats)
-                      const statsEntry = allLeaveStats.find(s => String(s.employee_id || s.user_id) === String(emp.id));
-                      
-                      let cl, lop, balance;
-                      
-                      if (statsEntry) {
-                        cl = parseFloat(statsEntry.leaves_taken || 0);
-                        lop = parseFloat(statsEntry.LOP || statsEntry.lop || 0);
-                        balance = parseFloat(statsEntry.leaves_available || statsEntry.available_leaves || statsEntry.Available_Leaves || 0);
-                      } else {
-                        cl = 0;
-                        lop = 0;
-                        balance = 0;
-                      }
-                      
-                      const taken = cl + lop;
-
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f8fafc', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#1e293b' }}>
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
+                          <td 
+                            onClick={() => navigate(`/attendance/detail/${emp.id}`)}
+                            style={{ padding: '20px', fontWeight: '800', color: '#1e293b', cursor: 'pointer' }}
+                          >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '950' }}>
-                                {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
+                              <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '950' }}>
+                                {String(emp?.name || emp?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              {emp.name || emp.user_name}
+                              <span style={{ borderBottom: '1px solid transparent' }} onMouseOver={e => e.currentTarget.style.borderBottom = '1px solid #1e293b'} onMouseOut={e => e.currentTarget.style.borderBottom = '1px solid transparent'}>
+                                {emp?.name || emp?.user_name}
+                              </span>
                             </div>
                           </td>
-                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#000000' }}>#{emp.id}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#64748b' }}>{statsEntry?.year || new Date().getFullYear()}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{cl}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{lop}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{statsEntry?.half_day || statsEntry?.half_days || 0}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '800', color: '#000000' }}>{taken}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: '950', color: '#16a34a' }}>{balance} Days</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <button 
-                              onClick={() => {
-                                  setLeaveEditData({ 
-                                    empId: emp.id, 
-                                    empName: emp.name || emp.user_name, 
-                                    cl, 
-                                    lop, 
-                                    month: 4,
-                                    year: 2026,
-                                    available: balance,
-                                    halfDays: statsEntry?.half_day || statsEntry?.halfDays || 0,
-                                    oldCl: cl,
-                                    oldBalance: balance
-                                  });
-                                setShowLeaveEditModal(true);
-                              }}
-                              style={{ background: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', color: '#475569', cursor: 'pointer' }}
-                            >
-                              Edit
-                            </button>
+                          <td style={{ padding: '20px', fontWeight: '700', color: '#64748b' }}>#{emp?.id}</td>
+                          <td style={{ padding: '20px', fontWeight: '700', color: '#475569' }}>
+                            {log ? (log.punch_date || log.date || '').split('T')[0] : (fromDate === toDate ? fromDate : '----')}
+                          </td>
+                          <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
+                            {log?.in_time || log?.INTime || log?.PunchIn || '----'}
+                          </td>
+                          <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
+                            {log?.out_time || log?.OUTTime || log?.PunchOut || '----'}
+                          </td>
+                          <td style={{ padding: '20px', fontWeight: '800', color: '#6366f1' }}>
+                            {log?.work_time || log?.work_hrs || '00:00'}
+                          </td>
+                          <td style={{ padding: '20px' }}>
+                            <div style={{
+                              display: 'inline-flex',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              background: log ? '#f0fdf4' : '#fef2f2',
+                              color: log ? '#16a34a' : '#ef4444',
+                              fontSize: '11px',
+                              fontWeight: '950',
+                              textTransform: 'uppercase'
+                            }}>
+                              {log ? 'P' : 'A'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '20px', fontSize: '12px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log?.PunchIn_location || log?.location}>
+                            {log?.PunchIn_location || log?.location || '----'}
+                          </td>
+                          <td style={{ padding: '20px', fontSize: '12px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log?.PunchOut_location || log?.out_location}>
+                            {log?.PunchOut_location || log?.out_location || '----'}
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', animation: 'fadeIn 0.3s ease-out' }}>
-              {leavesLoading ? (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '100px', width: '100%' }}>
-                  <div className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid #f3f3f3', borderTop: '3px solid #1d4ed8', borderRadius: '50%', margin: '0 auto 16px' }}></div>
-                  <p style={{ fontWeight: '800', color: '#64748b' }}>Fetching leave applications...</p>
-                </div>
-              ) : leaveRequests.length > 0 ? (
-                leaveRequests.map(req => {
-                  const rawStatus = String(req.status || 'PENDING').toUpperCase();
-                  let status = 'PENDING';
-                  if (rawStatus.includes('REJECTED')) status = 'REJECTED';
-                  else if (rawStatus.includes('APPROVED')) status = 'APPROVED';
-                  else status = 'PENDING';
-
-                  const sColor = status === 'APPROVED' ? '#10b981' : (status === 'REJECTED' ? '#ef4444' : '#f59e0b');
-                  const sBg = status === 'APPROVED' ? '#ecfdf5' : (status === 'REJECTED' ? '#fef2f2' : '#fffbeb');
-                  const displayDate = req.start_date ? new Date(req.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-
-                  return (
-                    <div
-                      key={req.id}
-                      onClick={() => navigate(`/attendance/leave/${req.id}`)}
-
-                      style={{
-                        background: 'white',
-                        borderRadius: '24px',
-                        padding: '24px',
-                        border: '1.5px solid #f1f5f9',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
-                        cursor: 'pointer',
-                        transition: '0.2s',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '280px'
-                      }}
-                      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(0,0,0,0.05)'; }}
-                      onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.02)'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', minHeight: '75px', gap: '10px' }}>
-                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', minWidth: 0, flex: 1 }}>
-                          <div style={{ width: '52px', height: '52px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', color: '#475569' }}>
-                            <User size={24} strokeWidth={2.5} />
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: winWidth < 480 ? '16px' : '18px', fontWeight: '950', color: '#1e293b', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={req.employee_name || req.name}>{req.employee_name || req.name || 'Unknown'}</div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '11px', fontWeight: '900', color: '#1d4ed8', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>ID: #{req.user_id || req.emp_id || req.id}</span>
-                              <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{req.leave_type || req.type || 'Leave'}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <span style={{ flexShrink: 0, fontSize: '10px', fontWeight: '950', color: sColor, background: sBg, padding: '6px 14px', borderRadius: '100px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{status}</span>
-                      </div>
-
-                      <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px', fontWeight: '600' }}>
-                        <Calendar size={14} /> {displayDate}
-                      </div>
-
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#475569', fontStyle: 'italic', background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1.5px solid #f1f5f9', lineHeight: '1.4', minHeight: '80px', display: 'flex', alignItems: 'center' }}>
-                          "{req.reason ? (req.reason.length > 90 ? req.reason.substring(0, 90) + '...' : req.reason) : 'No specific reason provided'}"
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', width: '100%' }}>
-                  <Info size={40} color="#cbd5e1" style={{ marginBottom: '16px' }} />
-                  <p style={{ fontWeight: '900', color: '#94a3b8' }}>No pending or recent leave requests found.</p>
-                </div>
-              )}
-            </div>
-          )}
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="9" style={{ padding: '60px', textAlign: 'center', color: '#64748b', fontWeight: '800' }}>
+                        No attendance records found for the selected period.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
 
 
 
@@ -1881,82 +1357,14 @@ export default function LeaveAttendanceCenter() {
             </div>
           )}
 
-          {/* Leave Edit Modal (XL Sheet) */}
-          {showLeaveEditModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-              <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '450px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative' }}>
-                <button onClick={() => setShowLeaveEditModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#f0f9ff', color: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Table size={24} /></div>
-                  <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Adjust Leave Ledger</h2>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Editing leaves for <strong>{leaveEditData.empName} ({leaveEditData.empId})</strong></p>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Month (1-12)</label>
-                    <input type="number" min="1" max="12" value={leaveEditData.month} onChange={e => setLeaveEditData({...leaveEditData, month: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#f0f9ff' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Year</label>
-                    <input type="number" value={leaveEditData.year} onChange={e => setLeaveEditData({...leaveEditData, year: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#f8fafc' }} />
-                  </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Leaves Taken</label>
-                    <input type="number" value={leaveEditData.cl} onChange={e => setLeaveEditData({...leaveEditData, cl: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#f8fafc' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Leaves Available</label>
-                    <input type="number" value={leaveEditData.available} onChange={e => setLeaveEditData({...leaveEditData, available: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#f0fdf4' }} />
-                  </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>LOP Leaves</label>
-                    <input type="number" value={leaveEditData.lop} onChange={e => setLeaveEditData({...leaveEditData, lop: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#fff1f2' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Half Days</label>
-                    <input type="number" value={leaveEditData.halfDays} onChange={e => setLeaveEditData({...leaveEditData, halfDays: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', background: '#fefce8' }} />
-                  </div>
-                </div>
 
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Adjustment Remark</label>
-                  <textarea 
-                    value={leaveEditData.remark} 
-                    onChange={e => setLeaveEditData({...leaveEditData, remark: e.target.value})} 
-                    placeholder="e.g. Corrected month stats"
-                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '600', background: '#f8fafc', minHeight: '60px', resize: 'none', fontSize: '13px' }} 
-                  />
-                </div>
-                </div>
-
-                <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
-                  <button onClick={() => setShowLeaveEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                   <button 
-                    onClick={submitLeaveAdjustments} 
-                    disabled={isProcessing}
-                    style={{ flex: 2, padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(15, 23, 42, 0.2)', opacity: isProcessing ? 0.7 : 1 }}
-                  >
-                    {isProcessing ? 'Saving...' : 'Save Adjustments'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </div>
       </main>
       <AppFooter />
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .pm-dashboard-container main { animation: fadeIn 0.4s ease-out; }
+        .hr-dashboard-container main { animation: fadeIn 0.4s ease-out; }
         .glow-button-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px rgba(15, 23, 42, 0.5); }
         .glow-button-success:hover { transform: translateY(-2px); box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.5); }
       `}</style>
