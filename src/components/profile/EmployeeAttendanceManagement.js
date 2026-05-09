@@ -123,11 +123,13 @@ export default function EmployeeAttendanceManagement() {
       log.out_time || log.outTime || '----',
       resolveWorkHrs(log),
       log.status || (log.in_time ? 'PRESENT' : 'ABSENT'),
+      log.in_location || '----',
+      log.out_location || '----'
     ]);
 
     autoTable(doc, {
       startY: 76,
-      head: [['Date', 'Punch In', 'Punch Out', 'Work Hrs', 'Status']],
+      head: [['Date', 'Punch In', 'Punch Out', 'Work Hrs', 'Status', 'In Location', 'Out Location']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 9 },
@@ -160,7 +162,7 @@ export default function EmployeeAttendanceManagement() {
     const filteredLogs = getFilteredLogs();
     const empName = employee?.name || 'Employee';
 
-    const headers = ['Employee Name', 'Employee ID', 'Date', 'Punch In', 'Punch Out', 'Work Hours', 'Status'];
+    const headers = ['Employee Name', 'Employee ID', 'Date', 'Punch In', 'Punch Out', 'Work Hours', 'Status', 'In Location', 'Out Location'];
     const rows = filteredLogs.map(log => {
       const pDate = log.punch_date || log.PunchDate || log.date || log.Punch_Date || log.created_at;
       const pIn = log.in_time || log.inTime || log.INTime || log.PunchIn;
@@ -175,6 +177,8 @@ export default function EmployeeAttendanceManagement() {
         pOut || '----',
         resolveWorkHrs(log),
         status,
+        log.in_location || '----',
+        log.out_location || '----'
       ];
     });
 
@@ -304,11 +308,11 @@ export default function EmployeeAttendanceManagement() {
             ...firstPunch,
             punch_date: date,
             in_time: punchInTime,
-            out_time: (dayPunches.length > 1 || (punchOutTime !== '----' && punchOutTime !== '--:--')) ? punchOutTime : '----',
-            in_location: firstPunch.in_location || firstPunch.location || '----',
-            out_location: (dayPunches.length > 1 || (punchOutTime !== '----' && punchOutTime !== '--:--')) ? (lastPunch.out_location || lastPunch.location || '----') : '----',
-            status: firstPunch.status || (punchInTime !== '----' ? 'P' : 'ABSENT'),
-            work_hrs: calculateWorkHours(punchInTime, (dayPunches.length > 1 || (punchOutTime !== '----' && punchOutTime !== '--:--')) ? punchOutTime : null)
+            out_time: dayPunches.length > 1 ? punchOutTime : '----',
+            in_location: firstPunch.punchin_location || firstPunch.in_location || firstPunch.location || '----',
+            out_location: dayPunches.length > 1 ? (lastPunch.punchout_location || lastPunch.out_location || lastPunch.location || '----') : '----',
+            status: firstPunch.status || (punchInTime !== '----' ? 'PRESENT' : 'ABSENT'),
+            work_hrs: calculateWorkHours(punchInTime, dayPunches.length > 1 ? punchOutTime : null)
           };
         });
 
@@ -562,8 +566,11 @@ export default function EmployeeAttendanceManagement() {
                       <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <MapPin size={12} /> {log.in_location || log.location || '----'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.in_location}>
+                          <MapPin size={12} /> {log.in_location || '----'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.out_location}>
+                          <MapPin size={12} /> {log.out_location || '----'}
                         </div>
                         {(() => {
                           const logDate = log.punch_date || log.date || log.created_at || '';
@@ -667,7 +674,12 @@ export default function EmployeeAttendanceManagement() {
                             <Calendar size={16} color="#94a3b8" />
                             {(() => {
                               const pDate = log.punch_date || log.PunchDate || log.date || log.created_at;
-                              return pDate ? String(pDate).split('T')[0].split(' ')[0] : 'N/A';
+                              if (!pDate) return 'N/A';
+                              const dateStr = String(pDate).split('T')[0].split(' ')[0];
+                              const d = new Date(dateStr);
+                              if (isNaN(d.getTime())) return dateStr;
+                              const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+                              return `${dateStr} (${dayName})`;
                             })()}
                           </div>
                         </td>
@@ -700,15 +712,15 @@ export default function EmployeeAttendanceManagement() {
                             const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
                             const isHoliday = holidays.includes(dayMonth);
 
-                            let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'P' : 'A')).toUpperCase();
+                            let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'Present' : 'Absent'));
                             
-                            if ((!log.in_time || log.in_time === '----') || statusText === 'A' || statusText === 'ABSENT') {
+                            if ((!log.in_time || log.in_time === '----') || statusText === 'A' || statusText === 'P' || statusText === 'ABSENT' || statusText === 'PRESENT') {
                               if (isSunday) statusText = 'WO';
                               else if (isHoliday) statusText = 'NH';
-                              else statusText = 'A';
+                              else statusText = (log.in_time && log.in_time !== '----') ? 'PRESENT' : 'ABSENT';
                             }
 
-                            const isPresent = statusText === 'P' || statusText.includes('PRESENT');
+                            const isPresent = statusText === 'Present' || statusText === 'PRESENT' || statusText.includes('PRESENT') || statusText.includes('Present');
                             const isWO = statusText === 'WO';
                             const isNH = statusText === 'NH';
 

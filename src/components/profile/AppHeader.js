@@ -107,9 +107,9 @@ export default function AppHeader() {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          fontSize: winWidth < 768 ? '18px' : '26px',
+          fontSize: '35px',
           fontWeight: '950',
-          letterSpacing: '3px',
+          letterSpacing: '0px',
           textTransform: 'uppercase',
           fontFamily: "'Outfit', sans-serif",
           background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
@@ -132,8 +132,8 @@ export default function AppHeader() {
         <div
           onClick={() => navigate('/performance')}
           style={{
-            width: winWidth < 768 ? '38px' : '48px', 
-            height: winWidth < 768 ? '38px' : '48px', 
+            width: winWidth < 768 ? '38px' : '48px',
+            height: winWidth < 768 ? '38px' : '48px',
             borderRadius: '12px',
             background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -152,8 +152,8 @@ export default function AppHeader() {
           ) : (
             <svg width={winWidth < 768 ? "18" : "22"} height={winWidth < 768 ? "18" : "22"} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
           )}
-          
-          <div 
+
+          <div
             onClick={(e) => {
               e.stopPropagation();
               setShowLogoutModal(true);
@@ -204,10 +204,10 @@ export default function AppHeader() {
             transform: 'scale(1)',
             animation: 'modalIn 0.3s ease-out'
           }}>
-            <div style={{ 
-              width: '64px', height: '64px', background: '#fee2e2', borderRadius: '50%', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              margin: '0 auto 20px', color: '#ef4444' 
+            <div style={{
+              width: '64px', height: '64px', background: '#fee2e2', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', color: '#ef4444'
             }}>
               <LogOut size={32} />
             </div>
@@ -216,10 +216,10 @@ export default function AppHeader() {
               Are you sure you want to log out of your NBT HUB account?
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
+              <button
                 onClick={() => setShowLogoutModal(false)}
-                style={{ 
-                  flex: 1, padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0', 
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
                   background: 'white', color: '#64748b', fontWeight: '800', cursor: 'pointer',
                   transition: '0.2s'
                 }}
@@ -228,13 +228,13 @@ export default function AppHeader() {
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   logout();
                   navigate('/login');
                 }}
-                style={{ 
-                  flex: 1, padding: '14px', borderRadius: '16px', border: 'none', 
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '16px', border: 'none',
                   background: '#ef4444', color: 'white', fontWeight: '800', cursor: 'pointer',
                   boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.3)',
                   transition: '0.2s'
