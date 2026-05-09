@@ -60,7 +60,9 @@ export default function AllEmployeesReport() {
               punchIn,
               punchOut,
               date: dateStr,
-              status: log.status || (punchIn !== '----' ? 'PRESENT' : 'ABSENT')
+              status: log.status || (punchIn !== '----' ? 'PRESENT' : 'ABSENT'),
+              punchin_location: log.punchin_location || log.in_location || log.PunchIn_location || log.location || '----',
+              punchout_location: log.punchout_location || log.out_location || log.PunchOut_location || '----'
             };
           });
           setEmployees(mapped);
@@ -76,6 +78,7 @@ export default function AllEmployeesReport() {
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         String(emp.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
                          emp.role.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
@@ -280,11 +283,13 @@ export default function AllEmployeesReport() {
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch In</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Punch Out</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>IN Location</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>OUT Location</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>Generating organizational report...</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>Generating organizational report...</td></tr>
                   ) : filteredEmployees.length > 0 ? (
                     filteredEmployees.map((emp) => (
                       <tr key={emp.id} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}><td style={{ padding: '20px 25px' }}>
@@ -299,7 +304,16 @@ export default function AllEmployeesReport() {
                           <div style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b' }}>#{emp.id}</div>
                         </td>
                         <td style={{ padding: '20px 25px' }}>
-                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>{emp.date}</div>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>
+                            {(() => {
+                              const dateStr = emp.date;
+                              if (!dateStr || dateStr === '----') return dateStr;
+                              const d = new Date(dateStr);
+                              if (isNaN(d.getTime())) return dateStr;
+                              const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+                              return `${dateStr} (${dayName})`;
+                            })()}
+                          </div>
                         </td>
                         <td style={{ padding: '20px 25px' }}>
                           <div style={{ fontSize: '14px', fontWeight: '900', color: '#1d4ed8' }}>{emp.punchIn}</div>
@@ -336,15 +350,21 @@ export default function AllEmployeesReport() {
                                 color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
                                 border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`
                               }}>
-                                {statusText}
+                                <div style={{ fontSize: '14px', fontWeight: '950', color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444') }}>{statusText}</div>
                               </span>
                             );
                           })()}
                         </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b' }}>{emp.punchin_location}</div>
+                        </td>
+                        <td style={{ padding: '20px 25px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b' }}>{emp.punchout_location}</div>
+                        </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '100px', color: '#64748b' }}>No employees found matching the search criteria.</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>No matching results</td></tr>
                   )}
                 </tbody>
               </table>
