@@ -1,6 +1,4 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { ThreadProvider } from './context/ThreadContext';
 import HRDashboard from './components/profile/HRDashboard';
 import PerformanceModule from './components/profile/PerformanceModule';
@@ -35,6 +33,9 @@ import JobApplications from './components/profile/JobApplications';
 import JobPostings from './components/profile/JobPostings';
 import MyLeaves from './components/profile/MyLeaves';
 
+
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -91,13 +92,9 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ThreadProvider>
-          <AppRoutes />
-        </ThreadProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThreadProvider>
+      <AppRoutes />
+    </ThreadProvider>
   );
 }
 
