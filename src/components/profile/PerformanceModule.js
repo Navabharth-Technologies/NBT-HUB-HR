@@ -51,11 +51,11 @@ export default function PerformanceModule() {
         const data = await res.json();
         if (res.ok) {
           const fetchedPic = data.profile_pic || data.profile_picture;
-          
+
           setPhone(data.phone_number || user.phone_number || localStorage.getItem(`phone_${user.email}`) || 'Add Phone Number');
           setAboutMe(data.about_me || user.about_me || 'Write a short introduction about yourself');
           setDob(data.date_of_birth || user.date_of_birth || localStorage.getItem(`dob_${user.email}`) || 'Add Date of Birth');
-          
+
           if (fetchedPic) {
             const isFullUrl = fetchedPic.startsWith('http') || fetchedPic.startsWith('data:');
             const fullUrl = isFullUrl ? fetchedPic : `${BASE_URL}${fetchedPic.startsWith('/') ? '' : '/'}${fetchedPic}`;
@@ -69,9 +69,9 @@ export default function PerformanceModule() {
             employee_id: data.employee_id || user?.employee_id || '—',
             designation: data.role || data.designation || user?.role || user?.designation || 'Employee'
           });
-          setReportingManager({ 
-            name: data.reporting_manager || 'Anish V N', 
-            id: data.reporting_manager_id || '' 
+          setReportingManager({
+            name: data.reporting_manager || 'Anish V N',
+            id: data.reporting_manager_id || ''
           });
 
           // If we have an ID but no name, or just to ensure it's fresh, fetch manager details
@@ -82,10 +82,10 @@ export default function PerformanceModule() {
               });
               if (mRes.ok) {
                 const mData = await mRes.json();
-                setReportingManager({ 
-                  name: mData.name || data.reporting_manager || 'Anish V N', 
+                setReportingManager({
+                  name: mData.name || data.reporting_manager || 'Anish V N',
                   id: data.reporting_manager_id,
-                  profile_pic: mData.profile_pic || mData.profile_picture 
+                  profile_pic: mData.profile_pic || mData.profile_picture
                 });
               }
             } catch (err) { console.error('Manager details fetch error:', err); }
@@ -103,9 +103,9 @@ export default function PerformanceModule() {
         if (res.ok) {
           const data = await res.json();
           // Merge with existing reporting manager info from loadProfile if needed
-          setReportingManager(prev => ({ 
-            ...prev, 
-            name: data.name || prev.name || 'Anish V N', 
+          setReportingManager(prev => ({
+            ...prev,
+            name: data.name || prev.name || 'Anish V N',
             id: data.id || prev.id,
             profile_pic: data.profile_pic || data.profile_picture || prev.profile_pic
           }));
@@ -136,8 +136,8 @@ export default function PerformanceModule() {
 
       const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_IMAGE, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${user.token}` 
+        headers: {
+          'Authorization': `Bearer ${user.token}`
         },
         body: formData
       });
@@ -149,11 +149,11 @@ export default function PerformanceModule() {
           // 3. Persist in DB via PROFILE_UPDATE
           await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${user.token}`
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               email: user.email,
               employee_id: user.employee_id,
               id: user.id || user.employee_id,
@@ -161,7 +161,7 @@ export default function PerformanceModule() {
               profile_picture: url
             })
           });
-          
+
           // 4. Update Global State
           updateUser({ profile_pic: url, profile_picture: url });
           setToast({ show: true, message: 'profile pic updated successfully ✅', type: 'success' });
@@ -178,85 +178,85 @@ export default function PerformanceModule() {
   const updateProfileField = async (field, value) => {
     if (!user?.token || !user?.email) return;
     try {
-        // Prepare full payload with current values to prevent "erasing" on backend
-        // We use user context values as final fallback to ensure we never send empty strings if data exists
-        const nextPhone = field === 'phone_number' ? value : (phone !== 'Add Phone Number' ? phone : (user.phone_number || ''));
-        const nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
+      // Prepare full payload with current values to prevent "erasing" on backend
+      // We use user context values as final fallback to ensure we never send empty strings if data exists
+      const nextPhone = field === 'phone_number' ? value : (phone !== 'Add Phone Number' ? phone : (user.phone_number || ''));
+      const nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
 
-        const payload = { 
-            email: user.email, 
-            employee_id: user.employee_id,
-            id: user.id || user.employee_id, // Include primary key id
-            // Primary fields (users table uses phone_number and date_of_birth)
-            phone_number: nextPhone,
-            date_of_birth: nextDob,
-            about_me: aboutMe,
-            // Compatibility aliases for different backend table schemas
-            phone: nextPhone,
-            mobile: nextPhone,
-            contact_no: nextPhone,
-            dob: nextDob,
-            dateOfBirth: nextDob,
-            emp_name: user.name
-        };
+      const payload = {
+        email: user.email,
+        employee_id: user.employee_id,
+        id: user.id || user.employee_id, // Include primary key id
+        // Primary fields (users table uses phone_number and date_of_birth)
+        phone_number: nextPhone,
+        date_of_birth: nextDob,
+        about_me: aboutMe,
+        // Compatibility aliases for different backend table schemas
+        phone: nextPhone,
+        mobile: nextPhone,
+        contact_no: nextPhone,
+        dob: nextDob,
+        dateOfBirth: nextDob,
+        emp_name: user.name
+      };
 
-        // Step 1: Update main Profile (Primary hit to users table via POST)
-        const res = await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.token}`
-            },
-            body: JSON.stringify(payload)
+      // Step 1: Update main Profile (Primary hit to users table via POST)
+      const res = await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      // Backup in localStorage to prevent "disappearing within a second" on refresh
+      if (nextPhone) localStorage.setItem(`phone_${user.email}`, nextPhone);
+      if (nextDob) localStorage.setItem(`dob_${user.email}`, nextDob);
+
+      // Step 2: Also update Employee Profile (hits granular metadata table)
+      try {
+        await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify({
+            ...payload,
+            id: user.employee_id,
+            contact_no: nextPhone, // specifically used in employee_profiles
+          })
         });
+      } catch (err) {
+        console.warn("Secondary profile update failed.");
+      }
 
-        // Backup in localStorage to prevent "disappearing within a second" on refresh
-        if (nextPhone) localStorage.setItem(`phone_${user.email}`, nextPhone);
-        if (nextDob) localStorage.setItem(`dob_${user.email}`, nextDob);
+      if (res.ok) {
+        // Update local state immediately
+        if (field === 'phone_number') {
+          setPhone(value);
+          setIsEditingPhone(false);
+          updateUser({ phone_number: value });
+        }
+        if (field === 'date_of_birth') {
+          setDob(value);
+          setIsEditingDob(false);
+          updateUser({ date_of_birth: value });
+        }
 
-        // Step 2: Also update Employee Profile (hits granular metadata table)
-        try {
-            await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`
-                },
-                body: JSON.stringify({ 
-                    ...payload,
-                    id: user.employee_id,
-                    contact_no: nextPhone, // specifically used in employee_profiles
-                })
-            });
-        } catch (err) {
-            console.warn("Secondary profile update failed.");
-        }
-        
-        if (res.ok) {
-            // Update local state immediately
-            if (field === 'phone_number') { 
-              setPhone(value); 
-              setIsEditingPhone(false); 
-              updateUser({ phone_number: value });
-            }
-            if (field === 'date_of_birth') { 
-              setDob(value); 
-              setIsEditingDob(false); 
-              updateUser({ date_of_birth: value });
-            }
-            
-            // Show Success Toast
-            setToast({ show: true, message: 'Profile updated successfully ✅', type: 'success' });
-            setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
-        } else {
-            const errData = await res.json();
-            setToast({ show: true, message: errData.error || 'Failed to update profile', type: 'error' });
-            setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
-        }
-    } catch (err) { 
-        console.error('Update profile error:', err);
-        setToast({ show: true, message: 'Server connection failed', type: 'error' });
+        // Show Success Toast
+        setToast({ show: true, message: 'Profile updated successfully ✅', type: 'success' });
         setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+      } else {
+        const errData = await res.json();
+        setToast({ show: true, message: errData.error || 'Failed to update profile', type: 'error' });
+        setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+      }
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setToast({ show: true, message: 'Server connection failed', type: 'error' });
+      setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
     }
   };
 
@@ -266,12 +266,12 @@ export default function PerformanceModule() {
     try {
       const res = await fetch(API_ENDPOINTS.PROFILE_ABOUT, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ 
-          email: user.email, 
+        body: JSON.stringify({
+          email: user.email,
           about_me: tempAbout,
           employee_id: user.employee_id,
           id: user.id || user.employee_id
@@ -420,140 +420,140 @@ export default function PerformanceModule() {
           <div style={dashboardStyles.banner}>
             Smarter Solutions for Better Future
           </div>
-          
+
           {/* Profile Header Card */}
           <div style={dashboardStyles.profileCard}>
-          <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'center' : 'flex-start', gap: winWidth < 1024 ? '30px' : '0', textAlign: winWidth < 1024 ? 'center' : 'left' }}>
-            <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
-              <div style={dashboardStyles.avatar}>
-                {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                >
-                  <Camera size={winWidth < 768 ? 16 : 18} color="#0f172a" />
-                </button>
-              </div>
-              <div>
-                <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', alignItems: 'center', gap: '12px' }}>
-                  <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{user?.name || 'Sahana Nv'}</h1>
-                  <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Fingerprint size={12} /> ID: {user?.employee_id || '202516'}
-                  </span>
+            <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'center' : 'flex-start', gap: winWidth < 1024 ? '30px' : '0', textAlign: winWidth < 1024 ? 'center' : 'left' }}>
+              <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
+                <div style={dashboardStyles.avatar}>
+                  {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                  >
+                    <Camera size={winWidth < 768 ? 16 : 18} color="#0f172a" />
+                  </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', alignItems: winWidth < 768 ? 'center' : 'flex-start', gap: winWidth < 768 ? '12px' : '40px', marginTop: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '950', textTransform: 'uppercase' }}>
-                    <Briefcase size={16} /> {profileData.designation}
+                <div>
+                  <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', alignItems: 'center', gap: '12px' }}>
+                    <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{user?.name || 'Sahana Nv'}</h1>
+                    <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Fingerprint size={12} /> ID: {user?.employee_id || '202516'}
+                    </span>
                   </div>
-                  
-                  {/* Phone Editable */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
-                    <Phone size={16} /> 
-                    {isEditingPhone ? (
+                  <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', alignItems: winWidth < 768 ? 'center' : 'flex-start', gap: winWidth < 768 ? '12px' : '40px', marginTop: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '950', textTransform: 'uppercase' }}>
+                      <Briefcase size={16} /> {profileData.designation}
+                    </div>
+
+                    {/* Phone Editable */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
+                      <Phone size={16} />
+                      {isEditingPhone ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input 
-                                value={tempPhone} 
-                                onChange={e => {
-                                    const val = e.target.value.replace(/\D/g, ''); // Numbers only
-                                    if (val.length <= 10) setTempPhone(val);
-                                }}
-                                onKeyDown={e => e.key === 'Enter' && tempPhone.length === 10 && updateProfileField('phone_number', tempPhone)}
-                                autoFocus
-                                style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white', width: '140px' }}
-                                placeholder="10-digit Phone"
-                            />
-                            <div 
-                                onClick={() => {
-                                    if (tempPhone.length === 10) {
-                                        updateProfileField('phone_number', tempPhone);
-                                    } else {
-                                        setToast({ show: true, message: 'Please enter a valid 10-digit number ⚠️' });
-                                        setTimeout(() => setToast({ show: false, message: '' }), 3000);
-                                    }
-                                }}
-                                style={{ background: tempPhone.length === 10 ? '#22c55e' : '#e2e8f0', color: 'white', padding: '6px', borderRadius: '8px', cursor: tempPhone.length === 10 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: tempPhone.length === 10 ? '0 4px 10px rgba(34, 197, 94, 0.3)' : 'none' }}
-                            >
-                                <Check size={14} strokeWidth={3} />
-                            </div>
-                            <div 
-                                onClick={() => setIsEditingPhone(false)}
-                                style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                                <X size={14} strokeWidth={3} />
-                            </div>
+                          <input
+                            value={tempPhone}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, ''); // Numbers only
+                              if (val.length <= 10) setTempPhone(val);
+                            }}
+                            onKeyDown={e => e.key === 'Enter' && tempPhone.length === 10 && updateProfileField('phone_number', tempPhone)}
+                            autoFocus
+                            style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white', width: '140px' }}
+                            placeholder="10-digit Phone"
+                          />
+                          <div
+                            onClick={() => {
+                              if (tempPhone.length === 10) {
+                                updateProfileField('phone_number', tempPhone);
+                              } else {
+                                setToast({ show: true, message: 'Please enter a valid 10-digit number ⚠️' });
+                                setTimeout(() => setToast({ show: false, message: '' }), 3000);
+                              }
+                            }}
+                            style={{ background: tempPhone.length === 10 ? '#22c55e' : '#e2e8f0', color: 'white', padding: '6px', borderRadius: '8px', cursor: tempPhone.length === 10 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: tempPhone.length === 10 ? '0 4px 10px rgba(34, 197, 94, 0.3)' : 'none' }}
+                          >
+                            <Check size={14} strokeWidth={3} />
+                          </div>
+                          <div
+                            onClick={() => setIsEditingPhone(false)}
+                            style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <X size={14} strokeWidth={3} />
+                          </div>
                         </div>
-                    ) : (
+                      ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempPhone(phone === 'Add Phone Number' ? '' : phone); setIsEditingPhone(true); }}>
-                            <span>{phone}</span>
-                            <Edit3 size={14} color="#94a3b8" />
+                          <span>{phone}</span>
+                          <Edit3 size={14} color="#94a3b8" />
                         </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  {/* DOB Editable */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
-                    <Calendar size={16} /> 
-                    {isEditingDob ? (
+                    {/* DOB Editable */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
+                      <Calendar size={16} />
+                      {isEditingDob ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input 
-                                type="date"
-                                value={tempDob} 
-                                onChange={e => setTempDob(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
-                                autoFocus
-                                style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white' }}
-                            />
-                            <div 
-                                onClick={() => updateProfileField('date_of_birth', tempDob)}
-                                style={{ background: '#22c55e', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
-                            >
-                                <Check size={14} strokeWidth={3} />
-                            </div>
-                            <div 
-                                onClick={() => setIsEditingDob(false)}
-                                style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                                <X size={14} strokeWidth={3} />
-                            </div>
+                          <input
+                            type="date"
+                            value={tempDob}
+                            onChange={e => setTempDob(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
+                            autoFocus
+                            style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white' }}
+                          />
+                          <div
+                            onClick={() => updateProfileField('date_of_birth', tempDob)}
+                            style={{ background: '#22c55e', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
+                          >
+                            <Check size={14} strokeWidth={3} />
+                          </div>
+                          <div
+                            onClick={() => setIsEditingDob(false)}
+                            style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <X size={14} strokeWidth={3} />
+                          </div>
                         </div>
-                    ) : (
+                      ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(formatToISODate(dob)); setIsEditingDob(true); }}>
-                            <span>{formatDateDisplay(dob)}</span>
-                            <Edit3 size={14} color="#94a3b8" />
+                          <span>{formatDateDisplay(dob)}</span>
+                          <Edit3 size={14} color="#94a3b8" />
                         </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc', padding: '12px 20px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', overflow: 'hidden' }}>
-                {reportingManager.profile_pic ? (
-                  <img 
-                    src={reportingManager.profile_pic.startsWith('http') || reportingManager.profile_pic.startsWith('data:') ? reportingManager.profile_pic : `${BASE_URL}${reportingManager.profile_pic.startsWith('/') ? '' : '/'}${reportingManager.profile_pic}`} 
-                    alt="Manager" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                ) : reportingManager.name?.[0]}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reporting Manager</p>
-                <p style={{ margin: 0, fontSize: '16px', color: '#0f172a', fontWeight: '900' }}>{reportingManager.name}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc', padding: '12px 20px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', overflow: 'hidden' }}>
+                  {reportingManager.profile_pic ? (
+                    <img
+                      src={reportingManager.profile_pic.startsWith('http') || reportingManager.profile_pic.startsWith('data:') ? reportingManager.profile_pic : `${BASE_URL}${reportingManager.profile_pic.startsWith('/') ? '' : '/'}${reportingManager.profile_pic}`}
+                      alt="Manager"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : reportingManager.name?.[0]}
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reporting Manager</p>
+                  <p style={{ margin: 0, fontSize: '16px', color: '#0f172a', fontWeight: '900' }}>{reportingManager.name}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
         {/* Basic Stats Row */}
-        <div style={{ 
-          width: '100%', 
-          maxWidth: '100%', 
-          margin: '0 auto 40px', 
-          display: 'grid', 
-          gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', 
-          gap: '24px' 
+        <div style={{
+          width: '100%',
+          maxWidth: '100%',
+          margin: '0 auto 40px',
+          display: 'grid',
+          gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr',
+          gap: '24px'
         }}>
           <div style={dashboardStyles.statBox}>
             <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Mail size={20} /></div>
@@ -612,7 +612,7 @@ export default function PerformanceModule() {
               <ChevronRight size={winWidth < 768 ? 16 : 20} color="#94a3b8" />
             </div>
 
-            <div 
+            <div
               style={{ ...dashboardStyles.docCard, background: '#69696cff', border: 'none', cursor: 'pointer' }}
               onClick={() => navigate(user?.role === 'hr' || user?.role === 'admin' ? '/admin/certificates' : '/service-certificates')}
             >
@@ -626,7 +626,7 @@ export default function PerformanceModule() {
               <ChevronRight size={winWidth < 768 ? 16 : 20} color="white" />
             </div>
 
-            <div 
+            <div
               style={{ ...dashboardStyles.docCard, gridColumn: winWidth < 1024 && winWidth >= 600 ? 'span 2' : 'auto', cursor: 'pointer' }}
               onClick={() => navigate(user?.role === 'hr' || user?.role === 'admin' ? '/admin/resignations' : '/resignations')}
             >
@@ -647,7 +647,7 @@ export default function PerformanceModule() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: winWidth < 768 ? '15px' : '20px' }}>
             <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', margin: 0 }}>About Me</h3>
             {!isEditingAbout && (
-              <div 
+              <div
                 onClick={() => { setTempAbout(aboutMe === 'Write a short introduction about yourself' ? '' : aboutMe); setIsEditingAbout(true); }}
                 style={{ width: '36px', height: '36px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
@@ -658,7 +658,7 @@ export default function PerformanceModule() {
           <div style={{ textAlign: isEditingAbout ? 'left' : 'center', padding: isEditingAbout ? '0' : (winWidth < 768 ? '10px 0' : '15px 0') }}>
             {isEditingAbout ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <textarea 
+                <textarea
                   value={tempAbout}
                   onChange={e => setTempAbout(e.target.value)}
                   placeholder="Tell us about yourself..."
@@ -666,13 +666,13 @@ export default function PerformanceModule() {
                   autoFocus
                 />
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <button 
+                  <button
                     onClick={() => setIsEditingAbout(false)}
                     style={{ padding: '8px 20px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '700', cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={updateAboutMe}
                     disabled={saving}
                     style={{ padding: '8px 24px', borderRadius: '10px', border: 'none', background: '#1e40af', color: 'white', fontWeight: '700', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
@@ -708,9 +708,9 @@ export default function PerformanceModule() {
 
       </main>
 
-      <UpdatePasswordModal 
-        isOpen={showSecurityModal} 
-        onClose={() => setShowSecurityModal(false)} 
+      <UpdatePasswordModal
+        isOpen={showSecurityModal}
+        onClose={() => setShowSecurityModal(false)}
         userEmail={user?.email}
       />
 
