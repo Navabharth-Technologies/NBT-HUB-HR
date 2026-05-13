@@ -47,11 +47,31 @@ export default function AllEmployeesReport() {
           const allLogs = logsData?.data || logsData?.attendance || [];
           
           // Map real logs to report format
+          const getCleanAttendance = (record) => {
+            const today = new Date().toLocaleDateString('en-CA');
+            const rawDate = record?.punch_date || record?.date || record?.created_at || '';
+            const recordDate = rawDate ? String(rawDate).split('T')[0].split(' ')[0] : 'N/A';
+            
+            // If it's today's record, be extra strict about clearing placeholders
+            const isToday = recordDate === today;
+            const rawIn = record?.in_time || record?.INTime;
+            const rawOut = record?.out_time || record?.OUTTime;
+            
+            const isMissing = (time) => !time || time === '--:--' || time === '00:00' || time === 'null';
+            
+            return {
+              ...record,
+              recordDate,
+              displayInTime: isMissing(rawIn) ? '----' : rawIn,
+              displayOutTime: (isToday || isMissing(rawOut)) ? '----' : rawOut
+            };
+          };
+
           const mapped = allLogs.map((log) => {
-            const punchIn = log?.in_time || log?.INTime || '----';
-            const punchOut = log?.out_time || log?.OUTTime || '----';
-            const rawDate = log?.punch_date || log?.date || log?.created_at || '';
-            const dateStr = rawDate ? String(rawDate).split('T')[0].split(' ')[0] : 'N/A';
+            const cleanLog = getCleanAttendance(log);
+            const punchIn = cleanLog.displayInTime;
+            const punchOut = cleanLog.displayOutTime;
+            const dateStr = cleanLog.recordDate;
             
             return {
               id: log.user_id || log.Empcode || 'N/A',

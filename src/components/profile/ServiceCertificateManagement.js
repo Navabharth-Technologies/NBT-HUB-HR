@@ -4,10 +4,10 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import { 
-  ChevronLeft, FileText, CheckCircle, Clock, 
-  ExternalLink, Search, Filter, MoreHorizontal,
-  Mail, User, Briefcase, Calendar, AlertCircle, X, Package
+import {
+    ChevronLeft, FileText, CheckCircle, Clock,
+    ExternalLink, Search, Filter, MoreHorizontal,
+    Mail, User, Briefcase, Calendar, AlertCircle, X, Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,7 +18,7 @@ export default function ServiceCertificateManagement() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
-    
+
     // Modal states
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [updatePayload, setUpdatePayload] = useState({
@@ -27,13 +27,6 @@ export default function ServiceCertificateManagement() {
         certificate_url: ''
     });
     const [updating, setUpdating] = useState(false);
-    const [winWidth, setWinWidth] = useState(window.innerWidth);
-
-    useEffect(() => {
-        const handleResize = () => setWinWidth(window.innerWidth);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -53,7 +46,7 @@ export default function ServiceCertificateManagement() {
             if (res.ok) {
                 const result = await res.json();
                 console.log('Fetched admin requests:', result);
-                
+
                 let actualData = [];
                 if (Array.isArray(result)) {
                     actualData = result;
@@ -93,13 +86,13 @@ export default function ServiceCertificateManagement() {
             notebook: request.notebook || false
         });
     };
- 
+
     const quickStatusUpdate = async (id, newStatus) => {
         if (!user?.token) return;
         try {
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_UPDATE(id), {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
@@ -113,12 +106,12 @@ export default function ServiceCertificateManagement() {
 
     const handleRequestUpdate = async () => {
         if (!selectedRequest || !user?.token) return;
-        
+
         try {
             setUpdating(true);
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_UPDATE(selectedRequest.id), {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
@@ -138,7 +131,7 @@ export default function ServiceCertificateManagement() {
 
     const filteredRequests = requests.filter(req => {
         const matchesSearch = (req.employee_name || req.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              (req.purpose || req.reason || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (req.purpose || req.reason || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = filterStatus === 'All' || req.status === filterStatus;
         return matchesSearch && matchesFilter;
     });
@@ -155,12 +148,12 @@ export default function ServiceCertificateManagement() {
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
             <AppHeader />
-            
+
             <main style={{ flex: 1, padding: '100px 30px 40px', maxWidth: '100%', margin: '0 auto', width: '100%', fontFamily: "'Outfit', sans-serif" }}>
                 <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                        <button 
-                            onClick={() => navigate(-1)} 
+                        <button
+                            onClick={() => navigate(-1)}
                             style={{ background: 'white', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex' }}
                         >
                             <ChevronLeft size={20} color="#64748b" />
@@ -185,15 +178,15 @@ export default function ServiceCertificateManagement() {
                     <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, position: 'relative', minWidth: '300px' }}>
                             <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 placeholder="Search by name or reason..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', transition: '0.2s', fontSize: '14px', fontWeight: '600' }}
                             />
                         </div>
-                        <select 
+                        <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                             style={{ padding: '0 20px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', background: 'white' }}
@@ -210,17 +203,17 @@ export default function ServiceCertificateManagement() {
                     ) : filteredRequests.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8', fontSize: '15px', fontWeight: '600', background: 'white', borderRadius: '24px', border: '1px solid #f1f5f9' }}>No requests found.</div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
                             {filteredRequests.map(req => {
                                 const statusStyle = getStatusColor(req.status);
-                                
+
                                 return (
-                                    <div 
-                                        key={req.id} 
+                                    <div
+                                        key={req.id}
                                         onClick={() => handleOpenReview(req)}
-                                        style={{ 
-                                            borderRadius: '24px', 
-                                            border: '1.5px solid #f1f5f9', 
+                                        style={{
+                                            borderRadius: '24px',
+                                            border: '1.5px solid #f1f5f9',
                                             background: 'white',
                                             padding: '24px',
                                             cursor: 'pointer',
@@ -241,25 +234,25 @@ export default function ServiceCertificateManagement() {
                                         }}
                                     >
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: statusStyle.text }} />
-                                        
+
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                             <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 <User color="#64748b" size={20} />
                                             </div>
-                                            <span style={{ 
-                                                background: statusStyle.bg, color: statusStyle.text, 
+                                            <span style={{
+                                                background: statusStyle.bg, color: statusStyle.text,
                                                 border: `1px solid ${statusStyle.border}`,
                                                 padding: '4px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '950', textTransform: 'uppercase'
                                             }}>
                                                 {req.status || 'Pending'}
                                             </span>
                                         </div>
- 
+
                                         <div style={{ marginBottom: '16px' }}>
                                             <div style={{ fontSize: '16px', fontWeight: '950', color: '#0f172a', marginBottom: '2px' }}>{req.employee_name || req.name || 'User'}</div>
                                             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800' }}>ID: {req.employee_id}</div>
                                         </div>
- 
+
                                         <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', marginBottom: '16px' }}>
                                             <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Purpose</div>
                                             <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -270,7 +263,7 @@ export default function ServiceCertificateManagement() {
                                         {/* Direct Action Buttons */}
                                         {req.status === 'Pending' && (
                                             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); quickStatusUpdate(req.id, 'Approved'); }}
                                                     style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.2)' }}
                                                     onMouseOver={e => e.currentTarget.style.background = '#16a34a'}
@@ -278,7 +271,7 @@ export default function ServiceCertificateManagement() {
                                                 >
                                                     Approve
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); quickStatusUpdate(req.id, 'Rejected'); }}
                                                     style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}
                                                     onMouseOver={e => e.currentTarget.style.background = '#dc2626'}
@@ -288,7 +281,7 @@ export default function ServiceCertificateManagement() {
                                                 </button>
                                             </div>
                                         )}
- 
+
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <Calendar size={13} color="#94a3b8" />
@@ -310,14 +303,14 @@ export default function ServiceCertificateManagement() {
             <AnimatePresence>
                 {selectedRequest && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '500px', padding: '30px', position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.2)' }}
                         >
                             <button onClick={() => setSelectedRequest(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer', color: '#64748b' }}>✕</button>
-                            
+
                             <h2 style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <FileText size={24} color="#3b82f6" /> Review Request
                             </h2>
@@ -342,11 +335,11 @@ export default function ServiceCertificateManagement() {
                                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Update Status</label>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             {['Pending', 'Approved', 'Rejected'].map(status => (
-                                                <button 
+                                                <button
                                                     key={status}
                                                     onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
-                                                    style={{ 
-                                                        flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid', 
+                                                    style={{
+                                                        flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid',
                                                         borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
                                                         background: updatePayload.status === status ? '#0f172a' : 'white',
                                                         color: updatePayload.status === status ? 'white' : '#64748b',
@@ -361,11 +354,21 @@ export default function ServiceCertificateManagement() {
 
                                     <div>
                                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Admin Remarks</label>
-                                        <textarea 
+                                        <textarea
                                             placeholder="Add private remarks or notes..."
                                             value={updatePayload.admin_remark}
                                             onChange={(e) => setUpdatePayload(prev => ({ ...prev, admin_remark: e.target.value }))}
                                             style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '14px', fontWeight: '600', minHeight: '80px', resize: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Certificate Download URL (PDF)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="https://example.com/certificate.pdf"
+                                            value={updatePayload.certificate_url}
+                                            onChange={(e) => setUpdatePayload(prev => ({ ...prev, certificate_url: e.target.value }))}
+                                            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '14px', fontWeight: '600' }}
                                         />
                                     </div>
 
@@ -378,7 +381,7 @@ export default function ServiceCertificateManagement() {
 
                                             <div style={{ marginBottom: '15px' }}>
                                                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#166534', marginBottom: '8px' }}>Laptop / Primary Asset Info</label>
-                                                <input 
+                                                <input
                                                     type="text"
                                                     placeholder="e.g. MacBook Pro M2, S/N: 12345"
                                                     value={updatePayload.laptop_details}
@@ -400,8 +403,8 @@ export default function ServiceCertificateManagement() {
                                                     { id: 'notebook', label: 'Ref Pad / Notebook' },
                                                 ].map(asset => (
                                                     <label key={asset.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '10px', background: updatePayload[asset.id] ? '#dcfce7' : 'white', border: '1px solid #bbf7d0', cursor: 'pointer', transition: '0.2s' }}>
-                                                        <input 
-                                                            type="checkbox" 
+                                                        <input
+                                                            type="checkbox"
                                                             checked={updatePayload[asset.id]}
                                                             onChange={(e) => setUpdatePayload(prev => ({ ...prev, [asset.id]: e.target.checked }))}
                                                             style={{ cursor: 'pointer' }}
@@ -417,7 +420,7 @@ export default function ServiceCertificateManagement() {
 
                             <div style={{ display: 'flex', gap: '15px' }}>
                                 <button onClick={() => setSelectedRequest(null)} style={{ flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                                <button 
+                                <button
                                     onClick={handleRequestUpdate}
                                     disabled={updating}
                                     style={{ flex: 1, padding: '16px', borderRadius: '14px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}

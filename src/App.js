@@ -1,4 +1,4 @@
-import { useAuth } from './context/AuthContext';
+import { useAuth, AuthProvider } from './context/AuthContext';
 import { ThreadProvider } from './context/ThreadContext';
 import HRDashboard from './components/profile/HRDashboard';
 import PerformanceModule from './components/profile/PerformanceModule';
@@ -92,9 +92,25 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThreadProvider>
-      <AppRoutes />
-    </ThreadProvider>
+    <AuthProvider>
+      <ThreadProvider>
+        <AppRoutes />
+        <style>{`
+          html, body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+            margin: 0;
+            padding: 0;
+            touch-action: pan-y;
+            overscroll-behavior-x: none;
+          }
+          * {
+            box-sizing: border-box;
+          }
+        `}</style>
+      </ThreadProvider>
+    </AuthProvider>
   );
 }
 

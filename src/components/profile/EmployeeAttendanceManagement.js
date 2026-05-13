@@ -32,8 +32,16 @@ export default function EmployeeAttendanceManagement() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [startDate, setStartDate] = useState('2026-02-01');
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(localStorage.getItem('nbtAttendanceFromDate') || '2026-01-01');
+  const [endDate, setEndDate] = useState(localStorage.getItem('nbtAttendanceToDate') || new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceFromDate', startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceToDate', endDate);
+  }, [endDate]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
 
@@ -247,21 +255,16 @@ export default function EmployeeAttendanceManagement() {
         // Support new backend format { data: [...] }
         const allLogs = logsData.data || logsData.attendance || logsData.logs || (Array.isArray(logsData) ? logsData : []);
         
-        // 3. Strict Frontend Filtering (Extra safety to ensure zero cross-employee data leak)
+        // 3. Strict Frontend Filtering (ID matching ONLY to prevent cross-employee data leak)
         const individualLogs = allLogs.filter(l => {
           if (!l) return false;
           const targetId = String(id).trim();
           
           // Try all possible identifier fields from various backend versions
-          const idFields = [
-            l.user_id, l.UserId, l.user_ID, l.UID, l.Empcode, l.EmpID, l.userId, l.empID, l.EmpCode, l.Emp_Code, l.UserID
-          ].map(v => String(v || '').trim());
+          // Priority: user_id, Empcode, EmpID, userId
+          const logId = String(l.user_id || l.Empcode || l.EmpID || l.userId || l.UserId || l.user_ID || l.UserID || '').trim();
           
-          const matchesId = idFields.some(field => field && targetId && (field === targetId));
-          const matchesEmail = l.email && found?.email && (String(l.email).toLowerCase() === String(found.email).toLowerCase());
-          const matchesName = (l.name || l.EmployeeName || l.user_name) && found?.name && (String(l.name || l.EmployeeName || l.user_name).toLowerCase().includes(found.name.toLowerCase()));
-          
-          return matchesId || matchesEmail || matchesName;
+          return logId === targetId;
         });
 
         // 4. Group Logs by Date (Consolidate multiple punches into one daily summary)
@@ -304,15 +307,16 @@ export default function EmployeeAttendanceManagement() {
           const punchInTime = firstPunch.in_time || firstPunch.INTime || firstPunch.PunchIn || firstPunch.punch_in || '----';
           const punchOutTime = lastPunch.out_time || lastPunch.OUTTime || lastPunch.PunchOut || lastPunch.punch_out || '----';
 
+          const isToday = date === new Date().toLocaleDateString('en-CA') || date === new Date().toISOString().split('T')[0];
           return {
             ...firstPunch,
             punch_date: date,
             in_time: punchInTime,
-            out_time: dayPunches.length > 1 ? punchOutTime : '----',
+            out_time: (isToday && dayPunches.length === 1) ? '----' : punchOutTime,
             in_location: firstPunch.punchin_location || firstPunch.in_location || firstPunch.location || '----',
-            out_location: dayPunches.length > 1 ? (lastPunch.punchout_location || lastPunch.out_location || lastPunch.location || '----') : '----',
+            out_location: (isToday && dayPunches.length === 1) ? '----' : (lastPunch.punchout_location || lastPunch.out_location || lastPunch.location || '----'),
             status: firstPunch.status || (punchInTime !== '----' ? 'PRESENT' : 'ABSENT'),
-            work_hrs: calculateWorkHours(punchInTime, dayPunches.length > 1 ? punchOutTime : null)
+            work_hrs: calculateWorkHours(punchInTime, (isToday && dayPunches.length === 1) ? null : (punchOutTime !== '----' ? punchOutTime : null))
           };
         });
 
@@ -393,23 +397,19 @@ export default function EmployeeAttendanceManagement() {
 
         {/* Dashboard Header */}
         <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'center', marginBottom: '32px', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px' }}>
             <button 
-              onClick={() => navigate('/attendance')}
-              style={{ 
-                width: '36px', height: '36px', borderRadius: '10px', background: 'white', border: '1.5px solid #e2e8f0', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#1e293b',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)', flexShrink: 0
-              }}
+              onClick={() => navigate(-1)}
+              style={{ width: winWidth < 768 ? '40px' : '48px', height: winWidth < 768 ? '40px' : '48px', borderRadius: '14px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: '0.2s', flexShrink: 0 }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={winWidth < 768 ? 20 : 24} />
             </button>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '950', color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
-                {employee?.name || 'Employee'} Dashboard
+              <h1 style={{ fontSize: winWidth < 768 ? '22px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-0.5px' }}>
+                {employee?.name || 'Employee'}
               </h1>
-              <p style={{ color: '#64748b', margin: 0, fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ID: <span style={{ color: '#0f172a' }}>#{id}</span> • Biometric Syncing: Operational
+              <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ID: <span style={{ color: '#0f172a' }}>#{id}</span> • <span style={{ color: '#10b981' }}>Verified</span>
               </p>
             </div>
           </div>
@@ -528,91 +528,78 @@ export default function EmployeeAttendanceManagement() {
                   const workHrs = log.work_hrs || '00:00';
                   const pDate = log.punch_date || log.date || log.created_at;
 
+                  const d = new Date(pDate);
+                  const isSunday = d.getDay() === 0;
+                  const month = d.toLocaleDateString('en-US', { month: 'short' });
+                  const dateDay = String(d.getDate()).padStart(2, '0');
+                  const dayMonth = `${month} ${dateDay}`;
+                  const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+                  const isHoliday = holidays.includes(dayMonth);
+
+                  let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
+                  if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
+                    if (isSunday) statusText = 'WO';
+                    else if (isHoliday) statusText = 'NH';
+                    else statusText = 'ABSENT';
+                  }
+
+                  const isPresent = statusText.includes('PRESENT') || statusText === 'P';
+                  const isWO = statusText === 'WO';
+                  const isNH = statusText === 'NH';
+
                   return (
-                    <div key={idx} style={{ background: 'white', borderRadius: '24px', padding: '20px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950' }}>
-                          {String(employee?.name || log.user_name || 'E').charAt(0).toUpperCase()}
+                    <div key={idx} style={{ 
+                      background: 'white', borderRadius: '24px', padding: '20px', 
+                      border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                      display: 'flex', flexDirection: 'column', gap: '16px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f8fafc', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Calendar size={18} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '950', color: '#1e293b' }}>
+                              {pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Attendance Log</div>
+                          </div>
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{employee?.name || log.user_name || 'Employee'}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{id} • {employee?.role || 'Staff'}</div>
+                        <div style={{ 
+                          padding: '6px 14px', borderRadius: '100px', 
+                          background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'), 
+                          color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
+                          fontSize: '11px', fontWeight: '950', border: `1px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`
+                        }}>
+                          {statusText}
                         </div>
                       </div>
 
-                      <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '16px' }}>
                         <div>
-                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Date</div>
-                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Hours</div>
-                          <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>
-                            {workHrs?.replace(/\s:\s/g, ':') || '00:00'} <span style={{ fontSize: '10px', color: '#94a3b8' }}>HRS</span>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Punch In</div>
+                          <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Clock size={14} color="#3b82f6" /> {punchIn}
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch In</div>
-                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchIn}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Punch Out</div>
-                          <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{punchOut}</div>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Punch Out</div>
+                          <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Clock size={14} color="#64748b" /> {punchOut}
+                          </div>
                         </div>
                       </div>
 
-                      <div style={{ height: '1px', background: '#f1f5f9', margin: '0 -20px 16px' }}></div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.in_location}>
-                          <MapPin size={12} /> {log.in_location || '----'}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '950', color: '#1e293b' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', marginRight: '4px' }}>DURATION:</span>
+                          {workHrs} HRS
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '700', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.out_location}>
-                          <MapPin size={12} /> {log.out_location || '----'}
+                        <div style={{ width: '1px', height: '16px', background: '#e2e8f0' }}></div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <MapPin size={16} color="#94a3b8" title={`In: ${log.in_location || 'N/A'}`} />
+                          <MapPin size={16} color="#cbd5e1" title={`Out: ${log.out_location || 'N/A'}`} />
                         </div>
-                        {(() => {
-                          const logDate = log.punch_date || log.date || log.created_at || '';
-                          const d = new Date(logDate);
-                          if (isNaN(d.getTime())) return null;
-
-                          const isSunday = d.getDay() === 0;
-                          const month = d.toLocaleDateString('en-US', { month: 'short' });
-                          const dateDay = String(d.getDate()).padStart(2, '0');
-                          const dayMonth = `${month} ${dateDay}`;
-                          const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
-                          const isHoliday = holidays.includes(dayMonth);
-
-                          let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
-                          if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
-                            if (isSunday) statusText = 'WO';
-                            else if (isHoliday) statusText = 'NH';
-                            else statusText = 'ABSENT';
-                          }
-
-                          const isPresent = statusText.includes('PRESENT') || statusText === 'P';
-                          const isWO = statusText === 'WO';
-                          const isNH = statusText === 'NH';
-
-                          return (
-                            <div style={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: '6px', 
-                              padding: '6px 14px', 
-                              borderRadius: '100px', 
-                              background: isPresent ? '#f0fdf4' : (isWO || isNH ? '#eff6ff' : '#fef2f2'), 
-                              border: `1.5px solid ${isPresent ? '#bbf7d0' : (isWO || isNH ? '#dbeafe' : '#fee2e2')}`,
-                              color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
-                              fontSize: '11px',
-                              fontWeight: '950',
-                              textTransform: 'uppercase'
-                            }}>
-                              {statusText}
-                            </div>
-                          );
-                        })()}
                       </div>
                     </div>
                   );

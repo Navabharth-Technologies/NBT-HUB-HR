@@ -15,6 +15,7 @@ export default function ResignationUserScreen() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState(null);
+    const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase().includes('hr');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -43,11 +44,9 @@ export default function ResignationUserScreen() {
         try {
             setLoading(true);
             const employeeId = user.employee_id || user.id;
-            const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr';
 
-            // If admin, we fetch ALL resignations (the user expects DB table sync)
-            // If user, we fetch only theirs
-            const endpoint = isAdmin ? API_ENDPOINTS.RESIGNATIONS_GET : `${API_ENDPOINTS.RESIGNATION_REQUEST}?employee_id=${employeeId}`;
+            // In HR app, we show all resignations in this screen for HR users
+            const endpoint = API_ENDPOINTS.RESIGNATIONS_GET;
 
             const res = await fetch(endpoint, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
@@ -64,10 +63,16 @@ export default function ResignationUserScreen() {
                     actualData = result.resignations;
                 } else if (result.requests && Array.isArray(result.requests)) {
                     actualData = result.requests;
+                } else if (result.data && !Array.isArray(result.data) && Array.isArray(result.data.requests)) {
+                    actualData = result.data.requests;
+                } else if (result.data && !Array.isArray(result.data) && Array.isArray(result.data.resignations)) {
+                    actualData = result.data.resignations;
                 }
 
-                // If it's admin view, we also need to fetch employees to get names
-                if (isAdmin && actualData.length > 0) {
+                // No client-side filtering needed in HR app, we show all requests
+
+                // Fetch employees to get names for the global list
+                if (actualData.length > 0) {
                     try {
                         const empRes = await fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user.token}` } });
                         if (empRes.ok) {
@@ -99,8 +104,8 @@ export default function ResignationUserScreen() {
 
         // Built-in deduplication: Check if CURRENT USER already has a pending request
         const currentUserId = String(user.employee_id || user.id);
-        const hasMyPending = requests.some(r => 
-            String(r.employee_id) === currentUserId && 
+        const hasMyPending = requests.some(r =>
+            String(r.employee_id) === currentUserId &&
             (String(r.status).toLowerCase() === 'pending' || String(r.status).toLowerCase() === 'wait')
         );
 
@@ -148,19 +153,19 @@ export default function ResignationUserScreen() {
     const [updating, setUpdating] = useState(false);
     const handleStatusUpdate = async (reqId, newStatus) => {
         if (!user?.token || !reqId) {
-             alert('Error: Request ID not found. Cannot update status.');
-             return;
+            alert('Error: Request ID not found. Cannot update status.');
+            return;
         }
 
         try {
             setUpdating(true);
             const res = await fetch(API_ENDPOINTS.RESIGNATION_UPDATE(reqId), {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${user.token}` 
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     status: newStatus,
                     reporting_manager_remark: selectedRequest.reporting_manager_remark || '',
                     project_manager_remark: selectedRequest.project_manager_remark || '',
@@ -168,33 +173,32 @@ export default function ResignationUserScreen() {
                 })
             });
 
-            if (res.ok) { 
+            if (res.ok) {
                 alert(`Resignation marked as ${newStatus} successfully!`);
-                setSelectedRequest(null); 
-                fetchMyRequests(); 
+                setSelectedRequest(null);
+                fetchMyRequests();
             } else {
                 const errText = await res.text();
                 alert(`Failed to update status: ${errText || 'Internal Server Error'}`);
             }
-        } catch (error) { 
-            console.error('Update err', error); 
+        } catch (error) {
+            console.error('Update err', error);
             alert('A network error occurred while updating the status.');
-        } finally { 
-            setUpdating(false); 
+        } finally {
+            setUpdating(false);
         }
     };
 
-    const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr';
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <AppHeader />
-            <main style={{ 
-                flex: 1, 
-                padding: winWidth < 768 ? '100px 20px 40px' : '150px 40px 40px', 
-                maxWidth: '100%', 
-                width: '100%', 
-                fontFamily: "'Outfit', sans-serif" 
+            <main style={{
+                flex: 1,
+                padding: winWidth < 768 ? '100px 20px 40px' : '150px 40px 40px',
+                maxWidth: '100%',
+                width: '100%',
+                fontFamily: "'Outfit', sans-serif"
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
                     <button
@@ -206,13 +210,13 @@ export default function ResignationUserScreen() {
                     <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Exit Management</h1>
                 </div>
 
-                <div style={{ 
-                    display: 'flex', 
-                    gap: winWidth < 768 ? '4px' : '8px', 
-                    background: '#d1d9e0', 
-                    padding: '6px', 
-                    borderRadius: '14px', 
-                    width: winWidth < 768 ? '100%' : 'fit-content', 
+                <div style={{
+                    display: 'flex',
+                    gap: winWidth < 768 ? '4px' : '8px',
+                    background: '#d1d9e0',
+                    padding: '6px',
+                    borderRadius: '14px',
+                    width: winWidth < 768 ? '100%' : 'fit-content',
                     marginBottom: '40px',
                     overflowX: 'auto',
                     scrollbarWidth: 'none',
@@ -224,18 +228,18 @@ export default function ResignationUserScreen() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             style={{
-                                display: 'flex', 
-                                alignItems: 'center', 
+                                display: 'flex',
+                                alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '8px', 
-                                padding: winWidth < 768 ? '10px 10px' : '10px 24px', 
-                                borderRadius: '10px', 
-                                border: 'none', 
-                                cursor: 'pointer', 
-                                fontSize: winWidth < 768 ? '12px' : '14px', 
-                                fontWeight: '800', 
+                                gap: '8px',
+                                padding: winWidth < 768 ? '10px 10px' : '10px 24px',
+                                borderRadius: '10px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: winWidth < 768 ? '12px' : '14px',
+                                fontWeight: '800',
                                 transition: '0.3s',
-                                background: activeTab === tab.id ? 'white' : 'transparent', 
+                                background: activeTab === tab.id ? 'white' : 'transparent',
                                 color: activeTab === tab.id ? '#0f172a' : '#64748b',
                                 boxShadow: activeTab === tab.id ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
                                 flex: winWidth < 768 ? 1 : 'none',
@@ -258,11 +262,11 @@ export default function ResignationUserScreen() {
                         overflow: 'hidden'
                     }}>
                         <div style={{ height: '7px', background: 'linear-gradient(90deg, #ef4444 0%, #fca5a5 100%)' }} />
-                        <div style={{ 
-                            padding: winWidth < 768 ? '25px 20px 0' : '36px 50px 0', 
-                            display: 'flex', 
+                        <div style={{
+                            padding: winWidth < 768 ? '25px 20px 0' : '36px 50px 0',
+                            display: 'flex',
                             flexDirection: winWidth < 768 ? 'column' : 'row',
-                            justifyContent: 'space-between', 
+                            justifyContent: 'space-between',
                             alignItems: winWidth < 768 ? 'flex-start' : 'center',
                             gap: winWidth < 768 ? '20px' : '0'
                         }}>
@@ -368,7 +372,17 @@ export default function ResignationUserScreen() {
                     </div>
                 ) : (
                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                        <h3 style={{ fontSize: '12px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>History of Resignations</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ fontSize: '12px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>
+                                Team Resignation History
+                            </h3>
+                            <button 
+                                onClick={fetchMyRequests}
+                                style={{ background: 'white', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                                <Clock size={12} /> Refresh Sync
+                            </button>
+                        </div>
                         {loading ? (
                             <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', background: 'white', borderRadius: '24px' }}>Syncing history...</div>
                         ) : requests.length === 0 ? (
@@ -434,19 +448,19 @@ export default function ResignationUserScreen() {
                     </div>
                 )}
                 {selectedRequest && (
-                    <div 
+                    <div
                         className="no-scrollbar"
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: winWidth < 768 ? 'center' : 'flex-start', justifyContent: 'center', padding: winWidth < 768 ? '10px' : '100px 20px 40px', overflowY: 'auto' }} 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: winWidth < 768 ? 'center' : 'flex-start', justifyContent: 'center', padding: winWidth < 768 ? '10px' : '100px 20px 40px', overflowY: 'auto' }}
                         onClick={() => setSelectedRequest(null)}
                     >
                         <div
                             style={{
-                                background: 'white', 
-                                borderRadius: winWidth < 768 ? '24px' : '32px', 
-                                width: '100%', 
-                                maxWidth: '800px', 
-                                position: 'relative', 
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', 
+                                background: 'white',
+                                borderRadius: winWidth < 768 ? '24px' : '32px',
+                                width: '100%',
+                                maxWidth: '800px',
+                                position: 'relative',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
                                 animation: 'modalSlideUp 0.3s ease-out',
                                 maxHeight: winWidth < 768 ? '90vh' : 'auto',
                                 overflowY: winWidth < 768 ? 'auto' : 'visible'
@@ -513,24 +527,23 @@ export default function ResignationUserScreen() {
                                         Sincerely,<br />
                                         <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '16px' : '20px' }}>{selectedRequest.employee_name}</span>
                                     </p>
-                                    {isAdmin && (
                                         <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                                                <button 
+                                                <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Pending')}
                                                     style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#fffbeb', color: '#d97706', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
                                                 >
                                                     Wait
                                                 </button>
-                                                <button 
+                                                <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Rejected')}
                                                     style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#fef2f2', color: '#dc2626', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
                                                 >
                                                     Reject
                                                 </button>
-                                                <button 
+                                                <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Approved')}
                                                     style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
@@ -539,7 +552,6 @@ export default function ResignationUserScreen() {
                                                 </button>
                                             </div>
                                         </div>
-                                    )}
                                 </div>
                             </div>
                         </div>

@@ -578,7 +578,7 @@ export default function PerformanceModule() {
             {[
               { title: 'Manage Leave', sub: 'Request or track off-time', color: '#fee2e2', text: '#b91c1c', icon: <Calendar color="#ef4444" size={20} />, path: '/attendance' },
               { title: 'Attendance Logs', sub: 'Review check-in history', color: '#dcfce7', text: '#15803d', icon: <Clock color="#22c55e" size={20} />, path: '/attendance' },
-              { title: 'Security Settings', sub: 'Update security passkey', color: '#dbeafe', text: '#1e40af', icon: <Shield color="#3b82f6" size={20} />, onClick: () => setShowSecurityModal(true) },
+              { title: 'Security Settings', sub: 'Update security password', color: '#dbeafe', text: '#1e40af', icon: <Shield color="#3b82f6" size={20} />, onClick: () => setShowSecurityModal(true) },
               { title: 'Support & Maintenance', sub: 'Raise technical ticket', color: '#ffedd5', text: '#9a3412', icon: <LifeBuoy color="#f97316" size={20} />, path: '/tickets' }
             ].map((svc, i) => (
               <div key={i} onClick={svc.onClick || (() => navigate(svc.path))} style={{ ...dashboardStyles.serviceCard, background: svc.color }}>
@@ -614,7 +614,10 @@ export default function PerformanceModule() {
 
             <div
               style={{ ...dashboardStyles.docCard, background: '#69696cff', border: 'none', cursor: 'pointer' }}
-              onClick={() => navigate(user?.role === 'hr' || user?.role === 'admin' ? '/admin/certificates' : '/service-certificates')}
+              onClick={() => {
+                const role = (user?.role || '').toLowerCase();
+                navigate(role === 'hr' || role === 'admin' ? '/admin/certificates' : '/service-certificates');
+              }}
             >
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(217, 212, 212, 0.91)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Fingerprint color="white" /></div>
@@ -628,7 +631,10 @@ export default function PerformanceModule() {
 
             <div
               style={{ ...dashboardStyles.docCard, gridColumn: winWidth < 1024 && winWidth >= 600 ? 'span 2' : 'auto', cursor: 'pointer' }}
-              onClick={() => navigate(user?.role === 'hr' || user?.role === 'admin' ? '/admin/resignations' : '/resignations')}
+              onClick={() => {
+                const role = (user?.role || '').toLowerCase();
+                navigate(role === 'hr' || role === 'admin' ? '/admin/resignations' : '/resignations');
+              }}
             >
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                 <div style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LogOut color="#ef4444" size={26} /></div>

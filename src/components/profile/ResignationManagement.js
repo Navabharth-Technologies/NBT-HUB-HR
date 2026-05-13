@@ -4,10 +4,10 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import { 
-  ChevronLeft, FileText,
-  Search, AlertCircle,
-  LogOut
+import {
+    ChevronLeft, FileText,
+    Search, AlertCircle,
+    LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,7 +18,7 @@ export default function ResignationManagement() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
-    
+
     // Modal states
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [updatePayload, setUpdatePayload] = useState({
@@ -28,13 +28,6 @@ export default function ResignationManagement() {
         hr_remark: ''
     });
     const [updating, setUpdating] = useState(false);
-    const [winWidth, setWinWidth] = useState(window.innerWidth);
-
-    useEffect(() => {
-        const handleResize = () => setWinWidth(window.innerWidth);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -104,12 +97,12 @@ export default function ResignationManagement() {
 
     const handleRequestUpdate = async () => {
         if (!selectedRequest || !user?.token) return;
-        
+
         try {
             setUpdating(true);
             const res = await fetch(API_ENDPOINTS.RESIGNATION_UPDATE(selectedRequest.id), {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
@@ -129,7 +122,7 @@ export default function ResignationManagement() {
 
     const filteredRequests = requests.filter(req => {
         const matchesSearch = (req.employee_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              (req.reason || req.reason_for_leaving || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (req.reason || req.reason_for_leaving || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = filterStatus === 'All' || req.status === filterStatus;
         return matchesSearch && matchesFilter;
     });
@@ -146,12 +139,12 @@ export default function ResignationManagement() {
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
             <AppHeader />
-            
+
             <main style={{ flex: 1, padding: '100px 20px 40px', maxWidth: '100%', margin: '0 auto', width: '100%', fontFamily: "'Outfit', sans-serif" }}>
                 <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                        <button 
-                            onClick={() => navigate(-1)} 
+                        <button
+                            onClick={() => navigate(-1)}
                             style={{ background: 'white', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex' }}
                         >
                             <ChevronLeft size={20} color="#64748b" />
@@ -176,15 +169,15 @@ export default function ResignationManagement() {
                     <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, position: 'relative', minWidth: '300px' }}>
                             <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 placeholder="Search by name or reason..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', outline: 'none', fontSize: '14px', fontWeight: '600', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
                             />
                         </div>
-                        <select 
+                        <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                             style={{ padding: '0 20px', borderRadius: '14px', border: '1.5px solid #e2e8f0', outline: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
@@ -235,7 +228,7 @@ export default function ResignationManagement() {
                                             <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '20px', border: '1px dashed #e2e8f0', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                                                 {/* FROM / TO row */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '16px' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                                     <div>
                                                         <div style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>FROM</div>
                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -256,7 +249,7 @@ export default function ResignationManagement() {
                                                 </div>
 
                                                 {/* Dates row */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '16px' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                                     <div>
                                                         <div style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Resignation Date</div>
                                                         <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>
@@ -348,14 +341,14 @@ export default function ResignationManagement() {
             <AnimatePresence>
                 {selectedRequest && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto', padding: '40px', position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.2)' }}
                         >
                             <button onClick={() => setSelectedRequest(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer', color: '#64748b' }}>✕</button>
-                            
+
                             {/* Header */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
                                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -435,64 +428,64 @@ export default function ResignationManagement() {
                                 </p>
                             </div>
 
-                                <div style={{ display: 'grid', gap: '20px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>Status Decision</label>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            {['Pending', 'Approved', 'Rejected'].map(status => (
-                                                <button 
-                                                    key={status}
-                                                    onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
-                                                    style={{ 
-                                                        flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid', 
-                                                        borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
-                                                        background: updatePayload.status === status ? '#0f172a' : 'white',
-                                                        color: updatePayload.status === status ? 'white' : '#64748b',
-                                                        fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: '0.2s'
-                                                    }}
-                                                >
-                                                    {status}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gap: '16px' }}>
-                                        {(!(selectedRequest.designation || '').toUpperCase().includes('LEAD') && !(selectedRequest.designation || '').toUpperCase().includes('MANAGER')) && (
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Reporting Manager Remarks</label>
-                                                <textarea 
-                                                    placeholder="Remarks from reporting manager..."
-                                                    value={updatePayload.reporting_manager_remark}
-                                                    onChange={(e) => setUpdatePayload(prev => ({ ...prev, reporting_manager_remark: e.target.value }))}
-                                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit' }}
-                                                />
-                                            </div>
-                                        )}
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Project Manager Remarks</label>
-                                            <textarea 
-                                                placeholder="Remarks from project manager..."
-                                                value={updatePayload.project_manager_remark}
-                                                onChange={(e) => setUpdatePayload(prev => ({ ...prev, project_manager_remark: e.target.value }))}
-                                                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit' }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#0369a1', marginBottom: '8px', textTransform: 'uppercase' }}>HR Final Remarks</label>
-                                            <textarea 
-                                                placeholder="Final HR decision remarks..."
-                                                value={updatePayload.hr_remark}
-                                                onChange={(e) => setUpdatePayload(prev => ({ ...prev, hr_remark: e.target.value }))}
-                                                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #bae6fd', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit', background: '#f0f9ff' }}
-                                            />
-                                        </div>
+                            <div style={{ display: 'grid', gap: '20px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>Status Decision</label>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        {['Pending', 'Approved', 'Rejected'].map(status => (
+                                            <button
+                                                key={status}
+                                                onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
+                                                style={{
+                                                    flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid',
+                                                    borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
+                                                    background: updatePayload.status === status ? '#0f172a' : 'white',
+                                                    color: updatePayload.status === status ? 'white' : '#64748b',
+                                                    fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: '0.2s'
+                                                }}
+                                            >
+                                                {status}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
+                                <div style={{ display: 'grid', gap: '16px' }}>
+                                    {(!(selectedRequest.designation || '').toUpperCase().includes('LEAD') && !(selectedRequest.designation || '').toUpperCase().includes('MANAGER')) && (
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Reporting Manager Remarks</label>
+                                            <textarea
+                                                placeholder="Remarks from reporting manager..."
+                                                value={updatePayload.reporting_manager_remark}
+                                                onChange={(e) => setUpdatePayload(prev => ({ ...prev, reporting_manager_remark: e.target.value }))}
+                                                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit' }}
+                                            />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Project Manager Remarks</label>
+                                        <textarea
+                                            placeholder="Remarks from project manager..."
+                                            value={updatePayload.project_manager_remark}
+                                            onChange={(e) => setUpdatePayload(prev => ({ ...prev, project_manager_remark: e.target.value }))}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#0369a1', marginBottom: '8px', textTransform: 'uppercase' }}>HR Final Remarks</label>
+                                        <textarea
+                                            placeholder="Final HR decision remarks..."
+                                            value={updatePayload.hr_remark}
+                                            onChange={(e) => setUpdatePayload(prev => ({ ...prev, hr_remark: e.target.value }))}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #bae6fd', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '60px', resize: 'none', fontFamily: 'inherit', background: '#f0f9ff' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div style={{ display: 'flex', gap: '15px', marginTop: '24px' }}>
                                 <button onClick={() => setSelectedRequest(null)} style={{ flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                                <button 
+                                <button
                                     onClick={handleRequestUpdate}
                                     disabled={updating}
                                     style={{ flex: 1, padding: '16px', borderRadius: '14px', border: 'none', background: '#ef4444', color: 'white', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}

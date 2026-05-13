@@ -4,16 +4,17 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import { 
-  ChevronLeft, FileText, CheckCircle, Clock, 
-  Download, Plus, Search, Filter, AlertCircle, X,
-  ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles
+import {
+    ChevronLeft, FileText, CheckCircle, Clock,
+    Download, Plus, Search, Filter, AlertCircle, X,
+    ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ServiceCertificateUserScreen() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase().includes('hr');
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -24,7 +25,16 @@ export default function ServiceCertificateUserScreen() {
     const [assetData, setAssetData] = useState(null);
     const [assetsLoading, setAssetsLoading] = useState(false);
     const [employeeNames, setEmployeeNames] = useState({});
+    const [adminRemark, setAdminRemark] = useState('');
+    const [certificateUrl, setCertificateUrl] = useState('');
     const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        if (selectedDetail) {
+            setAdminRemark(selectedDetail.admin_remark || '');
+            setCertificateUrl(selectedDetail.certificate_url || '');
+        }
+    }, [selectedDetail]);
 
     useEffect(() => {
         const handleResize = () => setWinWidth(window.innerWidth);
@@ -35,9 +45,7 @@ export default function ServiceCertificateUserScreen() {
 
     useEffect(() => {
         fetchMyRequests();
-        if (String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') {
-            fetchAllEmployees();
-        }
+        fetchAllEmployees();
     }, [user]);
 
     const fetchMyRequests = async () => {
@@ -45,11 +53,8 @@ export default function ServiceCertificateUserScreen() {
         try {
             setLoading(true);
             const employeeId = user.id || user.employee_id;
-            const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr';
-            
-            const endpoint = isAdmin 
-                ? API_ENDPOINTS.SERVICE_CERTIFICATES_ADMIN 
-                : API_ENDPOINTS.SERVICE_CERTIFICATE_MY;
+            // In the HR portal, we want this screen to act as a global view for HR approval
+            const endpoint = API_ENDPOINTS.SERVICE_CERTIFICATES_ADMIN || `${API_ENDPOINTS.BASE_URL || 'http://localhost:5000'}/api/service-certificates`;
 
             const res = await fetch(endpoint, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
@@ -58,7 +63,7 @@ export default function ServiceCertificateUserScreen() {
             if (res.ok) {
                 const result = await res.json();
                 console.log('Certificate fetch result:', result);
-                
+
                 let actualData = [];
                 if (Array.isArray(result)) {
                     actualData = result;
@@ -70,10 +75,7 @@ export default function ServiceCertificateUserScreen() {
                     actualData = result.requests;
                 }
 
-                // If not admin, ensure we filter (client-side safety)
-                if (!isAdmin) {
-                    actualData = actualData.filter(r => String(r.employee_id) === String(employeeId));
-                }
+                // HR portal shows all requests by default
 
                 setRequests(actualData);
             }
@@ -103,34 +105,31 @@ export default function ServiceCertificateUserScreen() {
         }
     };
 
-    const fetchAssetData = async (reqId = null) => {
+    const fetchAssetData = async (employeeId = null) => {
         if (!user?.token) return;
         try {
             setAssetsLoading(true);
+            const targetEmpId = employeeId || user.id || user.employee_id;
             
-            let dataToUse = null;
-            if (reqId) {
-                const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_SINGLE(reqId), {
-                    headers: { 'Authorization': `Bearer ${user.token}` }
-                });
-                if (res.ok) {
-                    dataToUse = await res.json();
+            // Fetch from the global assets endpoint
+            const res = await fetch(API_ENDPOINTS.ASSETS || `${API_ENDPOINTS.BASE_URL || 'http://localhost:5000'}/api/assets`, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+            });
+
+            if (res.ok) {
+                const allAssets = await res.json();
+                const list = Array.isArray(allAssets) ? allAssets : (allAssets.data || []);
+                
+                // Find the asset record for this specific employee
+                const myAsset = list.find(a => 
+                    String(a.employee_id || a.EmpID || a.employeeId || a.id) === String(targetEmpId)
+                );
+
+                if (myAsset) {
+                    setAssetData(myAsset);
+                } else {
+                    console.warn('No asset record found for employee:', targetEmpId);
                 }
-            } else {
-                const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_MY, {
-                    headers: { 'Authorization': `Bearer ${user.token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const list = Array.isArray(data) ? data : (data.data || []);
-                    dataToUse = list
-                        .filter(r => r.status === 'Approved' || r.status === 'Pending Audit')
-                        .sort((a, b) => b.id - a.id)[0];
-                }
-            }
-            
-            if (dataToUse) {
-                setAssetData(dataToUse);
             }
         } catch (error) {
             console.error('Fetch assets error:', error);
@@ -151,11 +150,11 @@ export default function ServiceCertificateUserScreen() {
             setSubmitting(true);
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_REQUEST, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     employee_id: user.id || user.employee_id,
                     employee_name: user.name,
                     purpose: purpose
@@ -178,11 +177,15 @@ export default function ServiceCertificateUserScreen() {
         try {
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_UPDATE(id), {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({ 
+                    status: newStatus,
+                    admin_remark: adminRemark,
+                    certificate_url: certificateUrl
+                })
             });
             if (res.ok) {
                 setSelectedDetail(null);
@@ -199,27 +202,27 @@ export default function ServiceCertificateUserScreen() {
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
             <AppHeader />
-            
-            <main style={{ 
-                flex: 1, 
-                padding: winWidth < 768 ? '90px 15px 40px' : '100px 40px 40px', 
-                maxWidth: '100%', 
-                margin: '0', 
-                width: '100%', 
-                fontFamily: "'Outfit', sans-serif" 
+
+            <main style={{
+                flex: 1,
+                padding: winWidth < 768 ? '90px 15px 40px' : '100px 40px 40px',
+                maxWidth: '100%',
+                margin: '0',
+                width: '100%',
+                fontFamily: "'Outfit', sans-serif"
             }}>
-                <header style={{ 
-                    marginBottom: '40px', 
-                    display: 'flex', 
+                <header style={{
+                    marginBottom: '40px',
+                    display: 'flex',
                     flexDirection: winWidth < 768 ? 'column' : 'row',
-                    justifyContent: 'space-between', 
+                    justifyContent: 'space-between',
                     alignItems: winWidth < 768 ? 'flex-start' : 'center',
                     gap: winWidth < 768 ? '20px' : '0'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px' }}>
 
-                        <button 
-                            onClick={() => navigate(-1)} 
+                        <button
+                            onClick={() => navigate(-1)}
                             style={{ background: 'white', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex' }}
                         >
                             <ChevronLeft size={20} color="#64748b" />
@@ -231,9 +234,9 @@ export default function ServiceCertificateUserScreen() {
 
                     </div>
 
-                    <div style={{ 
-                        display: 'flex', 
-                        gap: '12px', 
+                    <div style={{
+                        display: 'flex',
+                        gap: '12px',
                         alignItems: 'center',
                         width: winWidth < 768 ? '100%' : 'auto',
                         overflowX: winWidth < 768 ? 'auto' : 'visible',
@@ -242,21 +245,21 @@ export default function ServiceCertificateUserScreen() {
 
 
 
-                        {!(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && (
-                            <button 
+                        {!isAdmin && (
+                            <button
                                 onClick={() => setShowRequestModal(true)}
-                                style={{ 
-                                    background: '#0f172a', 
-                                    color: 'white', 
-                                    border: 'none', 
-                                    padding: winWidth < 768 ? '10px 16px' : '12px 24px', 
-                                    borderRadius: '14px', 
-                                    fontWeight: '800', 
-                                    fontSize: winWidth < 768 ? '12px' : '14px', 
-                                    cursor: 'pointer', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '8px', 
+                                style={{
+                                    background: '#0f172a',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: winWidth < 768 ? '10px 16px' : '12px 24px',
+                                    borderRadius: '14px',
+                                    fontWeight: '800',
+                                    fontSize: winWidth < 768 ? '12px' : '14px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
                                     boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)',
                                     whiteSpace: 'nowrap',
                                     flex: winWidth < 768 ? 1 : 'none',
@@ -271,10 +274,10 @@ export default function ServiceCertificateUserScreen() {
                 </header>
 
                 {/* Section: Active & History Requests */}
-                <section style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', 
-                    gap: '20px' 
+                <section style={{
+                    display: 'grid',
+                    gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '20px'
                 }}>
 
                     {loading ? (
@@ -293,18 +296,18 @@ export default function ServiceCertificateUserScreen() {
                             const isPending = status === 'Pending';
                             const isApproved = status === 'Approved';
                             const isRejected = status === 'Rejected';
-                            
+
                             return (
-                                <motion.div 
+                                <motion.div
                                     initial={{ opacity: 0, scale: 0.98 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    key={req.id} 
+                                    key={req.id}
                                     onClick={() => setSelectedDetail(req)}
-                                    style={{ 
-                                        background: 'white', 
-                                        borderRadius: '24px', 
-                                        border: '1.5px solid #f1f5f9', 
-                                        overflow: 'hidden', 
+                                    style={{
+                                        background: 'white',
+                                        borderRadius: '24px',
+                                        border: '1.5px solid #f1f5f9',
+                                        overflow: 'hidden',
                                         boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
                                         transition: '0.2s',
                                         cursor: 'pointer',
@@ -322,9 +325,9 @@ export default function ServiceCertificateUserScreen() {
                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: isPending ? '#fbbf24' : isApproved ? '#22c55e' : '#ef4444' }} />
                                     <div style={{ padding: '20px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                            <span style={{ 
-                                                background: status === 'Pending Audit' ? '#fef2f2' : isPending ? '#fffbeb' : isApproved ? '#f0fdf4' : '#fef2f2', 
-                                                color: status === 'Pending Audit' ? '#ef4444' : isPending ? '#d97706' : isApproved ? '#16a34a' : '#dc2626', 
+                                            <span style={{
+                                                background: status === 'Pending Audit' ? '#fef2f2' : isPending ? '#fffbeb' : isApproved ? '#f0fdf4' : '#fef2f2',
+                                                color: status === 'Pending Audit' ? '#ef4444' : isPending ? '#d97706' : isApproved ? '#16a34a' : '#dc2626',
                                                 padding: '4px 10px', borderRadius: '8px', fontSize: '9px', fontWeight: '950', textTransform: 'uppercase'
                                             }}>
                                                 {status}
@@ -361,31 +364,31 @@ export default function ServiceCertificateUserScreen() {
                 {showRequestModal && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '20px' }}>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                            style={{ 
-                                background: 'white', 
-                                borderRadius: '24px', 
-                                width: '100%', 
-                                maxWidth: '450px', 
-                                padding: winWidth < 768 ? '20px' : '30px', 
-                                position: 'relative' 
+                            style={{
+                                background: 'white',
+                                borderRadius: '24px',
+                                width: '100%',
+                                maxWidth: '450px',
+                                padding: winWidth < 768 ? '20px' : '30px',
+                                position: 'relative'
                             }}
                         >
 
                             <button onClick={() => setShowRequestModal(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
                             <h2 style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a', marginBottom: '20px' }}>New Certificate Request</h2>
-                            
+
                             <div style={{ marginBottom: '25px' }}>
                                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>Reason for Request</label>
-                                <textarea 
+                                <textarea
                                     placeholder="e.g. For Bank Loan application..."
                                     value={purpose} onChange={(e) => setPurpose(e.target.value)}
                                     style={{ width: '100%', padding: '15px', borderRadius: '14px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '14px', fontWeight: '600', minHeight: '100px', background: '#f8fafc' }}
                                 />
                             </div>
 
-                            <button 
+                            <button
                                 onClick={handleCreateRequest}
                                 disabled={submitting || !purpose.trim()}
                                 style={{ width: '100%', padding: '16px', borderRadius: '14px', border: 'none', background: '#0f172a', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer', opacity: submitting ? 0.7 : 1 }}
@@ -400,31 +403,31 @@ export default function ServiceCertificateUserScreen() {
             {/* DETAIL VIEW MODAL */}
             <AnimatePresence>
                 {selectedDetail && (
-                    <div style={{ 
-                        position: 'fixed', 
-                        top: 0, 
-                        left: 0, 
-                        right: 0, 
-                        bottom: 0, 
-                        background: 'rgba(0,0,0,0.6)', 
-                        backdropFilter: 'blur(8px)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        zIndex: 3100, 
-                        padding: winWidth < 768 ? '10px' : '20px' 
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.6)',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 3100,
+                        padding: winWidth < 768 ? '10px' : '20px'
                     }}>
 
 
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            style={{ 
-                                background: 'white', 
-                                borderRadius: winWidth < 768 ? '24px' : '32px', 
-                                width: '100%', 
-                                maxWidth: '550px', 
-                                position: 'relative', 
-                                overflowX: 'hidden', 
+                            style={{
+                                background: 'white',
+                                borderRadius: winWidth < 768 ? '24px' : '32px',
+                                width: '100%',
+                                maxWidth: '550px',
+                                position: 'relative',
+                                overflowX: 'hidden',
                                 overflowY: 'auto',
                                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
                                 maxHeight: winWidth < 768 ? '80vh' : '90vh'
@@ -450,11 +453,11 @@ export default function ServiceCertificateUserScreen() {
                             <div style={{ padding: winWidth < 768 ? '15px' : '40px' }}>
 
 
-                                <div style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: winWidth < 480 ? '1fr' : '1fr 1fr', 
-                                    gap: winWidth < 768 ? '10px' : '30px', 
-                                    marginBottom: winWidth < 768 ? '15px' : '35px' 
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: winWidth < 480 ? '1fr' : '1fr 1fr',
+                                    gap: winWidth < 768 ? '10px' : '30px',
+                                    marginBottom: winWidth < 768 ? '15px' : '35px'
                                 }}>
 
 
@@ -480,40 +483,62 @@ export default function ServiceCertificateUserScreen() {
 
 
 
-                                {selectedDetail.admin_remark && (
-                                    <div style={{ marginBottom: '35px' }}>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#0369a1', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>HR Response</label>
-                                        <div style={{ background: '#f0faff', padding: '20px', borderRadius: '18px', border: '1px solid #bae6fd', fontSize: '14px', fontWeight: '700', color: '#0c4a6e', fontStyle: 'italic' }}>
-                                            "{selectedDetail.admin_remark}"
+                                    <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>HR Admin Remarks</label>
+                                            <textarea 
+                                                value={adminRemark}
+                                                onChange={(e) => setAdminRemark(e.target.value)}
+                                                placeholder="Enter internal notes or feedback..."
+                                                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '80px', background: '#f8fafc' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Certificate Download URL (PDF)</label>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <input 
+                                                    type="text"
+                                                    value={certificateUrl}
+                                                    onChange={(e) => setCertificateUrl(e.target.value)}
+                                                    placeholder="https://example.com/certificate.pdf"
+                                                    style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', background: '#f8fafc' }}
+                                                />
+                                                {selectedDetail.status === 'Approved' && (
+                                                    <button 
+                                                        onClick={() => quickStatusUpdate(selectedDetail.id, 'Approved')}
+                                                        style={{ background: '#0f172a', color: 'white', border: 'none', padding: '0 15px', borderRadius: '10px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
+                                                    >
+                                                        Update URL
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                )}
 
                                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                    {(String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase() === 'hr') && 
-                                     (selectedDetail.status === 'Pending' || selectedDetail.status === 'Pending Audit') ? (
+                                    {(selectedDetail.status === 'Pending' || selectedDetail.status === 'Pending Audit') ? (
                                         <>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                flexDirection: winWidth < 500 ? 'column' : 'row', 
-                                                gap: winWidth < 768 ? '8px' : '10px', 
-                                                width: '100%', 
-                                                marginBottom: winWidth < 768 ? '8px' : '10px' 
+                                            <div style={{
+                                                display: 'flex',
+                                                flexDirection: winWidth < 500 ? 'column' : 'row',
+                                                gap: winWidth < 768 ? '8px' : '10px',
+                                                width: '100%',
+                                                marginBottom: winWidth < 768 ? '8px' : '10px'
                                             }}>
 
 
-                                                <button 
+                                                <button
                                                     onClick={() => quickStatusUpdate(selectedDetail.id, 'Approved')}
-                                                    style={{ 
-                                                        flex: 1, 
-                                                        padding: winWidth < 768 ? '10px' : '14px', 
-                                                        borderRadius: '14px', 
-                                                        border: 'none', 
-                                                        background: '#22c55e', 
-                                                        color: 'white', 
-                                                        fontWeight: '800', 
-                                                        fontSize: winWidth < 768 ? '13px' : '14px', 
-                                                        cursor: 'pointer', 
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: winWidth < 768 ? '10px' : '14px',
+                                                        borderRadius: '14px',
+                                                        border: 'none',
+                                                        background: '#22c55e',
+                                                        color: 'white',
+                                                        fontWeight: '800',
+                                                        fontSize: winWidth < 768 ? '13px' : '14px',
+                                                        cursor: 'pointer',
                                                         boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)',
                                                         width: winWidth < 500 ? '90%' : 'auto',
                                                         margin: winWidth < 500 ? '0 auto' : '0'
@@ -522,18 +547,18 @@ export default function ServiceCertificateUserScreen() {
                                                     Approve
                                                 </button>
 
-                                                <button 
+                                                <button
                                                     onClick={() => quickStatusUpdate(selectedDetail.id, 'Rejected')}
-                                                    style={{ 
-                                                        flex: 1, 
-                                                        padding: winWidth < 768 ? '10px' : '14px', 
-                                                        borderRadius: '14px', 
-                                                        border: 'none', 
-                                                        background: '#ef4444', 
-                                                        color: 'white', 
-                                                        fontWeight: '800', 
-                                                        fontSize: winWidth < 768 ? '13px' : '14px', 
-                                                        cursor: 'pointer', 
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: winWidth < 768 ? '10px' : '14px',
+                                                        borderRadius: '14px',
+                                                        border: 'none',
+                                                        background: '#ef4444',
+                                                        color: 'white',
+                                                        fontWeight: '800',
+                                                        fontSize: winWidth < 768 ? '13px' : '14px',
+                                                        cursor: 'pointer',
                                                         boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
                                                         width: winWidth < 500 ? '90%' : 'auto',
                                                         margin: winWidth < 500 ? '0 auto' : '0'
@@ -543,27 +568,29 @@ export default function ServiceCertificateUserScreen() {
                                                 </button>
 
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => {
-                                                    setAssetData(selectedDetail);
+                                                    // Pass the employee_id from the request to fetch their specific assets
+                                                    const empId = selectedDetail.employee_id || selectedDetail.id;
+                                                    setAssetData(selectedDetail); 
                                                     setShowAssetsModal(true);
-                                                    fetchAssetData(selectedDetail.id);
+                                                    fetchAssetData(empId);
                                                 }}
-                                                style={{ 
-                                                    width: winWidth < 500 ? '90%' : '100%', 
+                                                style={{
+                                                    width: winWidth < 500 ? '90%' : '100%',
                                                     margin: winWidth < 500 ? '0 auto' : '0',
-                                                    padding: winWidth < 768 ? '10px' : '14px', 
-                                                    borderRadius: '14px', 
-                                                    border: '1.5px solid #e2e8f0', 
-                                                    background: 'white', 
-                                                    color: '#0f172a', 
-                                                    fontWeight: '800', 
-                                                    fontSize: winWidth < 768 ? '13px' : '14px', 
-                                                    cursor: 'pointer', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center', 
-                                                    gap: '8px' 
+                                                    padding: winWidth < 768 ? '10px' : '14px',
+                                                    borderRadius: '14px',
+                                                    border: '1.5px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#0f172a',
+                                                    fontWeight: '800',
+                                                    fontSize: winWidth < 768 ? '13px' : '14px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
                                                 }}
                                             >
                                                 <Package size={18} color="#3b82f6" /> Their Asset Submissions
@@ -571,14 +598,14 @@ export default function ServiceCertificateUserScreen() {
 
                                         </>
                                     ) : selectedDetail.status === 'Approved' && selectedDetail.certificate_url ? (
-                                        <a 
+                                        <a
                                             href={selectedDetail.certificate_url} target="_blank" rel="noopener noreferrer"
                                             style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', background: '#0f172a', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                                         >
                                             <Download size={18} /> Download official PDF
                                         </a>
                                     ) : (
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedDetail(null)}
                                             style={{ flex: 1, padding: '16px', borderRadius: '16px', border: '2px solid #f1f5f9', background: 'white', color: '#0f172a', fontWeight: '800', fontSize: '15px', cursor: 'pointer' }}
                                         >
@@ -597,16 +624,16 @@ export default function ServiceCertificateUserScreen() {
                 {showAssetsModal && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3200, padding: '20px' }}>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            style={{ 
-                                background: 'white', 
-                                borderRadius: winWidth < 768 ? '24px' : '32px', 
-                                width: '100%', 
-                                maxWidth: '850px', 
-                                position: 'relative', 
-                                overflow: 'hidden', 
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', 
+                            style={{
+                                background: 'white',
+                                borderRadius: winWidth < 768 ? '24px' : '32px',
+                                width: '100%',
+                                maxWidth: '850px',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
                                 border: '1px solid #f1f5f9',
                                 maxHeight: '95vh',
                                 overflowY: 'auto'
@@ -655,20 +682,20 @@ export default function ServiceCertificateUserScreen() {
                                     ) : (
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
                                             {[
-                                                { label: 'Optical Mouse', checked: assetData?.mouse || assetData?.has_mouse },
-                                                { label: 'External Keyboard', checked: assetData?.keyboard || assetData?.has_keyboard },
-                                                { label: 'Laptop Stand', checked: assetData?.laptop_stand || assetData?.has_laptop_stand },
-                                                { label: 'Company Mobile', checked: assetData?.company_mobile },
-                                                { label: 'Earphones', checked: assetData?.earphone_headphone },
-                                                { label: 'External Camera', checked: assetData?.external_camera },
-                                                { label: 'Tablet', checked: assetData?.tablet },
-                                                { label: 'Pendrive / Storage', checked: assetData?.pendrive },
-                                                { label: 'Ref Pad / Notebook', checked: assetData?.ref_pad },
+                                                { label: 'Optical Mouse', checked: assetData?.mouse === 'Yes' || assetData?.mouse_status === 'Yes' || Number(assetData?.mouse_unit) === 1 },
+                                                { label: 'External Keyboard', checked: assetData?.keyboard === 'Yes' || assetData?.keyboard_status === 'Yes' || Number(assetData?.keyboard_unit) === 1 },
+                                                { label: 'Laptop Stand', checked: assetData?.laptop_stand === 'Yes' || assetData?.stand === 'Yes' || Number(assetData?.stand_unit) === 1 || Number(assetData?.laptop_stand_unit) === 1 },
+                                                { label: 'Company Mobile', checked: assetData?.mobile === 'Yes' || assetData?.mobile_handset === 'Yes' || Number(assetData?.mobile_unit) === 1 },
+                                                { label: 'Earphones', checked: assetData?.earphone === 'Yes' || assetData?.headphone === 'Yes' || assetData?.earphone_headphone === 'Yes' || Number(assetData?.earphone_unit) === 1 || Number(assetData?.headphone_unit) === 1 },
+                                                { label: 'External Camera', checked: assetData?.camera === 'Yes' || assetData?.webcam === 'Yes' || Number(assetData?.camera_unit) === 1 },
+                                                { label: 'Tablet', checked: assetData?.tablet === 'Yes' || Number(assetData?.tablet_unit) === 1 },
+                                                { label: 'Pendrive / Storage', checked: assetData?.pendrive === 'Yes' || Number(assetData?.pendrive_unit) === 1 },
+                                                { label: 'Ref Pad / Notebook', checked: assetData?.ruf_pad === 'Yes' || assetData?.rufpad === 'Yes' || Number(assetData?.ruf_pad_unit) === 1 || Number(assetData?.ref_pad_unit) === 1 },
                                             ].map((asset, idx) => (
-                                                <div key={idx} style={{ 
-                                                    background: asset.checked ? '#f0fdf4' : 'white', 
-                                                    border: asset.checked ? '1.5px solid #bbf7d0' : '1.5px solid #e2e8f0', 
-                                                    borderRadius: '16px', 
+                                                <div key={idx} style={{
+                                                    background: asset.checked ? '#f0fdf4' : 'white',
+                                                    border: asset.checked ? '1.5px solid #bbf7d0' : '1.5px solid #e2e8f0',
+                                                    borderRadius: '16px',
                                                     padding: '16px 10px',
                                                     display: 'flex',
                                                     flexDirection: 'column',
@@ -678,8 +705,8 @@ export default function ServiceCertificateUserScreen() {
                                                     textAlign: 'center',
                                                     transition: '0.2s'
                                                 }}>
-                                                    <div style={{ 
-                                                        width: '24px', height: '24px', borderRadius: '50%', 
+                                                    <div style={{
+                                                        width: '24px', height: '24px', borderRadius: '50%',
                                                         background: asset.checked ? '#22c55e' : '#f1f5f9',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                                     }}>
@@ -692,11 +719,11 @@ export default function ServiceCertificateUserScreen() {
                                     )}
                                 </div>
 
-                                <button 
-                                    style={{ 
-                                        width: '100%', padding: '18px', borderRadius: '18px', border: 'none', 
-                                        background: '#10b981', color: 'white', fontWeight: '900', fontSize: '15px', 
-                                        cursor: 'pointer', marginTop: '32px', display: 'flex', alignItems: 'center', 
+                                <button
+                                    style={{
+                                        width: '100%', padding: '18px', borderRadius: '18px', border: 'none',
+                                        background: '#10b981', color: 'white', fontWeight: '900', fontSize: '15px',
+                                        cursor: 'pointer', marginTop: '32px', display: 'flex', alignItems: 'center',
                                         justifyContent: 'center', gap: '10px', boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
                                     }}
                                 >

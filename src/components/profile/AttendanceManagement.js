@@ -28,8 +28,16 @@ export default function AttendanceManagement() {
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(localStorage.getItem('nbtAttendanceFromDate') || '2026-01-01');
+  const [toDate, setToDate] = useState(localStorage.getItem('nbtAttendanceToDate') || new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceFromDate', fromDate);
+  }, [fromDate]);
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceToDate', toDate);
+  }, [toDate]);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -570,7 +578,7 @@ export default function AttendanceManagement() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
-      <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 200px' : '120px 26px 110px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <div style={{ width: '100%' }}>
           <button 
             onClick={() => navigate(-1)} 
@@ -875,9 +883,17 @@ export default function AttendanceManagement() {
                       return empId && logUserId && logUserId === empId && logDate === todayStr;
                     });
 
+                    const isMultiLog = (attendanceLogs || []).filter(l => {
+                      if (!l) return false;
+                      const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                      const empId = String(emp?.id || '').trim();
+                      const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+                      return empId && logUserId && (logUserId === empId) && (logDate === todayStr);
+                    }).length > 1;
+
                     const punchIn = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || '----';
-                    const punchOut = log?.out_time || log?.OUTTime || log?.PunchOut || (log?.in_time || log?.INTime ? '----' : log?.punch_time) || '----';
-                    const workHrs = log?.work_time || log?.work_hrs || log?.WorkTime || '00:00';
+                    const punchOut = isMultiLog ? (log?.out_time || log?.OUTTime || log?.PunchOut || '----') : '----';
+                    const workHrs = isMultiLog ? (log?.work_time || log?.work_hrs || log?.WorkTime || '00:00') : '00:00';
                     const pDate = log?.punch_date || log?.date || log?.created_at;
 
                     return (
@@ -890,7 +906,7 @@ export default function AttendanceManagement() {
                             onClick={() => navigate(`/attendance/detail/${emp.id}`)}
                             style={{ flex: 1, cursor: 'pointer' }}
                           >
-                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown User'}</div>
+                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown'}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{emp.id} • {emp.role || 'Employee'}</div>
                           </div>
                           <button 
@@ -947,14 +963,15 @@ export default function AttendanceManagement() {
                             const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
                             const isHoliday = holidays.includes(dayMonth);
 
-                            let rawStatus = todayPunchIn ? 'Present' : 'Absent';
-                            if (!todayPunchIn) {
+                            const hasValidPunchIn = todayPunchIn && todayPunchIn !== '----' && todayPunchIn !== '--:--' && todayPunchIn !== '00:00';
+                            let rawStatus = hasValidPunchIn ? 'Present' : 'Absent';
+                            if (!hasValidPunchIn) {
                               if (isSunday) rawStatus = 'WO';
                               else if (isHoliday) rawStatus = 'NH';
                               else rawStatus = 'Absent';
                             }
 
-                            const isPresent = rawStatus.includes('PRESENT');
+                            const isPresent = rawStatus.toUpperCase().includes('PRESENT');
                             const isWO = rawStatus === 'WO';
                             const isNH = rawStatus === 'NH';
 
@@ -996,24 +1013,62 @@ export default function AttendanceManagement() {
                       const logsForEmp = (attendanceLogs || [])
                         .filter(l => {
                           if (!l) return false;
-                          const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                          const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
                           const empId = String(emp?.id || '').trim();
                           const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
-                          return empId && logUserId && (logUserId === empId) && (logDate >= fromDate && logDate <= toDate);
+                          return empId && logId && (logId === empId) && (logDate >= fromDate && logDate <= toDate);
                         })
                         .sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
 
-                      const firstLog = logsForEmp[0];
-                      const lastLog = logsForEmp.length > 1 ? logsForEmp[logsForEmp.length - 1] : null;
+                      // 1. Group logs by date to prevent cross-day data leaking
+                      const groupedByDate = (logsForEmp || []).reduce((acc, log) => {
+                        const d = (log.punch_date || log.date || log.created_at || '').split('T')[0];
+                        if (d) {
+                          if (!acc[d]) acc[d] = [];
+                          acc[d].push(log);
+                        }
+                        return acc;
+                      }, {});
+
+                      // 2. Get the latest date available in the range for this employee
+                      const dates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+                      const latestDate = dates[0];
+                      const latestDayLogs = groupedByDate[latestDate] || [];
+                      
+                      // 3. Sort logs within THAT day only
+                      const sortedDayLogs = latestDayLogs.sort((a, b) => new Date(a.created_at || a.punch_time) - new Date(b.created_at || b.punch_time));
+
+                      const firstLog = sortedDayLogs[0];
+                      const lastLog = sortedDayLogs.length > 1 ? sortedDayLogs[sortedDayLogs.length - 1] : null;
 
                       const log = firstLog ? {
                         ...firstLog,
-                        in_time: firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time,
-                        out_time: lastLog ? (lastLog?.out_time || lastLog?.OUTTime || lastLog?.PunchOut || lastLog?.punch_time) : '----',
-                        in_location: firstLog?.punchin_location || firstLog?.in_location || firstLog?.PunchIn_location || firstLog?.location,
-                        out_location: lastLog ? (lastLog?.punchout_location || lastLog?.out_location || lastLog?.PunchOut_location || lastLog?.location) : '----',
-                        work_time: lastLog ? (lastLog?.work_time || firstLog?.work_time || '00:00') : '00:00'
+                        punch_date: latestDate,
+                        in_time: firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time || '----',
+                        out_time: (latestDate === todayStr && sortedDayLogs.length === 1) ? '----' : (lastLog?.out_time || lastLog?.OUTTime || lastLog?.PunchOut || '----'),
+                        in_location: firstLog?.punchin_location || firstLog?.in_location || '----',
+                        out_location: (latestDate === todayStr && sortedDayLogs.length === 1) ? '----' : (lastLog?.punchout_location || lastLog?.out_location || '----'),
+                        work_hrs: (latestDate === todayStr && sortedDayLogs.length === 1) ? '00:00' : (lastLog?.work_hrs || firstLog?.work_hrs || '00:00')
                       } : null;
+
+                      const getCleanAttendance = (record) => {
+                        if (!record) return { displayInTime: '----', displayOutTime: '----', displayWorkTime: '00:00' };
+                        const today = new Date().toLocaleDateString('en-CA');
+                        const rawDate = record?.punch_date || record?.date || record?.created_at || '';
+                        const recordDate = rawDate ? String(rawDate).split('T')[0].split(' ')[0] : '';
+                        const isToday = recordDate === today;
+                        const isMissing = (t) => !t || t === '--:--' || t === '00:00' || t === 'null' || t === '----';
+                        const rawIn = record?.in_time || record?.INTime;
+                        const rawOut = record?.out_time || record?.OUTTime || record?.PunchOut;
+                        const rawWork = record?.work_time || record?.work_hrs;
+                        return {
+                          displayInTime: isMissing(rawIn) ? '----' : rawIn,
+                          displayOutTime: (isToday && logsForEmp.length < 2) || isMissing(rawOut) ? '----' : rawOut,
+                          displayWorkTime: (isToday && logsForEmp.length < 2) || isMissing(rawWork) ? '00:00' : rawWork
+                        };
+                      };
+                      const cleanLog = getCleanAttendance(log);
+
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
@@ -1026,7 +1081,7 @@ export default function AttendanceManagement() {
                                 {String(emp?.name || emp?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
                               <span style={{ borderBottom: '1px solid transparent' }} onMouseOver={e => e.currentTarget.style.borderBottom = '1px solid #1e293b'} onMouseOut={e => e.currentTarget.style.borderBottom = '1px solid transparent'}>
-                                {emp?.name || emp?.user_name}
+                                {emp?.name || emp?.user_name || 'Unknown'}
                               </span>
                             </div>
                           </td>
@@ -1042,25 +1097,25 @@ export default function AttendanceManagement() {
                             })()}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
-                            {log?.in_time || log?.INTime || log?.PunchIn || '----'}
+                            {cleanLog.displayInTime}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
-                            {log?.out_time || log?.OUTTime || log?.PunchOut || '----'}
+                            {cleanLog.displayOutTime}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '800', color: '#6366f1' }}>
-                            {log?.work_time || log?.work_hrs || '00:00'}
+                            {cleanLog.displayWorkTime}
                           </td>
                           <td style={{ padding: '20px' }}>
                             <div style={{
                               display: 'inline-flex',
                               padding: '6px 12px',
                               borderRadius: '8px',
-                              background: log ? '#f0fdf4' : '#fef2f2',
-                              color: log ? '#16a34a' : '#ef4444',
+                              background: (log && cleanLog.displayInTime !== '----') ? '#f0fdf4' : '#fef2f2',
+                              color: (log && cleanLog.displayInTime !== '----') ? '#16a34a' : '#ef4444',
                               fontSize: '11px',
                               fontWeight: '950'
                             }}>
-                              {log ? 'Present' : 'Absent'}
+                              {(log && cleanLog.displayInTime !== '----') ? 'Present' : 'Absent'}
                             </div>
                           </td>
                           <td style={{ padding: '20px', fontSize: '12px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log?.in_location || '----'}>
@@ -1152,7 +1207,7 @@ export default function AttendanceManagement() {
                                   {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
+                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
                                   <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                                 </div>
                               </div>
@@ -1241,7 +1296,7 @@ export default function AttendanceManagement() {
                                   {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
+                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
                                   <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                                 </div>
                               </div>
@@ -1317,7 +1372,7 @@ export default function AttendanceManagement() {
                                   {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
+                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
                                   <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                                 </div>
                               </div>
