@@ -4,9 +4,9 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
-import { 
+import {
   Package, Search, Edit3, Save, X, Plus,
-  Laptop, MousePointer, Keyboard, Smartphone, 
+  Laptop, MousePointer, Keyboard, Smartphone,
   Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, ArrowLeft
 } from 'lucide-react';
 
@@ -65,10 +65,10 @@ export default function AssetsManagement() {
       if (assetRes.ok) {
         const assetData = await assetRes.json();
         const assetMap = {};
-        assetData.forEach(a => { 
+        assetData.forEach(a => {
           // Robust ID extraction
           const id = a.employee_id || a.EmpID || a.employeeId || a.id;
-          if (id) assetMap[id] = a; 
+          if (id) assetMap[id] = a;
         });
         setAssets(assetMap);
       }
@@ -141,9 +141,9 @@ export default function AssetsManagement() {
       earphone: toYesNo(currentAsset.earphone_unit || currentAsset.headphone_unit || currentAsset.earphone_headphone_unit, currentAsset.earphone || currentAsset.headphone || currentAsset.earphone_headphone || currentAsset.headphones),
       tablet: toYesNo(currentAsset.tablet_unit, currentAsset.tablet)
     });
-    setEditModal({ 
-      show: true, 
-      employee: emp, 
+    setEditModal({
+      show: true,
+      employee: emp,
       isReadOnly: readOnly,
       assetId: currentAsset.id || currentAsset.EmpID || currentAsset.employee_id
     });
@@ -156,21 +156,21 @@ export default function AssetsManagement() {
       const empId = editModal.employee.id || editModal.employee.EmpID;
       const existingAsset = assets[empId];
       const hasExistingRecord = !!existingAsset;
-      
+
       // Use the DB record's primary key for PUT, fallback to employee ID
       const targetId = editModal.assetId || (existingAsset?.id) || empId;
-      
+
       // POST for brand-new records, PUT for updating existing ones
       const endpoint = hasExistingRecord ? API_ENDPOINTS.ASSET_UPDATE(targetId) : API_ENDPOINTS.ASSETS;
       const method = hasExistingRecord ? 'PUT' : 'POST';
-      
+
       console.log(`[ASSET DECISION] hasExistingRecord=${hasExistingRecord}, targetId=${targetId}, method=${method}`);
 
       // Advanced Date Formatter (Handles both 16-01-2026 and 16/01/2026)
       const toISO = (d) => {
         if (!d || d === 'N/A' || d === '--' || d.includes('YYYY')) return d;
         const normalized = d.replace(/\//g, '-'); // Support slashes/
-        if (normalized.split('-')[0].length === 4) return normalized; 
+        if (normalized.split('-')[0].length === 4) return normalized;
         const [dd, mm, yyyy] = normalized.split('-');
         if (dd && mm && yyyy) {
           return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
@@ -195,7 +195,7 @@ export default function AssetsManagement() {
         assigned_date: isoDate,
         designation: form.designation,
         role: form.designation,
-        
+
         // Massive Redundancy for Joining Date (DOJ)
         joining_date: isoDate,
         doj: isoDate,
@@ -206,7 +206,7 @@ export default function AssetsManagement() {
         JoinDate: isoDate,
         date_of_joining: isoDate,
         joining_day: form.joining_date,
-        
+
         // LWD Super-Set
         last_working_date: isoLwd,
         lwd: isoLwd,
@@ -219,34 +219,34 @@ export default function AssetsManagement() {
         laptop_details: form.laptop_details,
         laptop_unit_details: form.laptop_details,
         laptop: form.laptop_details,
-        
+
         mouse: form.mouse,
         mouse_unit: form.mouse === 'Yes' ? 1 : 0,
         mouse_status: form.mouse,
-        
+
         keyboard: form.keyboard,
         keyboard_unit: form.keyboard === 'Yes' ? 1 : 0,
         keyboard_status: form.keyboard,
-        
+
         laptop_stand: form.laptop_stand,
         stand: form.laptop_stand,
         stand_unit: form.laptop_stand === 'Yes' ? 1 : 0,
-        
+
         ruf_pad: form.ruf_pad,
         rufpad: form.ruf_pad,
         ruf_pad_unit: form.ruf_pad === 'Yes' ? 1 : 0,
-        
+
         pendrive: form.pendrive,
         pendrive_unit: form.pendrive === 'Yes' ? 1 : 0,
-        
+
         mobile: form.mobile,
         mobile_unit: form.mobile === 'Yes' ? 1 : 0,
         mobile_handset: form.mobile,
-        
+
         camera: form.camera,
         webcam: form.camera,
         camera_unit: form.camera === 'Yes' ? 1 : 0,
-        
+
         earphone: form.earphone,
         headphone: form.earphone,
         earphones: form.earphone,
@@ -254,7 +254,7 @@ export default function AssetsManagement() {
         earphone_headphone: form.earphone,
         earphone_unit: form.earphone === 'Yes' ? 1 : 0,
         headphone_unit: form.earphone === 'Yes' ? 1 : 0,
-        
+
         tablet: form.tablet,
         tablet_unit: form.tablet === 'Yes' ? 1 : 0
       };
@@ -263,7 +263,7 @@ export default function AssetsManagement() {
 
       const response = await fetch(endpoint, {
         method: method,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
@@ -309,8 +309,8 @@ export default function AssetsManagement() {
     });
 
     return combined.filter(emp => {
-      const matchesSearch = (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           (String(emp.id || '')).includes(searchTerm);
+      const matchesSearch = (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (String(emp.id || '')).includes(searchTerm);
       const matchesDept = selectedDept === 'All' || (emp.team && emp.team.includes(selectedDept));
       return matchesSearch && matchesDept;
     });
@@ -319,69 +319,69 @@ export default function AssetsManagement() {
   return (
     <div className="assets-management-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', fontFamily: "'Outfit', sans-serif" }}>
       <AppHeader />
-      
-      <main className="dashboard-content" style={{ 
+
+      <main className="dashboard-content" style={{
         paddingTop: winWidth < 768 ? '100px' : '120px',
         paddingLeft: winWidth < 768 ? '15px' : '26px',
         paddingRight: winWidth < 768 ? '15px' : '26px',
         paddingBottom: '100px',
         boxSizing: 'border-box'
       }}>
-          <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', alignItems: winWidth < 1024 ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '25px', width: '100%', marginBottom: '30px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <button 
-                onClick={() => navigate(-1)} 
-                style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <ArrowLeft size={18} color="#64748b" />
-              </button>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <Package size={24} color="#3163aa" />
-              </div>
-              <div>
-                <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Management Hub</h1>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Deploy and track workforce hardware inventory</p>
-              </div>
+        <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', alignItems: winWidth < 1024 ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '25px', width: '100%', marginBottom: '30px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button
+              onClick={() => navigate(-1)}
+              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ArrowLeft size={18} color="#64748b" />
+            </button>
+            <div style={{ background: 'white', padding: '12px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+              <Package size={24} color="#3163aa" />
             </div>
-            <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
-              <button 
-                onClick={() => setAvailableAssetsModal(true)}
-                style={{ flex: 1, background: 'white', color: '#3163aa', border: '2px solid #3163aa', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}
-              >
-                <Package size={16} />
-                Available Assets
-              </button>
-              <button 
-                onClick={() => {
-                  setForm({
-                    employee_name: '', employee_id: '',
-                    designation: '', joining_date: '', last_working_date: '', laptop_details: '',
-                    mouse: '', keyboard: '', laptop_stand: '', ruf_pad: '', pendrive: '',
-                    mobile: '', camera: '', earphone: '', tablet: ''
-                  });
-                  setEditModal({ show: true, employee: { is_new: true, name: '' } });
-                }}
-                style={{ flex: 1, background: '#3163aa', color: 'white', border: 'none', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 8px 15px rgba(49, 99, 170, 0.2)' }}
-              >
-                <Plus size={16} />
-                Add New Assets
-              </button>
+            <div>
+              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Management Hub</h1>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Deploy and track workforce hardware inventory</p>
             </div>
           </div>
+          <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
+            <button
+              onClick={() => setAvailableAssetsModal(true)}
+              style={{ flex: 1, background: 'white', color: '#3163aa', border: '2px solid #3163aa', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}
+            >
+              <Package size={16} />
+              Available Assets
+            </button>
+            <button
+              onClick={() => {
+                setForm({
+                  employee_name: '', employee_id: '',
+                  designation: '', joining_date: '', last_working_date: '', laptop_details: '',
+                  mouse: '', keyboard: '', laptop_stand: '', ruf_pad: '', pendrive: '',
+                  mobile: '', camera: '', earphone: '', tablet: ''
+                });
+                setEditModal({ show: true, employee: { is_new: true, name: '' } });
+              }}
+              style={{ flex: 1, background: '#3163aa', color: 'white', border: 'none', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 8px 15px rgba(49, 99, 170, 0.2)' }}
+            >
+              <Plus size={16} />
+              Add New Assets
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', gap: '15px', marginBottom: '25px' }} className="animate-fade-in">
           <div style={{ flex: 1, position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input 
-              type="text" 
-              placeholder="Search member name..." 
+            <input
+              type="text"
+              placeholder="Search member name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', background: 'white' }}
             />
           </div>
-          <select 
+          <select
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
             style={{ width: winWidth < 768 ? '100%' : '180px', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', fontWeight: '600', color: '#1e293b' }}
@@ -397,7 +397,7 @@ export default function AssetsManagement() {
         {winWidth < 1024 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '24px' }}>Establishing neural link...</div>
+              <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '24px' }}>Loading...</div>
             ) : filteredEmployees.map((emp, i) => {
               const empId = emp.id || emp.EmpID;
               const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
@@ -422,12 +422,12 @@ export default function AssetsManagement() {
                     <div style={{ fontSize: '14px', fontWeight: '800', color: '#334155' }}>{asset.designation || emp.role || 'Unspecified'}</div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => handleEdit(emp, hasAsset)}
-                    style={{ 
-                      width: '100%', padding: '12px', borderRadius: '14px', border: 'none', 
-                      background: hasAsset ? '#f1f5f9' : '#3163aa', 
-                      color: hasAsset ? '#475569' : 'white', 
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: '14px', border: 'none',
+                      background: hasAsset ? '#f1f5f9' : '#3163aa',
+                      color: hasAsset ? '#475569' : 'white',
                       fontWeight: '800', fontSize: '13px', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}
@@ -477,14 +477,14 @@ export default function AssetsManagement() {
                         </td>
                         <td style={{ padding: '15px 25px', textAlign: 'center' }}>
                           {hasAsset ? (
-                            <button 
+                            <button
                               onClick={() => handleEdit(emp, true)}
                               style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', color: '#64748b', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             >
                               <Package size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>View Details</span>
                             </button>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => handleEdit(emp, false)}
                               style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '10px', padding: '8px 12px', color: '#2563eb', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             >
@@ -541,22 +541,22 @@ export default function AssetsManagement() {
                 <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE NAME</label>
-                    <input 
-                      type="text" 
-                      placeholder="Enter Name" 
-                      value={form.employee_name} 
-                      onChange={(e) => setForm({ ...form, employee_name: e.target.value })} 
-                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} 
+                    <input
+                      type="text"
+                      placeholder="Enter Name"
+                      value={form.employee_name}
+                      onChange={(e) => setForm({ ...form, employee_name: e.target.value })}
+                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE ID</label>
-                    <input 
-                      type="text" 
-                      placeholder={editModal.employee.is_new ? "Auto/Manual" : "System ID"} 
-                      value={form.employee_id} 
-                      onChange={(e) => setForm({ ...form, employee_id: e.target.value })} 
-                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} 
+                    <input
+                      type="text"
+                      placeholder={editModal.employee.is_new ? "Auto/Manual" : "System ID"}
+                      value={form.employee_id}
+                      onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                 </div>
@@ -586,7 +586,7 @@ export default function AssetsManagement() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>
                     <Laptop size={14} /> LAPTOP UNIT DETAILS
                   </label>
-                  <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e)=>setForm({...form, laptop_details: e.target.value})} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+                  <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
                 </div>
 
                 {[
@@ -602,9 +602,9 @@ export default function AssetsManagement() {
                 ].map((item) => (
                   <div key={item.key}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>{item.icon} {item.label}</label>
-                    <select 
-                      value={form[item.key]} 
-                      onChange={(e)=>setForm({...form, [item.key]: e.target.value})} 
+                    <select
+                      value={form[item.key]}
+                      onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
                       style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
                     >
                       <option value="">Select Option</option>
@@ -617,13 +617,13 @@ export default function AssetsManagement() {
             </div>
 
             <div style={{ padding: '25px 35px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '15px' }}>
-              <button 
+              <button
                 onClick={() => setEditModal({ show: false, employee: null })}
                 style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
               >
                 Discard Changes
               </button>
-              <button 
+              <button
                 onClick={handleSave}
                 disabled={saving}
                 style={{ flex: 2, padding: '14px', borderRadius: '50px', border: 'none', background: '#3163aa', color: 'white', fontSize: '14px', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 10px 15px -3px rgba(49, 99, 170, 0.2)' }}
@@ -646,7 +646,7 @@ export default function AssetsManagement() {
             background: 'white', borderRadius: '30px', width: '90%', maxWidth: '600px',
             padding: '40px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
           }}>
-            <button 
+            <button
               onClick={() => setAvailableAssetsModal(false)}
               style={{ position: 'absolute', top: '25px', right: '25px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', color: '#64748b' }}
             >
@@ -672,8 +672,8 @@ export default function AssetsManagement() {
                 { label: 'Webcams', icon: <Camera size={18} />, count: 3, color: '#8b5cf6' },
                 { label: 'Earphones', icon: <Headphones size={18} />, count: 10, color: '#ef4444' }
               ].map((item, i) => (
-                <div key={i} style={{ 
-                  background: '#f8fafc', padding: '20px', borderRadius: '20px', 
+                <div key={i} style={{
+                  background: '#f8fafc', padding: '20px', borderRadius: '20px',
                   border: '1px solid #e2e8f0', textAlign: 'center',
                   transition: 'transform 0.2s'
                 }}>

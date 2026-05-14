@@ -31,8 +31,9 @@ export default function TeamDetail() {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
         if (response.ok) {
-          const allTeams = await response.json();
-          const found = allTeams.find(t => t.id.toString() === id);
+          const responseData = await response.json();
+          const allTeams = Array.isArray(responseData) ? responseData : (responseData.data || responseData.teams || []);
+          const found = allTeams.find(t => t && String(t.id || t.ID || '').trim() === String(id).trim());
           if (found) {
             // Fetch users only for role resolution (Tasks removed per request)
             const usersData = await fetch(API_ENDPOINTS.USERS, { 
@@ -45,14 +46,14 @@ export default function TeamDetail() {
               if (u.name) roleMap[u.name.toLowerCase()] = u.role;
             });
 
-            const rawMembers = found.membersList || [];
+            const rawMembers = Array.isArray(found.membersList) ? found.membersList : (Array.isArray(found.members) ? found.members : []);
             const enrichedMembers = rawMembers.map(m => ({
               ...m,
               role: roleMap[String(m.name || '').toLowerCase()] || m.role || 'Member'
             }));
 
             setTeam({
-              id: found.id,
+              id: found.id || found.ID,
               name: found.name,
               lead: found.lead || 'Unit Lead',
               members: enrichedMembers,
@@ -98,7 +99,7 @@ export default function TeamDetail() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button 
-              onClick={() => navigate('/teams')} 
+              onClick={() => navigate(-1)} 
               style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
             >
               <ArrowLeft size={18} color="#64748b" />

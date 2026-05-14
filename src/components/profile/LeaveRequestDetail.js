@@ -83,7 +83,7 @@ export default function LeaveRequestDetail() {
 
       if (response.ok) {
         alert(`Leave ${targetStatus === 'APPROVED' ? 'Approved!' : 'Rejected.'}`);
-        navigate('/attendance');
+        navigate(-1);
       } else {
         const resData = await response.json().catch(() => ({}));
         alert(`Update Failed: ${resData.error || resData.message || 'Server Error'}`);
@@ -139,15 +139,41 @@ export default function LeaveRequestDetail() {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const [res, resEmp] = await Promise.all([
-          fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } }),
-          fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } })
+        // Helper to fetch the most comprehensive leaves list
+        const fetchBestLeaves = async () => {
+          const endpointsToTry = [
+            `${BASE_URL}/api/admin/leaves`,
+            `${BASE_URL}/api/admin/leaves/all`,
+            `${BASE_URL}/api/admin/leave-requests`,
+            `${BASE_URL}/api/admin/all-leaves`,
+            `${BASE_URL}/api/leaves/admin/all`,
+            `${BASE_URL}/api/leaves`,
+            `${BASE_URL}/api/leaves/request`,
+            `${BASE_URL}/api/leave-requests`,
+            `${BASE_URL}/api/leaves/all?role=HR`,
+            `${BASE_URL}/api/leaves/all?role=admin`,
+            `${BASE_URL}/api/leaves/all`
+          ];
+          let bestList = [];
+          for (const ep of endpointsToTry) {
+            try {
+              const res = await fetch(ep, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } });
+              if (res.ok) {
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data?.all || data?.data || data?.leaves || data?.requests || []);
+                if (Array.isArray(list) && list.length > bestList.length) bestList = list;
+              }
+            } catch (e) {}
+          }
+          return bestList;
+        };
+
+        const [allLeaves, resEmp] = await Promise.all([
+          fetchBestLeaves(),
+          fetch(API_ENDPOINTS.USERS, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } })
         ]);
 
-        const responseData = await res.json();
         const empData = await resEmp.json().catch(() => []);
-
-        const allLeaves = Array.isArray(responseData) ? responseData : (responseData?.data || responseData?.all || responseData?.leaves || responseData?.requests || []);
         const found = (allLeaves || []).find(l => l && String(l.id || l.ID) === String(id));
 
         // Helper to pick best status from multiple fields
@@ -206,6 +232,7 @@ export default function LeaveRequestDetail() {
             appliedOn: (found.created_at || found.date) ? formatDate(found.created_at || found.date) : 'N/A',
             status: resolveStatus(allStatusFields),
             requesterRole: resolvedRole,
+            profile_pic: masterEmp?.profile_picture || masterEmp?.profile_pic || masterEmp?.ProfilePic || masterEmp?.photo || masterEmp?.image || found.profile_pic || found.profilePic,
             approvals: {
               l1: { name: dynamicLeadName, status: resolveStatus(pickStatus(found.rm_status, found.l1_status)), stage: 'L1' },
               l2: { name: found.l2_name || 'Sinchana Hs', status: resolveStatus(pickStatus(found.hr_status, found.l2_status)), stage: 'L2' },
@@ -238,8 +265,16 @@ export default function LeaveRequestDetail() {
           {/* Header Row */}
           <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 600 ? 'center' : 'flex-start', marginBottom: '40px', gap: '20px' }}>
             <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', gap: '20px', alignItems: 'center', textAlign: winWidth < 480 ? 'center' : 'left' }}>
-              <div style={{ width: winWidth < 768 ? '60px' : '80px', height: winWidth < 768 ? '60px' : '80px', borderRadius: '24px', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '900' }}>
-                {request.employeeName.charAt(0)}
+              <div style={{ width: winWidth < 768 ? '60px' : '80px', height: winWidth < 768 ? '60px' : '80px', borderRadius: '24px', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', flexShrink: 0, overflow: 'hidden' }}>
+                {request.profile_pic ? (
+                  <img 
+                    src={request.profile_pic.startsWith('http') || request.profile_pic.startsWith('data:') ? request.profile_pic : `${BASE_URL}${request.profile_pic.startsWith('/') ? '' : '/'}${request.profile_pic}`}
+                    alt="Profile"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  request.employeeName?.charAt(0)
+                )}
               </div>
               <div>
                 <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{request.employeeName}</h1>
@@ -314,7 +349,9 @@ export default function LeaveRequestDetail() {
                   } else if (rRole.includes('HR')) {
                     if (app.stage === 'L2') displayRole = 'HR Verification';
                     if (app.stage === 'L3') displayRole = 'CEO Verification';
-                  } else if (rRole.includes('LEAD') || rRole.includes('MANAGER')) {
+                  } else if (rRole.includes('LEAD')) {
+                    if (app.stage === 'L3') displayRole = 'PM Approval';
+                  } else if (rRole.includes('MANAGER')) {
                     if (app.stage === 'L3') displayRole = 'CEO Verification';
                   }
 

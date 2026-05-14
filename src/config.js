@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
   ATTENDANCE_LOGS_GET: `${BASE_URL}/api/attendance_logs`,
   ATTENDANCE_PUNCH_UPDATE: `${BASE_URL}/api/attendance/update-punch-time`,
   LEAVES_GET: `${BASE_URL}/api/leaves/all`,
+  ADMIN_LEAVES_GET: `${BASE_URL}/api/admin/leaves`,
   LEAVE_BALANCE: (userId) => `${BASE_URL}/api/leaves/balance/${userId}`,
   LEAVE_REQUEST: `${BASE_URL}/api/leaves/request`,
   UPDATE_LEAVE_STATUS: (id) => `${BASE_URL}/api/leaves/${id}/status`,
@@ -98,4 +99,6 @@ export const API_ENDPOINTS = {
   UNBLOCK_ALL_JOINEES_ALT: `${BASE_URL}/api/new-joinees/unblock-all`,
   NEW_JOINEE_UNBLOCK: (id) => `${BASE_URL}/api/new-joinees/${id}/unblock`,
   NEW_JOINEE_UNBLOCK_ADMIN: (id) => `${BASE_URL}/api/admin/new-joinees/${id}/unblock`,
+  QUIZ_LEADERBOARD: `${BASE_URL}/api/fun-quizzes/leaderboard`,
+  QUIZ_SUBMIT_TOTAL: `${BASE_URL}/api/fun-quizzes/submit`,
 };

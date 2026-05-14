@@ -6,7 +6,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext';
 
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import './HRDashboard.css';
@@ -68,12 +68,37 @@ export default function LeaveManagement() {
   const fetchLeaves = async () => {
     try {
       setLeavesLoading(true);
-      const res = await fetch(API_ENDPOINTS.LEAVES_GET, {
-        headers: { 'Authorization': `Bearer ${user?.token}`, 'Accept': 'application/json' }
-      });
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data?.all || data?.data || data?.requests || []);
-      setLeaveRequests(list);
+      const token = user?.token || localStorage.getItem('token');
+      const endpointsToTry = [
+        `${BASE_URL}/api/admin/leaves`,
+        `${BASE_URL}/api/admin/leaves/all`,
+        `${BASE_URL}/api/admin/leave-requests`,
+        `${BASE_URL}/api/admin/all-leaves`,
+        `${BASE_URL}/api/leaves/admin/all`,
+        `${BASE_URL}/api/leaves`,
+        `${BASE_URL}/api/leaves/request`,
+        `${BASE_URL}/api/leave-requests`,
+        `${BASE_URL}/api/leaves/all?role=HR`,
+        `${BASE_URL}/api/leaves/all?role=admin`,
+        `${BASE_URL}/api/leaves/all`
+      ];
+
+      let bestList = [];
+      for (const ep of endpointsToTry) {
+        try {
+          const res = await fetch(ep, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data?.all || data?.data || data?.leaves || data?.requests || []);
+            if (Array.isArray(list) && list.length > bestList.length) {
+              bestList = list;
+            }
+          }
+        } catch (e) { console.error(`Error fetching ${ep}:`, e); }
+      }
+      setLeaveRequests(bestList);
     } finally { setLeavesLoading(false); }
   };
 
@@ -241,7 +266,7 @@ export default function LeaveManagement() {
                   );
                 })
               ) : (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}><p style={{ fontWeight: '900', color: '#94a3b8' }}>No leave requests found.</p></div>
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}><p style={{ fontWeight: '900', color: '#94a3b8' }}>Loading.</p></div>
               )}
             </div>
           )}
