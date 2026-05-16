@@ -39,7 +39,9 @@ import { WifiOff, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) return null; // Prevent flicker and redirect on refresh
 
   if (!user) {
     return (
