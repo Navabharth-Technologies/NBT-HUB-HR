@@ -101,6 +101,10 @@ export default function JobPostings() {
   };
 
   const handleSubmit = async () => {
+    if (!navigator.onLine) {
+      alert('Submission Failed: Network disconnected ❌');
+      return;
+    }
     if (!form.title || !form.department) {
       alert('Please fill in Job Title and Department');
       return;

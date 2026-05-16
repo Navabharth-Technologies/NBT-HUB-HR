@@ -32,15 +32,20 @@ export default function EmployeeAttendanceManagement() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [startDate, setStartDate] = useState(localStorage.getItem('nbtAttendanceFromDate') || '2026-01-01');
-  const [endDate, setEndDate] = useState(localStorage.getItem('nbtAttendanceToDate') || new Date().toISOString().split('T')[0]);
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(localStorage.getItem('nbtAttendanceDetailFromDate') || '2026-01-01');
+  const [endDate, setEndDate] = useState(() => {
+    const saved = localStorage.getItem('nbtAttendanceDetailToDate');
+    const today = getTodayStr();
+    return (saved && saved < today) ? today : (saved || today);
+  });
 
   useEffect(() => {
-    localStorage.setItem('nbtAttendanceFromDate', startDate);
+    localStorage.setItem('nbtAttendanceDetailFromDate', startDate);
   }, [startDate]);
 
   useEffect(() => {
-    localStorage.setItem('nbtAttendanceToDate', endDate);
+    localStorage.setItem('nbtAttendanceDetailToDate', endDate);
   }, [endDate]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
@@ -236,12 +241,13 @@ export default function EmployeeAttendanceManagement() {
         });
         setEmployee(found);
 
-        // Fetch Logs with filters and high limit
+        // 2. Fetch INDIVIDUAL Attendance Logs with a very wide range to get ALL historical data
+        // This ensures the "Total Logs" count is accurate and doesn't "delete" old logs
         const queryParams = new URLSearchParams({ 
-          startDate: startDate, 
+          startDate: '2020-01-01', // Fetch from the beginning of time
           endDate: endDate,
           userId: id,
-          limit: 1000 
+          limit: 30000 
         });
 
         const logsRes = await fetch(`${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?${queryParams.toString()}`, {
@@ -259,11 +265,7 @@ export default function EmployeeAttendanceManagement() {
         const individualLogs = allLogs.filter(l => {
           if (!l) return false;
           const targetId = String(id).trim();
-          
-          // Try all possible identifier fields from various backend versions
-          // Priority: user_id, Empcode, EmpID, userId
           const logId = String(l.user_id || l.Empcode || l.EmpID || l.userId || l.UserId || l.user_ID || l.UserID || '').trim();
-          
           return logId === targetId;
         });
 
@@ -273,8 +275,6 @@ export default function EmployeeAttendanceManagement() {
           const rawDate = l.punch_date || l.date || l.PunchDate || l.PDate || l.created_at || '';
           if (!rawDate) return;
           
-          // Extract just the YYYY-MM-DD part
-          // Extract just the YYYY-MM-DD part safely
           let dStr = '';
           try {
             const dObj = new Date(rawDate);
@@ -303,7 +303,6 @@ export default function EmployeeAttendanceManagement() {
           const firstPunch = dayPunches[0];
           const lastPunch = dayPunches[dayPunches.length - 1];
 
-          // Calculate work hours based on first/last punch of the day
           const punchInTime = firstPunch.in_time || firstPunch.INTime || firstPunch.PunchIn || firstPunch.punch_in || '----';
           const punchOutTime = lastPunch.out_time || lastPunch.OUTTime || lastPunch.PunchOut || lastPunch.punch_out || '----';
 
@@ -331,7 +330,7 @@ export default function EmployeeAttendanceManagement() {
     };
 
     fetchEmployeeData();
-  }, [id, user, startDate, endDate]);
+  }, [id, user, endDate]); // Removed startDate dependency to keep historical count stable
 
   const calculateWorkHours = (inTime, outTime) => {
     if (!inTime || !outTime || inTime === '----' || outTime === '----') return '00:00';

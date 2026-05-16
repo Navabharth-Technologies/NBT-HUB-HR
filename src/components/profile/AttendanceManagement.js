@@ -28,8 +28,13 @@ export default function AttendanceManagement() {
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState(localStorage.getItem('nbtAttendanceFromDate') || '2026-01-01');
-  const [toDate, setToDate] = useState(localStorage.getItem('nbtAttendanceToDate') || new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(() => {
+    const saved = localStorage.getItem('nbtAttendanceToDate');
+    const today = getTodayStr();
+    return (saved && saved < today) ? today : (saved || today);
+  });
 
   useEffect(() => {
     localStorage.setItem('nbtAttendanceFromDate', fromDate);
@@ -242,11 +247,16 @@ export default function AttendanceManagement() {
 
         const todayStr = new Date().toISOString().split('T')[0];
         const myTodayLogs = validLogs.filter(log => {
-          const logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0];
+          let logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0].split(' ')[0];
+          // Handle DD-MM-YYYY or other formats
+          if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
+            const parts = logDate.split('-');
+            if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
           const isToday = logDate === todayStr;
-          const isMe = String(log?.user_id) === String(user?.id) || String(log?.Empcode) === String(user?.id) || String(log?.EmpID) === String(user?.id) || log?.email === user?.email;
+          const isMe = String(log?.user_id || log?.Empcode || log?.EmpID || '') === String(user?.id || '') || log?.email === user?.email;
           return isToday && isMe;
-        }).sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
+        }).sort((a, b) => new Date(a?.created_at || a?.punch_time || 0) - new Date(b?.created_at || b?.punch_time || 0));
 
         if (myTodayLogs.length > 0) {
           const firstLog = myTodayLogs[0];
@@ -519,7 +529,11 @@ export default function AttendanceManagement() {
     const totalCount = allEmployees.length;
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLogs = (attendanceLogs || []).filter(l => {
-      const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+      let logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0].split(' ')[0];
+      if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
+        const parts = logDate.split('-');
+        if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
       return logDate === todayStr;
     });
     const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;

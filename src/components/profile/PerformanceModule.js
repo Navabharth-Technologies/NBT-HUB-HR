@@ -37,6 +37,7 @@ export default function PerformanceModule() {
   const [profileData, setProfileData] = useState({ name: '', employee_id: '', designation: '' });
   const [toast, setToast] = useState({ show: false, message: '' });
   const fileInputRef = useRef(null);
+  const dobInputRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -181,7 +182,19 @@ export default function PerformanceModule() {
       // Prepare full payload with current values to prevent "erasing" on backend
       // We use user context values as final fallback to ensure we never send empty strings if data exists
       const nextPhone = field === 'phone_number' ? value : (phone !== 'Add Phone Number' ? phone : (user.phone_number || ''));
-      const nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
+      let nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
+      
+      // Handle formatting for both input types (date picker YYYY-MM-DD and manual DD-MM-YYYY)
+      if (field === 'date_of_birth' && nextDob) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(nextDob)) {
+          // It's YYYY-MM-DD from a date picker
+          const [y, m, d] = nextDob.split('-');
+          nextDob = `${d}/${m}/${y}`;
+        } else if (/^\d{2}-\d{2}-\d{4}$/.test(nextDob)) {
+          // It's already DD-MM-YYYY, change to DD/MM/YYYY for internal consistency
+          nextDob = nextDob.replace(/-/g, '/');
+        }
+      }
 
       const payload = {
         email: user.email,
@@ -240,9 +253,14 @@ export default function PerformanceModule() {
           updateUser({ phone_number: value });
         }
         if (field === 'date_of_birth') {
-          setDob(value);
+          let formattedDob = value;
+          if (value.includes('-')) {
+            const [y, m, d] = value.split('-');
+            formattedDob = `${d}/${m}/${y}`;
+          }
+          setDob(formattedDob);
           setIsEditingDob(false);
-          updateUser({ date_of_birth: value });
+          updateUser({ date_of_birth: formattedDob });
         }
 
         // Show Success Toast
@@ -495,29 +513,52 @@ export default function PerformanceModule() {
                       <Calendar size={16} />
                       {isEditingDob ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input
-                            type="date"
-                            value={tempDob}
-                            onChange={e => setTempDob(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
-                            autoFocus
-                            style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', outline: 'none', background: 'white' }}
-                          />
-                          <div
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={tempDob}
+                              onChange={e => setTempDob(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
+                              placeholder="DD/MM/YYYY"
+                              autoFocus
+                              style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 35px 6px 12px', fontSize: '13px', outline: 'none', background: 'white', width: '130px' }}
+                            />
+                            <Calendar 
+                              size={14} 
+                              color="#64748b" 
+                              style={{ position: 'absolute', right: '10px', cursor: 'pointer' }} 
+                              onClick={() => dobInputRef.current?.showPicker()}
+                            />
+                            <input
+                              type="date"
+                              ref={dobInputRef}
+                              style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                              onChange={e => {
+                                const val = e.target.value; // YYYY-MM-DD
+                                if (val) {
+                                  const [y, m, d] = val.split('-');
+                                  setTempDob(`${d}/${m}/${y}`);
+                                }
+                              }}
+                            />
+                          </div>
+                          <button
                             onClick={() => updateProfileField('date_of_birth', tempDob)}
-                            style={{ background: '#22c55e', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)' }}
+                            style={{ background: '#22c55e', color: 'white', padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)', transition: 'transform 0.1s active' }}
+                            title="Save Changes"
                           >
-                            <Check size={14} strokeWidth={3} />
-                          </div>
-                          <div
+                            <Check size={16} strokeWidth={3} />
+                          </button>
+                          <button
                             onClick={() => setIsEditingDob(false)}
-                            style={{ background: '#f1f5f9', color: '#64748b', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: '#f1f5f9', color: '#64748b', padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                            title="Cancel"
                           >
-                            <X size={14} strokeWidth={3} />
-                          </div>
+                            <X size={16} strokeWidth={3} />
+                          </button>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(formatToISODate(dob)); setIsEditingDob(true); }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(formatDateDisplay(dob)); setIsEditingDob(true); }}>
                           <span>{formatDateDisplay(dob)}</span>
                           <Edit3 size={14} color="#94a3b8" />
                         </div>
@@ -576,10 +617,10 @@ export default function PerformanceModule() {
           <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>Services & Summary</h3>
           <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : '1fr 1fr', gap: '24px' }}>
             {[
-              { title: 'Manage Leave', sub: 'Request or track off-time', color: '#fee2e2', text: '#b91c1c', icon: <Calendar color="#ef4444" size={20} />, path: '/attendance' },
+              { title: 'Manage Leave', sub: 'Requested Leaves', color: '#fee2e2', text: '#0b0a0aff', icon: <Calendar color="#ef4444" size={20} />, path: '/leaves' },
               { title: 'Attendance Logs', sub: 'Review check-in history', color: '#dcfce7', text: '#15803d', icon: <Clock color="#22c55e" size={20} />, path: '/attendance' },
               { title: 'Security Settings', sub: 'Update security password', color: '#dbeafe', text: '#1e40af', icon: <Shield color="#3b82f6" size={20} />, onClick: () => setShowSecurityModal(true) },
-              { title: 'Support & Maintenance', sub: 'Raise technical ticket', color: '#ffedd5', text: '#9a3412', icon: <LifeBuoy color="#f97316" size={20} />, path: '/tickets' }
+              { title: 'Support & Maintenance', sub: 'View Resource ticket', color: '#ffedd5', text: '#9a3412', icon: <LifeBuoy color="#f97316" size={20} />, path: '/tickets' }
             ].map((svc, i) => (
               <div key={i} onClick={svc.onClick || (() => navigate(svc.path))} style={{ ...dashboardStyles.serviceCard, background: svc.color }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>

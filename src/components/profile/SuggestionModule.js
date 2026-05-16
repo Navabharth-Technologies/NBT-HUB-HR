@@ -14,13 +14,15 @@ export default function SuggestionModule() {
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!user?.token) {
+      const token = user?.token || localStorage.getItem('token');
+      if (!token) {
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(API_ENDPOINTS.SUGGESTIONS_ADMIN, {
-          headers: { 'Authorization': `Bearer ${user.token}` }
+        setLoading(true);
+        const res = await fetch(API_ENDPOINTS.SUGGESTIONS, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();

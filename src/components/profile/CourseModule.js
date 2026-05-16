@@ -164,7 +164,7 @@ export default function CourseModule() {
     setActiveCourses(prev => prev.filter(c => c.id !== id && c._id !== id));
     
     try {
-      const res = await fetch(`${API_ENDPOINTS.COURSES}/${id}`, {
+      const res = await fetch(API_ENDPOINTS.COURSES_DELETE(id), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
@@ -225,7 +225,7 @@ export default function CourseModule() {
           ) : (
             <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
               {activeCourses.map(c => (
-                <div key={c.id} className="team-card" style={{ position: 'relative' }}>
+                <div key={c.id || c._id} className="team-card" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{
                       fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '10px',
