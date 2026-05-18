@@ -535,14 +535,19 @@ export default function EmployeeAttendanceManagement() {
                   const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
                   const isHoliday = holidays.includes(dayMonth);
 
-                  let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'PRESENT' : 'ABSENT')).toUpperCase();
-                  if ((!log.in_time || log.in_time === '----') || statusText === 'ABSENT') {
+                  let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'Present' : 'Absent'));
+                  if (!log.in_time || log.in_time === '----') {
                     if (isSunday) statusText = 'WO';
                     else if (isHoliday) statusText = 'NH';
-                    else statusText = 'ABSENT';
+                    else statusText = 'Absent';
+                  } else {
+                    if (statusText.toUpperCase() === 'P' || statusText.toUpperCase() === 'PRESENT') statusText = 'Present';
+                    else if (statusText.toUpperCase() === 'A' || statusText.toUpperCase() === 'ABSENT') statusText = 'Absent';
+                    else if (statusText.toUpperCase() === 'L' || statusText.toUpperCase() === 'LATE') statusText = 'Late';
+                    else if (statusText.toUpperCase() === 'HD' || statusText.toUpperCase() === 'HALF_DAY') statusText = 'Half Day';
                   }
 
-                  const isPresent = statusText.includes('PRESENT') || statusText === 'P';
+                  const isPresent = statusText === 'Present' || statusText === 'PRESENT' || statusText.toUpperCase().includes('PRESENT') || statusText.toUpperCase() === 'P';
                   const isWO = statusText === 'WO';
                   const isNH = statusText === 'NH';
 
@@ -700,13 +705,18 @@ export default function EmployeeAttendanceManagement() {
 
                             let statusText = String(log.status || (log.in_time && log.in_time !== '----' ? 'Present' : 'Absent'));
                             
-                            if ((!log.in_time || log.in_time === '----') || statusText === 'A' || statusText === 'P' || statusText === 'ABSENT' || statusText === 'PRESENT') {
+                            if (!log.in_time || log.in_time === '----') {
                               if (isSunday) statusText = 'WO';
                               else if (isHoliday) statusText = 'NH';
-                              else statusText = (log.in_time && log.in_time !== '----') ? 'PRESENT' : 'ABSENT';
+                              else statusText = 'Absent';
+                            } else {
+                              if (statusText.toUpperCase() === 'P' || statusText.toUpperCase() === 'PRESENT') statusText = 'Present';
+                              else if (statusText.toUpperCase() === 'A' || statusText.toUpperCase() === 'ABSENT') statusText = 'Absent';
+                              else if (statusText.toUpperCase() === 'L' || statusText.toUpperCase() === 'LATE') statusText = 'Late';
+                              else if (statusText.toUpperCase() === 'HD' || statusText.toUpperCase() === 'HALF_DAY') statusText = 'Half Day';
                             }
 
-                            const isPresent = statusText === 'Present' || statusText === 'PRESENT' || statusText.includes('PRESENT') || statusText.includes('Present');
+                            const isPresent = statusText === 'Present' || statusText === 'PRESENT' || statusText.toUpperCase().includes('PRESENT') || statusText.toUpperCase() === 'P';
                             const isWO = statusText === 'WO';
                             const isNH = statusText === 'NH';
 

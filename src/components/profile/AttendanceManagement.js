@@ -968,6 +968,59 @@ export default function AttendanceManagement() {
                             <MapPin size={12} /> {log?.in_location || log?.location || '----'}
                           </div>
                           {(() => {
+                            const rawStatus = (todayLog?.status || todayLog?.Status || '').trim();
+                            if (rawStatus) {
+                              let displayStatus = rawStatus;
+                              if (rawStatus.toUpperCase() === 'PRESENT') displayStatus = 'Present';
+                              else if (rawStatus.toUpperCase() === 'ABSENT') displayStatus = 'Absent';
+                              else if (rawStatus.toUpperCase() === 'HALF_DAY' || rawStatus.toUpperCase() === 'HD') displayStatus = 'Half Day';
+                              else if (rawStatus.toUpperCase() === 'LATE' || rawStatus.toUpperCase() === 'L') displayStatus = 'Late';
+
+                              const s = rawStatus.toUpperCase();
+                              let bg = '#fef2f2';
+                              let color = '#ef4444';
+                              let border = '#fee2e2';
+
+                              if (s.includes('PRESENT') || s === 'P') {
+                                bg = '#f0fdf4';
+                                color = '#16a34a';
+                                border = '#bbf7d0';
+                              } else if (s.includes('LATE') || s === 'L') {
+                                bg = '#fffbeb';
+                                color = '#d97706';
+                                border = '#f59e0b';
+                              } else if (s.includes('WO') || s.includes('OFF')) {
+                                bg = '#f1f5f9';
+                                color = '#64748b';
+                                border = '#cbd5e1';
+                              } else if (s.includes('NH') || s.includes('HOLIDAY')) {
+                                bg = '#eff6ff';
+                                color = '#3b82f6';
+                                border = '#dbeafe';
+                              } else if (s.includes('HALF') || s === 'HD') {
+                                bg = '#fff7ed';
+                                color = '#f97316';
+                                border = '#fed7aa';
+                              }
+
+                              return (
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 14px',
+                                  borderRadius: '100px',
+                                  background: bg,
+                                  border: `1.5px solid ${border}`,
+                                  color: color,
+                                  fontWeight: '950'
+                                }}>
+                                  {displayStatus}
+                                </div>
+                              );
+                            }
+
+                            // Fallback if no backend status is set
                             const todayPunchIn = todayLog?.in_time || todayLog?.INTime || todayLog?.PunchIn || todayLog?.punch_time;
                             const today = new Date();
                             const isSunday = today.getDay() === 0;
@@ -978,16 +1031,16 @@ export default function AttendanceManagement() {
                             const isHoliday = holidays.includes(dayMonth);
 
                             const hasValidPunchIn = todayPunchIn && todayPunchIn !== '----' && todayPunchIn !== '--:--' && todayPunchIn !== '00:00';
-                            let rawStatus = hasValidPunchIn ? 'Present' : 'Absent';
+                            let fallbackStatus = hasValidPunchIn ? 'Present' : 'Absent';
                             if (!hasValidPunchIn) {
-                              if (isSunday) rawStatus = 'WO';
-                              else if (isHoliday) rawStatus = 'NH';
-                              else rawStatus = 'Absent';
+                              if (isSunday) fallbackStatus = 'WO';
+                              else if (isHoliday) fallbackStatus = 'NH';
+                              else fallbackStatus = 'Absent';
                             }
 
-                            const isPresent = rawStatus.toUpperCase().includes('PRESENT');
-                            const isWO = rawStatus === 'WO';
-                            const isNH = rawStatus === 'NH';
+                            const isPresent = fallbackStatus.toUpperCase().includes('PRESENT');
+                            const isWO = fallbackStatus === 'WO';
+                            const isNH = fallbackStatus === 'NH';
 
                             return (
                               <div style={{
@@ -1001,7 +1054,7 @@ export default function AttendanceManagement() {
                                 color: isPresent ? '#16a34a' : (isWO || isNH ? '#3b82f6' : '#ef4444'),
                                 fontWeight: '950'
                               }}>
-                                {rawStatus}
+                                {fallbackStatus}
                               </div>
                             );
                           })()}
@@ -1120,17 +1173,67 @@ export default function AttendanceManagement() {
                             {cleanLog.displayWorkTime}
                           </td>
                           <td style={{ padding: '20px' }}>
-                            <div style={{
-                              display: 'inline-flex',
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              background: (log && cleanLog.displayInTime !== '----') ? '#f0fdf4' : '#fef2f2',
-                              color: (log && cleanLog.displayInTime !== '----') ? '#16a34a' : '#ef4444',
-                              fontSize: '11px',
-                              fontWeight: '950'
-                            }}>
-                              {(log && cleanLog.displayInTime !== '----') ? 'Present' : 'Absent'}
-                            </div>
+                            {(() => {
+                              const rawStatus = (log?.status || log?.Status || '').trim();
+                              if (rawStatus) {
+                                let displayStatus = rawStatus;
+                                if (rawStatus.toUpperCase() === 'PRESENT') displayStatus = 'Present';
+                                else if (rawStatus.toUpperCase() === 'ABSENT') displayStatus = 'Absent';
+                                else if (rawStatus.toUpperCase() === 'HALF_DAY' || rawStatus.toUpperCase() === 'HD') displayStatus = 'Half Day';
+                                else if (rawStatus.toUpperCase() === 'LATE' || rawStatus.toUpperCase() === 'L') displayStatus = 'Late';
+
+                                const s = rawStatus.toUpperCase();
+                                let bg = '#fef2f2';
+                                let color = '#ef4444';
+
+                                if (s.includes('PRESENT') || s === 'P') {
+                                  bg = '#f0fdf4';
+                                  color = '#16a34a';
+                                } else if (s.includes('LATE') || s === 'L') {
+                                  bg = '#fffbeb';
+                                  color = '#d97706';
+                                } else if (s.includes('WO') || s.includes('OFF')) {
+                                  bg = '#f1f5f9';
+                                  color = '#64748b';
+                                } else if (s.includes('NH') || s.includes('HOLIDAY')) {
+                                  bg = '#eff6ff';
+                                  color = '#3b82f6';
+                                } else if (s.includes('HALF') || s === 'HD') {
+                                  bg = '#fff7ed';
+                                  color = '#f97316';
+                                }
+
+                                return (
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    background: bg,
+                                    color: color,
+                                    fontSize: '11px',
+                                    fontWeight: '950'
+                                  }}>
+                                    {displayStatus}
+                                  </div>
+                                );
+                              }
+
+                              // Fallback if no backend status is set
+                              const hasPunchIn = log && cleanLog.displayInTime !== '----';
+                              return (
+                                <div style={{
+                                  display: 'inline-flex',
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  background: hasPunchIn ? '#f0fdf4' : '#fef2f2',
+                                  color: hasPunchIn ? '#16a34a' : '#ef4444',
+                                  fontSize: '11px',
+                                  fontWeight: '950'
+                                }}>
+                                  {hasPunchIn ? 'Present' : 'Absent'}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '20px', fontSize: '12px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log?.in_location || '----'}>
                             {log?.in_location || '----'}

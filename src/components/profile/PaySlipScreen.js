@@ -4,7 +4,7 @@ import { ArrowLeft, Download, Printer, Share2, Mail, FileText, Landmark, Clock, 
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import logo from '../../assets/logo.png';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -21,13 +21,203 @@ export default function PaySlipScreen() {
     const [formData, setFormData] = useState({
         employee_id: '', month: '', year: '', emp_name: '', department: '', designation: '',
         total_present: '', total_weekly_off: '', total_holidays: '', total_leaves: '',
-        total_absent: '', total_work_ot: '', total_ot_hours: '', 
+        total_absent: '', total_work_ot: '', total_ot_hours: '',
         basic_salary: '', hra: '', conveyance: '', special_allowance: '',
         performance_incentive: '', yearly_incentive: '',
-        pf_deduction: '', esi_deduction: '', pt_deduction: '', lwf_deduction: '', income_tax: '',
-        total_earnings: '', total_incentives: '', total_deductions: '', net_payable: '', available_leaves: ''
+        pf_deduction: '', esi_deduction: '', pt_deduction: '', lwf_deduction: '', income_tax: '', lop_deduction: '',
+        total_earnings: '', total_incentives: '', total_deductions: '', net_payable: '', available_leaves: '',
+        lop: ''
     });
     const dropdownRef = useRef(null);
+    const [filterData, setFilterData] = useState({
+        employee_id: '',
+        month: '',
+        year: '',
+        basic_salary: ''
+    });
+    const [isFilterLoading, setIsFilterLoading] = useState(false);
+
+    const [isFormFetching, setIsFormFetching] = useState(false);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+    const monthsList = [
+        { value: '1', label: 'January' },
+        { value: '2', label: 'February' },
+        { value: '3', label: 'March' },
+        { value: '4', label: 'April' },
+        { value: '5', label: 'May' },
+        { value: '6', label: 'June' },
+        { value: '7', label: 'July' },
+        { value: '8', label: 'August' },
+        { value: '9', label: 'September' },
+        { value: '10', label: 'October' },
+        { value: '11', label: 'November' },
+        { value: '12', label: 'December' }
+    ];
+
+    const yearsList = ['2025', '2026', '2027', '2028', '2029', '2030'];
+
+    const mapApiDataToPayslip = (data, employeeId, month, year) => {
+        const basic = parseFloat(data.basic_salary || data.basic || data.basicSalary) || 0;
+        const hra = parseFloat(data.hra) || 0;
+        const conveyance = parseFloat(data.conveyance) || 0;
+        const special_allowance = parseFloat(data.special_allowance || data.specialAllowance) || 0;
+
+        const performance_incentive = parseFloat(data.performance_incentive || data.performanceIncentive || data.performance) || 0;
+        const yearly_incentive = parseFloat(data.yearly_incentive || data.yearlyIncentive || data.yearly) || 0;
+
+        const pf_deduction = parseFloat(data.pf_deduction || data.pf || data.pfDeduction) || 0;
+        const esi_deduction = parseFloat(data.esi_deduction || data.esi || data.esiDeduction) || 0;
+        const pt_deduction = parseFloat(data.pt_deduction || data.pt || data.ptDeduction) || 0;
+        const lwf_deduction = parseFloat(data.lwf_deduction || data.lwf || data.lwfDeduction) || 0;
+        const income_tax = parseFloat(data.income_tax || data.tax || data.incomeTax) || 0;
+
+        const absentDays = parseFloat(data.lop || data.LOP || data.total_absent || data.absent || 0) || 0;
+        const targetMonth = parseInt(month || data.month) || 4;
+        const targetYear = parseInt(year || data.year) || 2026;
+
+        const getDaysInMonth = (y, m) => new Date(y, m, 0).getDate();
+        const totalDays = getDaysInMonth(targetYear, targetMonth);
+        const perDaySalary = totalDays > 0 ? (basic / totalDays) : 0;
+        const lop_deduction = Math.round(perDaySalary * absentDays);
+
+        const getSundaysInMonth = (y, m) => {
+            let sundays = 0;
+            const daysInMonth = new Date(y, m, 0).getDate();
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dt = new Date(y, m - 1, d);
+                if (dt.getDay() === 0) sundays++;
+            }
+            return sundays;
+        };
+        const calculatedWeekoffs = getSundaysInMonth(targetYear, targetMonth);
+
+        const earnings = basic + hra + conveyance + special_allowance;
+        const incentives = performance_incentive + yearly_incentive;
+        const deductions = pf_deduction + esi_deduction + pt_deduction + lwf_deduction + income_tax + lop_deduction;
+
+        const serverNetPayable = data.net_payable !== undefined && data.net_payable !== null ? parseFloat(data.net_payable) :
+            (data.netPayable !== undefined && data.netPayable !== null ? parseFloat(data.netPayable) : null);
+        const net_payable = serverNetPayable !== null ? Math.round(serverNetPayable) : Math.max(0, Math.round(earnings + incentives - deductions));
+
+        return {
+            employee_id: employeeId || data.employee_id || data.id || '',
+            month: month || data.month || '',
+            year: year || data.year || '',
+            emp_name: data.emp_name || data.name || data.employee_name || '',
+            department: data.department || '',
+            designation: data.designation || data.role || '',
+
+            total_present: String(data.total_present || data.present || data.present_days || '0'),
+            total_weekly_off: String(calculatedWeekoffs),
+            total_holidays: String(data.total_holidays || data.holidays || data.public_holidays || '0'),
+            total_leaves: String(data.total_leaves || data.leaves || data.casual_leaves || '0'),
+            total_absent: String(absentDays),
+            total_work_ot: String(data.total_work_ot || data.work_ot || data.work_overtime || '0'),
+            total_ot_hours: String(data.total_ot_hours || data.ot_hours || data.overtime_hours || '0'),
+            available_leaves: String(data.available_leaves || data.availableLeaves || data.leave_balance || data.balance || '0'),
+            lop: String(absentDays),
+
+            basic_salary: String(basic),
+            hra: String(hra),
+            conveyance: String(conveyance),
+            special_allowance: String(special_allowance),
+
+            performance_incentive: String(performance_incentive),
+            yearly_incentive: String(yearly_incentive),
+
+            pf_deduction: String(pf_deduction),
+            esi_deduction: String(esi_deduction),
+            pt_deduction: String(pt_deduction),
+            lwf_deduction: String(lwf_deduction),
+            income_tax: String(income_tax),
+            lop_deduction: String(lop_deduction),
+
+            total_earnings: String(earnings),
+            total_incentives: String(incentives),
+            total_deductions: String(deductions),
+            net_payable: String(net_payable)
+        };
+    };
+
+    useEffect(() => {
+        const fetchFormSummary = async () => {
+            if (!showAddForm || !formData.employee_id || !formData.month || !formData.year) return;
+            try {
+                setIsFormFetching(true);
+
+                // 1. Fetch main summary details
+                const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${user?.token}` }
+                });
+
+                let mapped = {};
+                if (res.ok) {
+                    const data = await res.json();
+                    mapped = mapApiDataToPayslip(data, formData.employee_id, formData.month, formData.year);
+                }
+
+                // 2. Fetch LOP stats from all possible leave stats endpoints for exact month & year match
+                let lopVal = '0';
+                const endpointsToTry = [
+                    `${BASE_URL}/api/leave_stats?month=${formData.month}&year=${formData.year}`,
+                    `${BASE_URL}/api/admin/leave_stats?month=${formData.month}&year=${formData.year}`,
+                    `${BASE_URL}/api/leave-stats?month=${formData.month}&year=${formData.year}`,
+                    `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${formData.month}&year=${formData.year}`
+                ];
+
+                for (const ep of endpointsToTry) {
+                    try {
+                        const statsRes = await fetch(ep, {
+                            headers: { 'Authorization': `Bearer ${user?.token}` }
+                        });
+                        if (statsRes.ok) {
+                            const statsData = await statsRes.json();
+                            const statsList = Array.isArray(statsData) ? statsData : (statsData.stats || statsData.data || []);
+                            const userStat = statsList.find(s => String(s.employee_id || s.user_id) === String(formData.employee_id));
+                            if (userStat) {
+                                lopVal = String(userStat.LOP !== undefined ? userStat.LOP : (userStat.lop !== undefined ? userStat.lop : '0'));
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error trying endpoint:", ep, e);
+                    }
+                }
+
+                // Recalculate dynamic high-precision LOP and Net Payable values for pre-fill
+                const basicSalaryNum = parseFloat(mapped.basic_salary) || parseFloat(formData.basic_salary) || 0;
+                const absentDaysNum = parseFloat(lopVal) || 0;
+
+                const targetMonth = parseInt(formData.month) || 4;
+                const targetYear = parseInt(formData.year) || 2026;
+                const totalDays = new Date(targetYear, targetMonth, 0).getDate();
+                const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
+                const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
+
+                const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
+                const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
+                const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
+                const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
+
+                setFormData(prev => ({
+                    ...prev,
+                    ...mapped,
+                    lop: lopVal,
+                    total_absent: lopVal, // LOP days count is sent in total_absent parameter
+                    lop_deduction: String(calculatedLopDeduction),
+                    net_payable: String(calculatedNetPayable),
+                    total_deductions: String(deductionsNum)
+                }));
+            } catch (err) {
+                console.error("Error fetching summary for form:", err);
+            } finally {
+                setIsFormFetching(false);
+            }
+        };
+        fetchFormSummary();
+    }, [formData.employee_id, formData.month, formData.year, showAddForm, user]);
 
     const [winWidth, setWinWidth] = useState(window.innerWidth);
 
@@ -69,41 +259,73 @@ export default function PaySlipScreen() {
         const { name, value } = e.target;
         setFormData(prev => {
             const updated = { ...prev, [name]: value };
-            
+
             // Auto-calculate financials if specific fields change
             const financialFields = [
                 'basic_salary', 'hra', 'conveyance', 'special_allowance',
                 'performance_incentive', 'yearly_incentive',
-                'pf_deduction', 'esi_deduction', 'pt_deduction', 'lwf_deduction', 'income_tax'
+                'pf_deduction', 'esi_deduction', 'pt_deduction', 'lwf_deduction', 'income_tax', 'lop_deduction',
+                'lop', 'total_absent', 'month', 'year'
             ];
-            
+
             if (financialFields.includes(name)) {
                 const basic = parseFloat(updated.basic_salary) || 0;
                 const hra = parseFloat(updated.hra) || 0;
                 const conv = parseFloat(updated.conveyance) || 0;
                 const spec = parseFloat(updated.special_allowance) || 0;
-                
+
                 const perf = parseFloat(updated.performance_incentive) || 0;
                 const yearly = parseFloat(updated.yearly_incentive) || 0;
-                
+
                 const pf = parseFloat(updated.pf_deduction) || 0;
                 const esi = parseFloat(updated.esi_deduction) || 0;
                 const pt = parseFloat(updated.pt_deduction) || 0;
                 const lwf = parseFloat(updated.lwf_deduction) || 0;
                 const itax = parseFloat(updated.income_tax) || 0;
- 
+
+                // Dynamically compute LOP deduction on input change to ensure real-time precision rounding
+                const targetMonth = parseInt(updated.month) || 4;
+                const targetYear = parseInt(updated.year) || 2026;
+                const totalDays = new Date(targetYear, targetMonth, 0).getDate();
+                const absentDays = parseFloat(updated.lop) || parseFloat(updated.total_absent) || 0;
+                const perDaySalary = totalDays > 0 ? (basic / totalDays) : 0;
+                const calculatedLop = Math.round(perDaySalary * absentDays);
+
                 const earnings = basic + hra + conv + spec;
                 const incentives = perf + yearly;
-                const deductions = pf + esi + pt + lwf + itax;
-                
+                const deductions = pf + esi + pt + lwf + itax + calculatedLop;
+
+                updated.lop_deduction = calculatedLop.toString();
                 updated.total_earnings = earnings.toString();
                 updated.total_incentives = incentives.toString();
                 updated.total_deductions = deductions.toString();
-                updated.net_payable = (earnings + incentives - deductions).toString();
+
+                // Dynamic formula matching payslip image perfectly
+                updated.net_payable = Math.max(0, Math.round(earnings + incentives - deductions)).toString();
             }
-            
+
             return updated;
         });
+    };
+
+    const handleConfirmOK = () => {
+        setPreviewData({ ...formData }); // Update the document view immediately
+        setShowAddForm(false);
+        setFormData({
+            employee_id: '', month: '', year: '', emp_name: '', department: '', designation: '',
+            total_present: '', total_weekly_off: '', total_holidays: '', total_leaves: '',
+            total_absent: '', total_work_ot: '', total_ot_hours: '',
+            basic_salary: '', hra: '', conveyance: '', special_allowance: '',
+            performance_incentive: '', yearly_incentive: '',
+            pf_deduction: '', esi_deduction: '', pt_deduction: '', lwf_deduction: '', income_tax: '', lop_deduction: '',
+            total_earnings: '', total_incentives: '', total_deductions: '', net_payable: '', available_leaves: '',
+            lop: ''
+        });
+        setShowSuccessPopup(false);
+    };
+
+    const handleConfirmCancel = () => {
+        setShowSuccessPopup(false); // Stay on the same screen, no reset or redirection
     };
 
     const handleAddPayslip = async (e) => {
@@ -119,18 +341,7 @@ export default function PaySlipScreen() {
             });
 
             if (response.ok) {
-                alert('Payslip Added Successfully to Database!');
-                setPreviewData({ ...formData }); // Update the document view immediately
-                setShowAddForm(false);
-                setFormData({
-                    employee_id: '', month: '', year: '', emp_name: '', department: '', designation: '',
-                    total_present: '', total_weekly_off: '', total_holidays: '', total_leaves: '',
-                    total_absent: '', total_work_ot: '', total_ot_hours: '', 
-                    basic_salary: '', hra: '', conveyance: '', special_allowance: '',
-                    performance_incentive: '', yearly_incentive: '',
-                    pf_deduction: '', esi_deduction: '', pt_deduction: '', lwf_deduction: '', income_tax: '',
-                    total_earnings: '', total_incentives: '', total_deductions: '', net_payable: '', available_leaves: ''
-                });
+                setShowSuccessPopup(true);
             } else {
                 const err = await response.json();
                 alert(`Error: ${err.message || 'Failed to save payslip'}`);
@@ -150,6 +361,204 @@ export default function PaySlipScreen() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleLoadData = async () => {
+        if (!filterData.employee_id || !filterData.month || !filterData.year) {
+            alert('Please select Employee, Month, and Year.');
+            return;
+        }
+        try {
+            setIsFilterLoading(true);
+            
+            // 1. Fetch main summary details
+            const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(filterData.employee_id, filterData.month, filterData.year);
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+            
+            let mapped = {};
+            if (res.ok) {
+                const data = await res.json();
+                mapped = mapApiDataToPayslip(data, filterData.employee_id, filterData.month, filterData.year);
+            } else {
+                const selectedUser = usersList.find(u => String(u.employee_id || u.id) === String(filterData.employee_id));
+                mapped = {
+                    employee_id: filterData.employee_id,
+                    month: filterData.month,
+                    year: filterData.year,
+                    emp_name: selectedUser?.name || 'Employee',
+                    department: selectedUser?.department || 'Staff',
+                    designation: selectedUser?.role || selectedUser?.designation || '',
+                    basic_salary: filterData.basic_salary || '0',
+                    total_present: '0',
+                    total_weekly_off: '0',
+                    total_holidays: '0',
+                    total_leaves: '0',
+                    total_absent: '0',
+                    total_work_ot: '0',
+                    total_ot_hours: '0',
+                    available_leaves: '0',
+                    lop: '0',
+                    pf_deduction: '0',
+                    esi_deduction: '0',
+                    pt_deduction: '0',
+                    lwf_deduction: '0',
+                    income_tax: '0',
+                    lop_deduction: '0',
+                    total_earnings: '0',
+                    total_incentives: '0',
+                    total_deductions: '0',
+                    net_payable: '0'
+                };
+            }
+
+            // 2. Fetch LOP stats from all possible leave stats endpoints for exact month & year match
+            let lopVal = '0';
+            const endpointsToTry = [
+                `${BASE_URL}/api/leave_stats?month=${filterData.month}&year=${filterData.year}`,
+                `${BASE_URL}/api/admin/leave_stats?month=${filterData.month}&year=${filterData.year}`,
+                `${BASE_URL}/api/leave-stats?month=${filterData.month}&year=${filterData.year}`,
+                `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${filterData.month}&year=${filterData.year}`
+            ];
+            
+            for (const ep of endpointsToTry) {
+                try {
+                    const statsRes = await fetch(ep, {
+                        headers: { 'Authorization': `Bearer ${user?.token}` }
+                    });
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json();
+                        const statsList = Array.isArray(statsData) ? statsData : (statsData.stats || statsData.data || []);
+                        const userStat = statsList.find(s => String(s.employee_id || s.user_id) === String(filterData.employee_id));
+                        if (userStat) {
+                            lopVal = String(userStat.LOP !== undefined ? userStat.LOP : (userStat.lop !== undefined ? userStat.lop : '0'));
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error trying endpoint:", ep, e);
+                }
+            }
+
+            const basicSalaryNum = parseFloat(filterData.basic_salary) || parseFloat(mapped.basic_salary) || 0;
+            const absentDaysNum = parseFloat(lopVal) || parseFloat(mapped.total_absent) || 0;
+
+            const targetMonth = parseInt(filterData.month) || 4;
+            const targetYear = parseInt(filterData.year) || 2026;
+            const totalDays = new Date(targetYear, targetMonth, 0).getDate();
+            const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
+            const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
+
+            const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
+            const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
+            const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
+            const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
+
+            const finalPreview = {
+                ...mapped,
+                basic_salary: String(basicSalaryNum),
+                lop: String(absentDaysNum),
+                total_absent: String(absentDaysNum),
+                lop_deduction: String(calculatedLopDeduction),
+                net_payable: String(calculatedNetPayable),
+                total_deductions: String(deductionsNum)
+            };
+
+            setPreviewData(finalPreview);
+            
+            setFormData(prev => ({
+                ...prev,
+                ...finalPreview
+            }));
+
+        } catch (err) {
+            console.error("Error loading preview data:", err);
+            alert("Failed to load employee details.");
+        } finally {
+            setIsFilterLoading(false);
+        }
+    };
+
+    const handleModalLoadData = async () => {
+        if (!formData.employee_id || !formData.month || !formData.year) {
+            alert('Please select Employee, Month, and Year first.');
+            return;
+        }
+        try {
+            setIsFormFetching(true);
+            
+            // 1. Fetch main summary details
+            const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+            
+            let mapped = {};
+            if (res.ok) {
+                const data = await res.json();
+                mapped = mapApiDataToPayslip(data, formData.employee_id, formData.month, formData.year);
+            }
+
+            // 2. Fetch LOP stats from leave stats
+            let lopVal = '0';
+            const endpointsToTry = [
+                `${BASE_URL}/api/leave_stats?month=${formData.month}&year=${formData.year}`,
+                `${BASE_URL}/api/admin/leave_stats?month=${formData.month}&year=${formData.year}`,
+                `${BASE_URL}/api/leave-stats?month=${formData.month}&year=${formData.year}`,
+                `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${formData.month}&year=${formData.year}`
+            ];
+            
+            for (const ep of endpointsToTry) {
+                try {
+                    const statsRes = await fetch(ep, {
+                        headers: { 'Authorization': `Bearer ${user?.token}` }
+                    });
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json();
+                        const statsList = Array.isArray(statsData) ? statsData : (statsData.stats || statsData.data || []);
+                        const userStat = statsList.find(s => String(s.employee_id || s.user_id) === String(formData.employee_id));
+                        if (userStat) {
+                            lopVal = String(userStat.LOP !== undefined ? userStat.LOP : (userStat.lop !== undefined ? userStat.lop : '0'));
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error trying endpoint:", ep, e);
+                }
+            }
+
+            const basicSalaryNum = parseFloat(formData.basic_salary) || parseFloat(mapped.basic_salary) || 0;
+            const absentDaysNum = parseFloat(lopVal) || parseFloat(mapped.total_absent) || 0;
+
+            const targetMonth = parseInt(formData.month) || 4;
+            const targetYear = parseInt(formData.year) || 2026;
+            const totalDays = new Date(targetYear, targetMonth, 0).getDate();
+            const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
+            const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
+
+            const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
+            const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
+            const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
+            const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
+
+            setFormData(prev => ({
+                ...prev,
+                ...mapped,
+                basic_salary: String(basicSalaryNum),
+                lop: String(absentDaysNum),
+                total_absent: String(absentDaysNum),
+                lop_deduction: String(calculatedLopDeduction),
+                net_payable: String(calculatedNetPayable),
+                total_deductions: String(deductionsNum)
+            }));
+
+        } catch (err) {
+            console.error("Error loading modal details:", err);
+            alert("Failed to load details.");
+        } finally {
+            setIsFormFetching(false);
+        }
+    };
 
     const handlePrint = () => {
         setShowExportOptions(false);
@@ -190,8 +599,8 @@ export default function PaySlipScreen() {
         setShowExportOptions(false);
         const data = previewData || {};
         const basic = Number(data.basic_salary || 0);
-        const deduct = Number(data.pf_deduction || 0) + Number(data.esi_deduction || 0) + Number(data.pt_deduction || 0);
-        
+        const deduct = Number(data.pf_deduction || 0) + Number(data.esi_deduction || 0) + Number(data.pt_deduction || 0) + Number(data.lop_deduction || 0);
+
         const worksheetData = [
             ["NAVABHARATH TECHNOLOGIES PAYSLIP"],
             ["Month/Year", `${data.month}/${data.year}`],
@@ -206,11 +615,13 @@ export default function PaySlipScreen() {
             ["Weekly Offs", data.total_weekly_off],
             ["Leaves", data.total_leaves],
             ["OT Hours", data.total_ot_hours],
+            ["Available Leaves", data.available_leaves || '0'],
+            ["LOP Count", data.lop || '0'],
             [],
             ["Financial Summary"],
             ["Basic Salary", basic],
             ["Total Deductions", deduct],
-            ["Net Payable Amount", basic - deduct],
+            ["Net Payable Amount", Math.max(0, basic - Number(data.lop_deduction || 0))],
             [],
             ["Footer", "Computer generated. No signature required."]
         ];
@@ -310,22 +721,36 @@ export default function PaySlipScreen() {
                         </div>
 
                         {/* Attendance Statistics Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: '1.5px solid #e2e8f0', marginBottom: '20px', fontSize: '9px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', border: '1.5px solid #e2e8f0', marginBottom: '20px', fontSize: '9px' }}>
                             {[
-                                { l: 'TOT. PRE:', v: previewData?.total_present || '31' },
-                                { l: 'TOT. WO:-', v: previewData?.total_weekly_off || '4' },
+                                { l: 'TOT. PRE:', v: previewData?.total_present || '0' },
+                                { l: 'TOT. WO:-', v: previewData?.total_weekly_off || '0' },
                                 { l: 'TOT. HL:-', v: previewData?.total_holidays || '0' },
-                                { l: 'TOT. LEAVE:-', v: previewData?.total_leaves || '1' },
-                                { l: 'TOTAL ABSENT', v: previewData?.total_absent || '1' },
-                                { l: 'TOTAL WORK+OT', v: previewData?.total_work_ot || '1' },
-                                { l: 'TOTAL OT', v: previewData?.total_ot_hours || '1' },
-                                { l: 'BS/REFERENCE AMT.', v: Number(previewData?.basic_salary || 5000) }
-                            ].map((item, i) => (
-                                <div key={i} style={{ padding: '10px 12px', borderRight: (i + 1) % 4 === 0 ? 'none' : '1.5px solid #e2e8f0', borderBottom: i < 4 ? '1.5px solid #e2e8f0' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: '900', color: '#475569' }}>{item.l}</span>
-                                    <span style={{ fontWeight: '950', color: '#0f172a' }}>{item.v}</span>
-                                </div>
-                            ))}
+                                { l: 'TOT. LEAVE:-', v: previewData?.total_leaves || '0' },
+                                { l: 'TOTAL ABSENT', v: previewData?.total_absent || '0' },
+                                { l: 'TOTAL WORK+OT', v: previewData?.total_work_ot || '0' },
+                                { l: 'TOTAL OT', v: previewData?.total_ot_hours || '0' },
+                                { l: 'AVAILABLE LEAVE', v: previewData?.available_leaves || '0' },
+                                { l: 'LOP COUNT', v: previewData?.lop || '0' },
+                                { l: 'BS/REF AMT.', v: Number(previewData?.basic_salary || 0) }
+                            ].map((item, i) => {
+                                const columns = winWidth < 600 ? 2 : 5;
+                                const isRightMost = (i + 1) % columns === 0;
+                                const isBottomRow = i >= 10 - columns;
+                                return (
+                                    <div key={i} style={{
+                                        padding: '10px 12px',
+                                        borderRight: isRightMost ? 'none' : '1.5px solid #e2e8f0',
+                                        borderBottom: isBottomRow ? 'none' : '1.5px solid #e2e8f0',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <span style={{ fontWeight: '900', color: '#475569', fontSize: '8px' }}>{item.l}</span>
+                                        <span style={{ fontWeight: '950', color: '#0f172a' }}>{item.v}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Earnings & Deductions Tables */}
@@ -381,7 +806,8 @@ export default function PaySlipScreen() {
                                         { l: 'ESI', v: previewData?.esi_deduction || '500' },
                                         { l: 'PT', v: previewData?.pt_deduction || '100' },
                                         { l: 'LWF', v: previewData?.lwf_deduction || '0' },
-                                        { l: 'Income Tax', v: previewData?.income_tax || '0' }
+                                        { l: 'Income Tax', v: previewData?.income_tax || '0' },
+                                        { l: 'LOP Deduction', v: previewData?.lop_deduction || '0' }
                                     ].map((item, i) => (
                                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #f1f5f9' }}>
                                             <span>{item.l}</span>
@@ -395,7 +821,7 @@ export default function PaySlipScreen() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderTop: '1px solid #e2e8f0', fontWeight: '950' }}>
                                     <span>Net Payable</span>
-                                    <span>{previewData?.net_payable || '28,400'}</span>
+                                    <span style={{ color: '#16a34a', fontWeight: '950', fontSize: '13px' }}>{previewData?.net_payable || '28,400'}</span>
                                 </div>
                             </div>
                         </div>
@@ -423,8 +849,14 @@ export default function PaySlipScreen() {
                             <h2 style={{ margin: 0, fontSize: winWidth < 768 ? '18px' : '20px', fontWeight: '900', color: '#0f172a' }}>Add New Payslip</h2>
                             <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
                         </div>
-                        
+
                         <form onSubmit={handleAddPayslip}>
+                            {isFormFetching && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(30, 64, 175, 0.05)', color: '#1e40af', padding: '12px 16px', borderRadius: '12px', marginBottom: '24px', fontWeight: '850', fontSize: '13px', gridColumn: 'span 3' }}>
+                                    <svg className="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                                    Fetching basic details and attendance stats...
+                                </div>
+                            )}
                             <div style={{ ...formGridStyle, gridTemplateColumns: winWidth < 768 ? '1fr' : (winWidth < 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)') }}>
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', marginBottom: '8px' }}>
                                     <h3 style={sectionHeaderStyle}><User size={16} /> Personnel Details</h3>
@@ -433,15 +865,47 @@ export default function PaySlipScreen() {
                                 <FormSelect label="Employee Name" name="emp_name" icon={<User size={16} />} value={formData.employee_id} onChange={handleUserSelect} options={usersList.map(u => ({ value: u.employee_id || u.id, label: u.name }))} />
                                 <FormField label="Department" name="department" icon={<Building2 size={16} />} value={formData.department} onChange={handleInputChange} />
                                 <FormSelect label="Designation" name="designation" icon={<Briefcase size={16} />} value={formData.designation} onChange={handleInputChange} options={Array.from(new Set(usersList.map(u => u.role || u.designation))).filter(Boolean).map(role => ({ value: role, label: role }))} />
-                                <FormField label="Month" name="month" type="number" icon={<Calendar size={16} />} value={formData.month} onChange={handleInputChange} />
-                                <FormField label="Year" name="year" type="number" icon={<Clock size={16} />} value={formData.year} onChange={handleInputChange} />
-                                
+                                <FormSelect label="Month" name="month" icon={<Calendar size={16} />} value={formData.month} onChange={handleInputChange} options={monthsList.map(m => ({ value: m.value, label: m.label }))} />
+                                <FormSelect label="Year" name="year" icon={<Clock size={16} />} value={formData.year} onChange={handleInputChange} options={yearsList.map(y => ({ value: y, label: y }))} />
+
                                 <FormField label="Basic Salary" name="basic_salary" type="number" value={formData.basic_salary} onChange={handleInputChange} />
+                                <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleModalLoadData}
+                                        disabled={isFormFetching}
+                                        style={{
+                                            width: '100%',
+                                            background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '12px 20px',
+                                            borderRadius: '12px',
+                                            fontWeight: '900',
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            transition: '0.3s',
+                                            boxShadow: '0 4px 12px rgba(30, 64, 175, 0.15)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        {isFormFetching ? 'Loading...' : 'Load Data'}
+                                    </button>
+                                </div>
+                                <div style={{ display: winWidth < 768 ? 'none' : 'block' }}></div> {/* Spacer */}
+
+                                <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
+                                    <h3 style={sectionHeaderStyle}><Landmark size={16} /> Earnings</h3>
+                                </div>
                                 <FormField label="HRA" name="hra" type="number" value={formData.hra} onChange={handleInputChange} />
                                 <FormField label="Conveyance" name="conveyance" type="number" value={formData.conveyance} onChange={handleInputChange} />
                                 <FormField label="Special Allowance" name="special_allowance" type="number" value={formData.special_allowance} onChange={handleInputChange} />
                                 <FormField label="Total Earnings" name="total_earnings" type="number" value={formData.total_earnings} readOnly />
-                                <div></div>
+                                <div style={{ display: winWidth < 768 ? 'none' : 'block' }}></div> {/* Spacer */}
+                                <div style={{ display: winWidth < 768 ? 'none' : 'block' }}></div> {/* Spacer */}
 
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
                                     <h3 style={sectionHeaderStyle}><Share2 size={16} /> Incentives</h3>
@@ -458,10 +922,11 @@ export default function PaySlipScreen() {
                                 <FormField label="PT" name="pt_deduction" type="number" value={formData.pt_deduction} onChange={handleInputChange} />
                                 <FormField label="LWF" name="lwf_deduction" type="number" value={formData.lwf_deduction} onChange={handleInputChange} />
                                 <FormField label="Income Tax" name="income_tax" type="number" value={formData.income_tax} onChange={handleInputChange} />
+                                <FormField label="LOP Deduction" name="lop_deduction" type="number" value={formData.lop_deduction} readOnly />
                                 <FormField label="Total Deductions" name="total_deductions" type="number" value={formData.total_deductions} readOnly />
-                                
+
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
-                                    <h3 style={{...sectionHeaderStyle, color: '#16a34a', background: 'rgba(22, 163, 74, 0.05)' }}> Final Net Payable</h3>
+                                    <h3 style={{ ...sectionHeaderStyle, color: '#16a34a', background: 'rgba(22, 163, 74, 0.05)' }}> Final Net Payable</h3>
                                 </div>
                                 <FormField label="Net Payable Amount" name="net_payable" type="number" value={formData.net_payable} readOnly />
                                 <div></div>
@@ -474,13 +939,14 @@ export default function PaySlipScreen() {
                                 <FormField label="Total Present" name="total_present" type="number" value={formData.total_present} onChange={handleInputChange} />
                                 <FormField label="Total Weekly Off" name="total_weekly_off" type="number" value={formData.total_weekly_off} onChange={handleInputChange} />
                                 <FormField label="Total Holidays" name="total_holidays" type="number" value={formData.total_holidays} onChange={handleInputChange} />
-                                
+
                                 <FormField label="Total Leaves" name="total_leaves" type="number" value={formData.total_leaves} onChange={handleInputChange} />
                                 <FormField label="Total Absent" name="total_absent" type="number" value={formData.total_absent} onChange={handleInputChange} />
                                 <FormField label="Total Work OT" name="total_work_ot" value={formData.total_work_ot} onChange={handleInputChange} />
-                                
+
                                 <FormField label="Total OT Hours" name="total_ot_hours" type="number" value={formData.total_ot_hours} onChange={handleInputChange} />
                                 <FormField label="Available Leaves" name="available_leaves" type="number" value={formData.available_leaves} onChange={handleInputChange} />
+                                <FormField label="LOP" name="lop" type="number" value={formData.lop} onChange={handleInputChange} />
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', gap: '12px', marginTop: '32px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '24px' }}>
@@ -492,13 +958,107 @@ export default function PaySlipScreen() {
                 </div>
             )}
 
-            <div className="no-print">
+             <div className="no-print">
                 <AppFooter />
             </div>
+
+            {/* Custom Center Pop-Up Modal */}
+            {showSuccessPopup && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(15, 23, 42, 0.4)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 99999,
+                    animation: 'fadeIn 0.25s ease'
+                }}>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '24px',
+                        padding: '32px',
+                        width: '90%',
+                        maxWidth: '420px',
+                        boxShadow: '0 20px 50px rgba(15, 23, 42, 0.15)',
+                        border: '1.5px solid #e2e8f0',
+                        textAlign: 'center',
+                        animation: 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}>
+                        <div style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            background: '#ecfdf5',
+                            color: '#10b981',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 20px',
+                            boxShadow: '0 8px 20px rgba(16, 185, 129, 0.15)'
+                        }}>
+                            <Check size={28} strokeWidth={3} />
+                        </div>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
+                            Success!
+                        </h3>
+                        <p style={{ margin: '0 0 24px', fontSize: '13px', fontWeight: '750', color: '#475569', lineHeight: '1.5' }}>
+                            Payslip Added Successfully to Database!
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={handleConfirmCancel}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px 20px',
+                                    borderRadius: '12px',
+                                    border: '1.5px solid #e2e8f0',
+                                    background: 'white',
+                                    color: '#475569',
+                                    fontWeight: '900',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    outline: 'none'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmOK}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px 20px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    color: 'white',
+                                    fontWeight: '900',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                                    outline: 'none'
+                                }}
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 @keyframes dropdown-fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes modal-pop { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -519,7 +1079,7 @@ const FormSelect = ({ label, name, value, onChange, options, icon }) => (
         <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginLeft: '4px' }}>{label}</label>
         <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none', zIndex: 1 }}>{icon}</div>
-            <select name={name} value={value} onChange={onChange} style={{...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+            <select name={name} value={value} onChange={onChange} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
                 <option value="">Select {label}</option>
                 {options.map((opt, i) => (
                     <option key={i} value={opt.value}>{opt.label}</option>
@@ -530,21 +1090,21 @@ const FormSelect = ({ label, name, value, onChange, options, icon }) => (
     </div>
 );
 
-const FormField = ({ label, name, value, onChange, type = "text", icon }) => (
+const FormField = ({ label, name, value, onChange, type = "text", icon, ...rest }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginLeft: '4px' }}>{label}</label>
         <div style={{ position: 'relative' }}>
             {icon && <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>{icon}</div>}
-            <input type={type} name={name} value={value} onChange={onChange} autoComplete="off" style={{ ...inputStyle, paddingLeft: icon ? '40px' : '14px' }} />
+            <input type={type} name={name} value={value} onChange={onChange} autoComplete="off" style={{ ...inputStyle, paddingLeft: icon ? '40px' : '14px' }} {...rest} />
         </div>
     </div>
 );
 
 const inputStyle = {
     width: '100%',
-    padding: '12px 14px 12px 40px', 
-    borderRadius: '14px', 
-    border: '1.5px solid #e2e8f0', 
+    padding: '12px 14px 12px 40px',
+    borderRadius: '14px',
+    border: '1.5px solid #e2e8f0',
     fontSize: '14px',
     fontWeight: '700',
     color: '#0f172a',
@@ -569,11 +1129,11 @@ const sectionHeaderStyle = {
 };
 
 const formGridStyle = {
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(3, 1fr)', 
-    gap: '20px 24px', 
-    maxHeight: '65vh', 
-    overflowY: 'auto', 
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '20px 24px',
+    maxHeight: '65vh',
+    overflowY: 'auto',
     paddingRight: '12px',
     paddingBottom: '20px'
 };
@@ -644,4 +1204,3 @@ const dropdownItemStyle = {
     textAlign: 'left',
     transition: '0.2s'
 };
-;

@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://192.168.1.15:5000';
+export const BASE_URL = 'http://192.168.1.8:5000';
 export const TEAM_OFFICE_BASE_URL = '/api/etimeoffice';
 export const TEAM_OFFICE_AUTH_TOKEN = 'c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnRAMTp0cnVl';
 
@@ -69,6 +69,7 @@ export const API_ENDPOINTS = {
   ADMIN_LEAVE_STATS_UPDATE: `${BASE_URL}/api/admin/leaves/stats`,
   PAYSLIPS: `${BASE_URL}/api/payslips`,
   PAY_SLIP_POST: `${BASE_URL}/api/pay_slip`,
+  PAY_SLIPS_CALCULATE_SUMMARY: (employee_id, month, year) => `${BASE_URL}/api/admin/pay-slips/calculate-summary?employee_id=${employee_id}&month=${month}&year=${year}`,
   SERVICE_CERTIFICATES_ADMIN: `${BASE_URL}/api/service-certificates`,
   SERVICE_CERTIFICATE_MY: `${BASE_URL}/api/service-certificates`,
   SERVICE_CERTIFICATE_SINGLE: (id) => `${BASE_URL}/api/service-certificates/${id}`,
