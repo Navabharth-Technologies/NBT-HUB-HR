@@ -49,14 +49,40 @@ export default function HRDashboard() {
   const fetchDashboardData = async () => {
     if (!user?.token) return;
     try {
-      // Fetch New Joinees
-      const joineeRes = await fetch(API_ENDPOINTS.NEW_JOINEES, {
+      // 1. Fetch Total Users and create lookup for name resolution (DO THIS FIRST)
+      const usersRes = await fetch(API_ENDPOINTS.USERS, {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
-      if (joineeRes.ok) {
-        const data = await joineeRes.json();
-        setJoineeCount(Array.isArray(data) ? data.length : 0);
+      const userLookup = {};
+      if (usersRes.ok) {
+        const uData = await usersRes.json();
+        const uList = Array.isArray(uData) ? uData : (uData?.data || []);
+        setEmployeesCount(uList.length);
+        uList.forEach(u => {
+          const uid = String(u.id || u.empId || u.employee_id || '').trim();
+          if (uid) userLookup[uid] = u.name;
+        });
       }
+
+      // Fetch New Joinees & Interns (Combined & Filtered)
+      const [joineeRes, internRes] = await Promise.all([
+        fetch(API_ENDPOINTS.NEW_JOINEES, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
+        fetch(API_ENDPOINTS.INTERNS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
+      ]);
+      
+      let totalActiveJoinees = 0;
+      if (joineeRes && joineeRes.ok) {
+        const jData = await joineeRes.json();
+        const activeJoinees = (Array.isArray(jData) ? jData : []).filter(j => Number(j.is_blocked) !== 1);
+        totalActiveJoinees += activeJoinees.length;
+      }
+      if (internRes && internRes.ok) {
+        const iData = await internRes.json();
+        const internsList = Array.isArray(iData) ? iData : (iData.data || []);
+        const activeInterns = internsList.filter(i => Number(i.is_blocked) !== 1);
+        totalActiveJoinees += activeInterns.length;
+      }
+      setJoineeCount(totalActiveJoinees);
 
       // Fetch Job Applications count
       try {
@@ -71,7 +97,6 @@ export default function HRDashboard() {
       } catch (e) {
         console.log('Job applications endpoint not available yet');
       }
-
       // Fetch Real-time Attendance Logs for Dashboard Metrics
       const attLogsRes = await fetch(API_ENDPOINTS.ATTENDANCE_LOGS_GET, {
         headers: { 'Authorization': `Bearer ${user.token || TEAM_OFFICE_AUTH_TOKEN}` }
@@ -87,7 +112,8 @@ export default function HRDashboard() {
             return lDate === todayStr;
           });
           const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
-          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday }));
+          const lateToday = todayLogs.filter(l => String(l?.status || '').toUpperCase().includes('LATE')).length;
+          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday, late: lateToday }));
         }
       }
 
@@ -98,14 +124,26 @@ export default function HRDashboard() {
       });
       if (leavesRes.ok) {
         const lData = await leavesRes.json();
-        const lList = Array.isArray(lData) ? lData : (lData?.all || lData?.data || lData?.requests || []);
-        setLeaveRequests(Array.isArray(lList) ? lList : []);
+        const lList = Array.isArray(lData) ? lData : (lData?.leaves || lData?.all || lData?.data || lData?.requests || []);
         
-        // If attendance stats didn't have leave count, derive it
-        if (attendanceStats.onLeave === 0) {
-           const onLeave = lList.filter(r => String(r.status || '').toUpperCase().includes('APPROVED')).length;
-           setAttendanceStats(prev => ({ ...prev, onLeave }));
-        }
+        // RESOLVE: Resolve employee names using our lookup
+        const resolvedLeaves = (Array.isArray(lList) ? lList : []).map(r => {
+          if (!r.employee_name && !r.name) {
+            const uid = String(r.userId || r.user_id || r.employee_id || r.empId || '').trim();
+            if (uid && userLookup[uid]) {
+              r.employee_name = userLookup[uid];
+            }
+          }
+          return r;
+        });
+
+        setLeaveRequests(resolvedLeaves);
+        
+        // Count all active leaves (Pending + Approved)
+        const totalActiveLeaves = resolvedLeaves.filter(r => 
+          ['PENDING', 'APPROVED'].includes(String(r.status || '').toUpperCase())
+        ).length;
+        setAttendanceStats(prev => ({ ...prev, onLeave: totalActiveLeaves }));
       }
 
       // Fetch Rewards History
@@ -115,15 +153,6 @@ export default function HRDashboard() {
       if (rewardsRes.ok) {
         const rData = await rewardsRes.json();
         setRewardsCount(Array.isArray(rData) ? rData.length : (rData?.data?.length || 0));
-      }
-
-      // Fetch Total Users
-      const usersRes = await fetch(API_ENDPOINTS.USERS, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      if (usersRes.ok) {
-        const uData = await usersRes.json();
-        setEmployeesCount(Array.isArray(uData) ? uData.length : (uData?.data?.length || 0));
       }
 
       // Fetch Total Teams
@@ -280,191 +309,118 @@ export default function HRDashboard() {
   return (
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
-      
-      <main 
-        className="dashboard-content" 
-        style={{ 
-          flex: 1, 
-          padding: winWidth < 768 ? '80px 16px 40px' : '100px 26px 40px',
-          width: '100%', boxSizing: 'border-box', margin: '0' }}>
-        <header className="section-header animate-fade-in" style={{ 
-          marginBottom: winWidth < 768 ? '10px' : '15px', 
-          flexDirection: winWidth < 640 ? 'column' : 'row', 
-          alignItems: winWidth < 640 ? 'flex-start' : 'center', 
-          gap: winWidth < 640 ? '15px' : '0',
-          padding: winWidth < 768 ? '8px 0' : '12px 0',
-          background: 'none',
-          backdropFilter: 'none'
+      <main style={{ 
+        flex: 1, 
+        padding: winWidth < 768 ? '20px 16px 40px' : '40px 26px 40px', 
+        maxWidth: '100%', 
+        margin: '0 auto', 
+        width: '100%', 
+        boxSizing: 'border-box',
+        marginTop: winWidth < 768 ? '85px' : '100px'
+      }}>
+        <header className="section-header" style={{
+          marginBottom: winWidth < 768 ? '24px' : '32px',
+          display: 'flex',
+          flexDirection: winWidth < 1024 ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: winWidth < 1024 ? 'stretch' : 'center',
+          gap: '20px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '850', color: '#0f172a', marginBottom: '4px', letterSpacing: '-1px' }}>
-                HR Dashboard
-              </h1>
-              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '500' }}>
-                Strength and scale • {teamsCount} Active Teams
-              </p>
+              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>HR Dashboard</h1>
+              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale • {teamsCount} Active Teams</p>
             </div>
           </div>
-
-
         </header>
 
         {/* Stats Grid */}
-        <section className="stats-grid-container" style={{ position: 'relative', marginBottom: winWidth < 768 ? '25px' : '35px' }}>
-          {winWidth < 768 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '0 5px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>Quick Stats</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => setCurrentStatIndex(prev => Math.max(0, prev - 1))}
-                  disabled={currentStatIndex === 0}
-                  style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #e2e8f0', 
-                    background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    cursor: 'pointer', opacity: currentStatIndex === 0 ? 0.3 : 1 
-                  }}
-                >
-                  ←
-                </button>
-                <button 
-                  onClick={() => setCurrentStatIndex(prev => Math.min(hrStats.length - 1, prev + 1))}
-                  disabled={currentStatIndex === hrStats.length - 1}
-                  style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #e2e8f0', 
-                    background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    cursor: 'pointer', opacity: currentStatIndex === hrStats.length - 1 ? 0.3 : 1 
-                  }}
-                >
-                  →
-                </button>
-              </div>
-            </div>
-          )}
-
+        <section style={{ marginBottom: winWidth < 768 ? '32px' : '40px' }}>
           <div style={{ 
-            display: winWidth < 768 ? 'flex' : 'grid', 
-            gridTemplateColumns: winWidth < 480 ? '1fr' : (winWidth < 768 ? '1fr 1fr' : (winWidth < 1200 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)')), 
-            gap: winWidth < 768 ? '0' : '20px',
-            overflow: winWidth < 768 ? 'hidden' : 'visible',
-            width: '100%',
-            padding: winWidth < 768 ? '10px 0' : '0' // Space for shadows
+            display: 'grid', 
+            gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : winWidth < 1024 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
+            gap: winWidth < 768 ? '12px' : '20px'
           }}>
-            {winWidth < 768 ? (
-              <div style={{ 
-                display: 'flex', 
-                gap: '15px',
-                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: `translateX(calc(-${currentStatIndex} * (100% + 15px)))`,
-                width: '100%'
-              }}>
-                {hrStats.map((stat, i) => (
-                  <div 
-                    key={i} 
-                    className="stat-card animate-fade-in" 
-                    style={{ 
-                      padding: '24px', 
-                      cursor: stat.path ? 'pointer' : 'default',
-                      borderRadius: '24px',
-                      background: '#ffffff',
-                      border: '3px solid #cbd5e1',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      minHeight: '160px',
-                      flex: '0 0 100%',
-                      boxSizing: 'border-box'
-                    }}
-                    onClick={() => stat.path && navigate(stat.path)}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                      <div style={{ 
-                        background: stat.iconBg, width: '44px', height: '44px', borderRadius: '14px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                      }}>
-                        {stat.icon}
-                      </div>
-                      <div className={`stat-badge ${stat.badgeClass}`} style={{ fontSize: '10px', fontWeight: '800' }}>{stat.badge}</div>
-                    </div>
-                    <div>
-                      <div className="stat-label" style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '6px' }}>{stat.label}</div>
-                      <div className="stat-value" style={{ 
-                        fontSize: (typeof stat.value === 'string' && isNaN(stat.value)) ? '22px' : '32px', 
-                        fontWeight: '900', 
-                        color: '#0f172a',
-                        lineHeight: 1
-                      }}>{stat.value}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              hrStats.map((stat, i) => (
-                <div 
-                  key={i} 
-                  className="stat-card animate-fade-in" 
-                  style={{ 
-                    padding: '24px', 
-                    cursor: stat.path ? 'pointer' : 'default',
-                    borderRadius: '24px',
-                    background: '#ffffff',
-                    border: '3px solid #cbd5e1',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    minHeight: '160px'
-                  }}
-                  onClick={() => stat.path && navigate(stat.path)}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <div style={{ 
-                      background: stat.iconBg, width: '44px', height: '44px', borderRadius: '12px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      {stat.icon}
-                    </div>
-                    <div className={`stat-badge ${stat.badgeClass}`} style={{ fontSize: '10px', fontWeight: '800' }}>{stat.badge}</div>
-                  </div>
-                  <div>
-                    <div className="stat-label" style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '4px' }}>{stat.label}</div>
-                    <div className="stat-value" style={{ 
-                      fontSize: (typeof stat.value === 'string' && isNaN(stat.value)) ? '22px' : '32px', 
-                      fontWeight: '900', 
-                      color: '#0f172a',
-                      lineHeight: 1
-                    }}>{stat.value}</div>
+            {hrStats.map((stat, i) => (
+              <div 
+                key={i} 
+                className="stat-card animate-fade-in" 
+                style={{ 
+                  padding: winWidth < 768 ? '16px' : '24px', 
+                  cursor: stat.path ? 'pointer' : 'default',
+                  borderRadius: '24px',
+                  background: 'white',
+                  border: '1.5px solid #f1f5f9',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: '0.2s transform, 0.2s box-shadow'
+                }}
+                onClick={() => stat.path && navigate(stat.path)}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.02)';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ 
+                    background: stat.iconBg, width: winWidth < 768 ? '36px' : '44px', height: winWidth < 768 ? '36px' : '44px', borderRadius: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {stat.icon}
                   </div>
                 </div>
-              ))
-            )}
+                <div>
+                  <div style={{ fontSize: winWidth < 768 ? '11px' : '13px', color: '#64748b', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
+                  <div style={{ 
+                    fontSize: winWidth < 768 ? '20px' : '28px', 
+                    fontWeight: '950', 
+                    color: '#0f172a',
+                    lineHeight: 1
+                  }}>{stat.value}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '20px' }}>
           {/* Leave/Attendance Management */}
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 className="section-title"><Calendar size={20} color="#3863a8" /> Leave/Attendance Management</h2>
-              <button 
-                className="btn-ghost" 
-                style={{ fontSize: '14px', padding: '8px 12px' }}
-                onClick={() => navigate('/attendance')}
-              >
-                Attendance
-              </button>
-              <button 
-                className="btn-ghost" 
-                style={{ fontSize: '14px', padding: '8px 12px', marginLeft: '8px' }}
-                onClick={() => navigate('/leaves')}
-              >
-                Leaves
-              </button>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: winWidth < 640 ? 'column' : 'row',
+              justifyContent: 'space-between', 
+              alignItems: winWidth < 640 ? 'stretch' : 'center', 
+              marginBottom: '20px',
+              gap: '12px'
+            }}>
+              <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" /> Leave/Attendance Management</h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn-ghost" 
+                  style={{ fontSize: '13px', padding: '8px 16px', flex: 1, whiteSpace: 'nowrap' }}
+                  onClick={() => navigate('/attendance')}
+                >
+                  Attendance
+                </button>
+                <button 
+                  className="btn-ghost" 
+                  style={{ fontSize: '13px', padding: '8px 16px', flex: 1, whiteSpace: 'nowrap' }}
+                  onClick={() => navigate('/leaves')}
+                >
+                  Leaves
+                </button>
+              </div>
             </div>
 
             {/* Attendance Quick Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginBottom: '24px' }}>
               <div style={{ background: '#f0fdf4', padding: '15px', borderRadius: '20px', border: '1px solid #dcfce7', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Present</div>
                 <div style={{ fontSize: '24px', fontWeight: '950', color: '#166534' }}>{attendanceStats.present}</div>
@@ -473,12 +429,8 @@ export default function HRDashboard() {
                 onClick={(e) => { e.stopPropagation(); navigate('/leaves'); }}
                 style={{ background: '#fffbeb', padding: '15px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center', cursor: 'pointer' }}
               >
-                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>On Leave</div>
+                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Total Leaves</div>
                 <div style={{ fontSize: '24px', fontWeight: '950', color: '#92400e' }}>{attendanceStats.onLeave}</div>
-              </div>
-              <div style={{ background: '#fef2f2', padding: '15px', borderRadius: '20px', border: '1px solid #fee2e2', textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Late</div>
-                <div style={{ fontSize: '24px', fontWeight: '950', color: '#991b1b' }}>{attendanceStats.late}</div>
               </div>
             </div>
 
@@ -502,7 +454,7 @@ export default function HRDashboard() {
                         <div style={{ fontSize: '11px', fontWeight: '900', color: '#3863a8', background: '#eff6ff', padding: '2px 8px', borderRadius: '8px' }}>{String(request.status || 'PENDING').split(',')[0]}</div>
                       </div>
                       <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-                        {request.leave_type || 'Leave'} • {request.start_date}
+                        {request.leave_type || 'Leave'} • {(request.start_date || '').split('T')[0].split('-').reverse().join('-') || 'N/A'}
                       </div>
                     </div>
                     <ChevronRight size={16} color="#94a3b8" />

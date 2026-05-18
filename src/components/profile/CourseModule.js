@@ -17,6 +17,7 @@ export default function CourseModule() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -105,7 +106,7 @@ export default function CourseModule() {
         setShowModal(false);
         resetForm();
         fetchCourses();
-        alert('Course created successfully with provided links!');
+        setSuccess('Course created successfully with provided links!');
       } else {
         setError(respData.message || 'Failed to create course');
       }
@@ -131,22 +132,51 @@ export default function CourseModule() {
 
   const getFullUrl = (url) => {
     if (!url) return null;
+    // Rewrite any localhost-based absolute URL to use the configured BASE_URL
+    // This fixes PDFs/videos uploaded from the server machine (stored as localhost:PORT)
+    const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/;
+    if (localhostPattern.test(url)) {
+      return url.replace(localhostPattern, BASE_URL);
+    }
     if (url.startsWith('http')) return url;
     return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
-  const handleDeleteCourse = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this course?')) return;
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'No deadline') return dateStr;
     try {
-      const res = await fetch(`${API_ENDPOINTS.NEWJOINEE_COURSES}/${id}`, {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const d = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const y = date.getFullYear();
+      return `${d}-${m}-${y}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const handleDeleteCourse = async (id) => {
+    if (!id) return;
+    if (!window.confirm('Are you sure you want to delete this course?')) return;
+    
+    // Optimistically remove from frontend
+    setActiveCourses(prev => prev.filter(c => c.id !== id && c._id !== id));
+    
+    try {
+      const res = await fetch(API_ENDPOINTS.COURSES_DELETE(id), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
       if (res.ok) {
         fetchCourses();
+      } else {
+        console.error('Failed to delete on backend');
+        fetchCourses(); // Revert on failure
       }
     } catch (err) {
       console.error('Delete error:', err);
+      fetchCourses(); // Revert on failure
     }
   };
 
@@ -195,7 +225,7 @@ export default function CourseModule() {
           ) : (
             <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
               {activeCourses.map(c => (
-                <div key={c.id} className="team-card" style={{ position: 'relative' }}>
+                <div key={c.id || c._id} className="team-card" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span style={{
                       fontSize: '10px', fontWeight: '800', padding: '4px 10px', borderRadius: '10px',
@@ -205,7 +235,7 @@ export default function CourseModule() {
                     }}>
                       {c.category || 'General'}
                     </span>
-                    <button className="btn-ghost" onClick={() => handleDeleteCourse(c.id)} style={{ padding: '5px' }}>
+                    <button className="btn-ghost" onClick={() => handleDeleteCourse(c.id || c._id)} style={{ padding: '5px' }}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -218,7 +248,7 @@ export default function CourseModule() {
                   <p className="course-card-description" style={{ color: 'var(--text-muted)' }}>{c.description || 'No description provided.'}</p>
 
                   <div style={{ marginBottom: '12px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Calendar size={12} /> Deadline: {c.deadline || 'No deadline'}
+                    <Calendar size={12} /> Deadline: {formatDate(c.deadline) || 'No deadline'}
                   </div>
 
                   <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
@@ -345,6 +375,46 @@ export default function CourseModule() {
       </main>
 
       <AppFooter />
+
+      {/* Success Popup */}
+      {success && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+        }}>
+          <div className="animate-slide-up" style={{
+            background: 'white', padding: '40px', borderRadius: '30px',
+            maxWidth: '400px', width: '90%', textAlign: 'center',
+            border: '3px solid #cbd5e1', boxShadow: '0 20px 50px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{
+              width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7',
+              color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 24px', fontSize: '40px'
+            }}>
+              ✓
+            </div>
+            <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', marginBottom: '12px' }}>Success!</h2>
+            <p style={{ color: '#64748b', fontSize: '15px', fontWeight: '600', lineHeight: '1.6', marginBottom: '30px' }}>
+              {success}
+            </p>
+            <button 
+              onClick={() => setSuccess(null)}
+              style={{
+                width: '100%', padding: '14px', background: '#315A9E', color: 'white',
+                border: 'none', borderRadius: '15px', fontWeight: '900', cursor: 'pointer',
+                fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => e.currentTarget.style.backgroundColor = '#5c85d6'}
+              onMouseOut={e => e.currentTarget.style.backgroundColor = '#315A9E'}
+            >
+              Great, thanks!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

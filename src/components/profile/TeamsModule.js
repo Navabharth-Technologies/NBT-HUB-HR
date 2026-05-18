@@ -75,7 +75,7 @@ export default function TeamsModule() {
               <div 
                 key={idx} 
                 className="team-card animate-fade-in" 
-                onClick={() => navigate(`/teams/${team.id}`)}
+                onClick={() => navigate(`/teams/${encodeURIComponent(team.id)}`)}
                 style={{
                   background: 'white', 
                   borderRadius: '24px', 

@@ -62,7 +62,7 @@ export default function EmployeeModule() {
     // Add Title
     doc.setFontSize(20);
     doc.setTextColor(30, 41, 59);
-    doc.text('Workforce Directory', 14, 22);
+    doc.text('Total Employees', 14, 22);
     
     // Add Subtitle
     doc.setFontSize(12);
@@ -90,7 +90,7 @@ export default function EmployeeModule() {
       margin: { top: 45 }
     });
 
-    doc.save('Workforce_Directory.pdf');
+    doc.save('Total_Employees.pdf');
   };
 
   return (
@@ -107,7 +107,7 @@ export default function EmployeeModule() {
               <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
-              <h1 style={{fontSize: winWidth < 480 ? '20px' : (winWidth < 600 ? '22px' : '26px'), fontWeight: '800', color: '#1e293b', margin: 0}}>Workforce Directory</h1>
+              <h1 style={{fontSize: winWidth < 480 ? '20px' : (winWidth < 600 ? '22px' : '26px'), fontWeight: '800', color: '#1e293b', margin: 0}}>Total Employees</h1>
               <p style={{color: '#64748b', fontSize: winWidth < 480 ? '11px' : (winWidth < 600 ? '13px' : '15px'), margin: '2px 0 0 0'}}>Manage all {employees.length} members</p>
             </div>
           </div>

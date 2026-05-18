@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Key, Lock, CheckCircle } from 'lucide-react';
+import { X, Shield, Key, Lock, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { API_ENDPOINTS } from '../../config';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
+  const { logout } = useAuth();
   const [resetMode, setResetMode] = useState(false);
   const [passwords, setPasswords] = useState({
     currentPassword: '',
@@ -11,6 +13,12 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
     newPassword: '',
     confirmPassword: ''
   });
+  const [showPass, setShowPass] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [logoutAllDevices, setLogoutAllDevices] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -35,6 +43,10 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
       setError('Please enter and confirm your new password');
       return;
     }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
       return;
@@ -44,8 +56,8 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
     try {
       const endpoint = resetMode ? API_ENDPOINTS.PASSWORD_RESET : API_ENDPOINTS.PASSWORD_CHANGE;
       const body = resetMode 
-        ? { email: userEmail, otp, newPassword }
-        : { email: userEmail, oldPassword: currentPassword, newPassword };
+        ? { email: userEmail, otp, newPassword, logoutAllDevices }
+        : { email: userEmail, oldPassword: currentPassword, newPassword, logoutAllDevices };
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -60,10 +72,15 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
       if (response.ok) {
         setSuccess(true);
         setTimeout(() => {
-          onClose();
-          setSuccess(false);
-          setResetMode(false);
-          setPasswords({ currentPassword: '', otp: '', newPassword: '', confirmPassword: '' });
+          if (logoutAllDevices && !resetMode) {
+            logout();
+            window.location.href = '/login';
+          } else {
+            onClose();
+            setSuccess(false);
+            setResetMode(false);
+            setPasswords({ currentPassword: '', otp: '', newPassword: '', confirmPassword: '' });
+          }
         }, 2000);
       } else {
         setError(data.error || data.message || 'Failed to process request');
@@ -147,14 +164,19 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Current Password</label>
                   <div style={{ position: 'relative' }}>
                     <input
-                      type="password"
+                      type={showPass.current ? "text" : "password"}
                       name="currentPassword"
                       placeholder="Enter old password"
                       value={passwords.currentPassword}
                       onChange={handleChange}
-                      style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box', paddingRight: '100px' }}
                     />
-                    <div style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', color: '#315A9E', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }} onClick={() => setResetMode(true)}>FORGOT?</div>
+                    <div style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setShowPass({ ...showPass, current: !showPass.current })}>
+                        {showPass.current ? <Eye size={16} color="#315A9E" /> : <EyeOff size={16} />}
+                      </div>
+                      <div style={{ color: '#315A9E', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }} onClick={() => setResetMode(true)}>FORGOT?</div>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -176,26 +198,55 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
 
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>New Password</label>
-                <input
-                  type="password"
-                  name="newPassword"
-                  placeholder="Minimum 6 characters"
-                  value={passwords.newPassword}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPass.new ? "text" : "password"}
+                    name="newPassword"
+                    placeholder="Minimum 6 characters"
+                    value={passwords.newPassword}
+                    onChange={handleChange}
+                    style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <div 
+                    style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }}
+                    onClick={() => setShowPass({ ...showPass, new: !showPass.new })}
+                  >
+                    {showPass.new ? <Eye size={16} color="#315A9E" /> : <EyeOff size={16} />}
+                  </div>
+                </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Confirm Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="Repeat new password"
-                  value={passwords.confirmPassword}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box' }}
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPass.confirm ? "text" : "password"}
+                    name="confirmPassword"
+                    placeholder="Repeat new password"
+                    value={passwords.confirmPassword}
+                    onChange={handleChange}
+                    style={{ width: '100%', padding: '16px 20px', borderRadius: '18px', border: '1.5px solid #eef2f6', background: '#f8fafc', fontSize: '15px', fontWeight: '600', color: '#0B1E3F', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <div 
+                    style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }}
+                    onClick={() => setShowPass({ ...showPass, confirm: !showPass.confirm })}
+                  >
+                    {showPass.confirm ? <Eye size={16} color="#315A9E" /> : <EyeOff size={16} />}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
+                <input 
+                  type="checkbox" 
+                  id="logoutAllDevices" 
+                  checked={logoutAllDevices}
+                  onChange={(e) => setLogoutAllDevices(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#315A9E' }}
                 />
+                <label htmlFor="logoutAllDevices" style={{ fontSize: '13px', fontWeight: '700', color: '#475569', cursor: 'pointer' }}>
+                  Logout from all other devices
+                </label>
               </div>
 
               {error && (

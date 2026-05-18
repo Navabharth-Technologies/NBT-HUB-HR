@@ -28,8 +28,21 @@ export default function AttendanceManagement() {
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const [fromDate, setFromDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const [fromDate, setFromDate] = useState(localStorage.getItem('nbtAttendanceFromDate') || '2026-01-01');
+  const [toDate, setToDate] = useState(() => {
+    const saved = localStorage.getItem('nbtAttendanceToDate');
+    const today = getTodayStr();
+    return (saved && saved < today) ? today : (saved || today);
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceFromDate', fromDate);
+  }, [fromDate]);
+
+  useEffect(() => {
+    localStorage.setItem('nbtAttendanceToDate', toDate);
+  }, [toDate]);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -234,11 +247,16 @@ export default function AttendanceManagement() {
 
         const todayStr = new Date().toISOString().split('T')[0];
         const myTodayLogs = validLogs.filter(log => {
-          const logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0];
+          let logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0].split(' ')[0];
+          // Handle DD-MM-YYYY or other formats
+          if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
+            const parts = logDate.split('-');
+            if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
           const isToday = logDate === todayStr;
-          const isMe = String(log?.user_id) === String(user?.id) || String(log?.Empcode) === String(user?.id) || String(log?.EmpID) === String(user?.id) || log?.email === user?.email;
+          const isMe = String(log?.user_id || log?.Empcode || log?.EmpID || '') === String(user?.id || '') || log?.email === user?.email;
           return isToday && isMe;
-        }).sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
+        }).sort((a, b) => new Date(a?.created_at || a?.punch_time || 0) - new Date(b?.created_at || b?.punch_time || 0));
 
         if (myTodayLogs.length > 0) {
           const firstLog = myTodayLogs[0];
@@ -511,7 +529,11 @@ export default function AttendanceManagement() {
     const totalCount = allEmployees.length;
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLogs = (attendanceLogs || []).filter(l => {
-      const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+      let logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0].split(' ')[0];
+      if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
+        const parts = logDate.split('-');
+        if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
       return logDate === todayStr;
     });
     const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
@@ -522,7 +544,7 @@ export default function AttendanceManagement() {
       let s = String(tStr).trim();
       let isPM = s.toUpperCase().includes('PM');
       let isAM = s.toUpperCase().includes('AM');
-      s = s.replace(/[^\d:]/g, ''); 
+      s = s.replace(/[^\d:]/g, '');
       let parts = s.split(':');
       if (parts.length < 2) return -1;
       let h = parseInt(parts[0], 10);
@@ -561,19 +583,19 @@ export default function AttendanceManagement() {
   const displayedEmployees = allEmployees.filter(emp => {
     const s = searchTerm.toLowerCase();
     return (emp.name || emp.user_name || '').toLowerCase().includes(s) ||
-           String(emp.id).toLowerCase().includes(s) ||
-           (emp.role || '').toLowerCase().includes(s) ||
-           (emp.department || '').toLowerCase().includes(s);
+      String(emp.id).toLowerCase().includes(s) ||
+      (emp.role || '').toLowerCase().includes(s) ||
+      (emp.department || '').toLowerCase().includes(s);
   });
 
   return (
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
 
-      <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 200px' : '120px 26px 110px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <div style={{ width: '100%' }}>
-          <button 
-            onClick={() => navigate(-1)} 
+          <button
+            onClick={() => navigate(-1)}
             style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '20px' }}
           >
             <ArrowLeft size={18} color="#64748b" />
@@ -638,33 +660,33 @@ export default function AttendanceManagement() {
           </div>
 
 
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '24px', 
-            padding: winWidth < 768 ? '20px' : '32px', 
-            marginBottom: '32px', 
-            border: '1.5px solid #f1f5f9', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.03)', 
-            display: 'flex', 
+          <div style={{
+            background: 'white',
+            borderRadius: '24px',
+            padding: winWidth < 768 ? '20px' : '32px',
+            marginBottom: '32px',
+            border: '1.5px solid #f1f5f9',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.03)',
+            display: 'flex',
             flexDirection: winWidth < 1024 ? 'column' : 'row',
-            justifyContent: 'space-between', 
+            justifyContent: 'space-between',
             alignItems: winWidth < 1024 ? 'stretch' : 'center',
             gap: '24px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 480 ? '12px' : '24px' }}>
               <div
                 onClick={getUserCurrentLocation}
-                style={{ 
-                  width: winWidth < 768 ? '44px' : '56px', 
-                  height: winWidth < 768 ? '44px' : '56px', 
-                  borderRadius: '16px', 
-                  background: '#e0f2fe', 
-                  color: '#0369a1', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  border: '1.5px solid #bae6fd', 
-                  cursor: 'pointer', 
+                style={{
+                  width: winWidth < 768 ? '44px' : '56px',
+                  height: winWidth < 768 ? '44px' : '56px',
+                  borderRadius: '16px',
+                  background: '#e0f2fe',
+                  color: '#0369a1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1.5px solid #bae6fd',
+                  cursor: 'pointer',
                   transition: '0.3s',
                   flexShrink: 0
                 }}
@@ -682,9 +704,9 @@ export default function AttendanceManagement() {
               </div>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
               gap: winWidth < 768 ? '15px' : '32px',
               flexDirection: winWidth < 480 ? 'column' : 'row',
               justifyContent: 'space-between'
@@ -728,7 +750,7 @@ export default function AttendanceManagement() {
                   <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{elapsedTime}</div>
                 </div>
               )}
-              
+
               <div style={{ width: winWidth < 480 ? '100%' : 'auto' }}>
                 {!(personalAttendance?.in_time && personalAttendance.in_time !== '----') ? (
                   <button
@@ -810,8 +832,8 @@ export default function AttendanceManagement() {
               { label: 'Late Login', value: metrics.lateLogins.length, icon: Sparkles, color: '#7c3aed', bg: '#f5f3ff', isLateAction: true },
               { label: 'Punch-in Edit', value: 'EDIT', icon: AlertTriangle, color: '#db2777', bg: '#fdf2f8', isAction: true }
             ].map((m, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 onClick={() => {
                   if (m.isAction) setShowPunchEditModal(true);
                   else if (m.isLateAction) setShowLateLoginsModal(true);
@@ -875,9 +897,17 @@ export default function AttendanceManagement() {
                       return empId && logUserId && logUserId === empId && logDate === todayStr;
                     });
 
+                    const isMultiLog = (attendanceLogs || []).filter(l => {
+                      if (!l) return false;
+                      const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                      const empId = String(emp?.id || '').trim();
+                      const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+                      return empId && logUserId && (logUserId === empId) && (logDate === todayStr);
+                    }).length > 1;
+
                     const punchIn = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || '----';
-                    const punchOut = log?.out_time || log?.OUTTime || log?.PunchOut || (log?.in_time || log?.INTime ? '----' : log?.punch_time) || '----';
-                    const workHrs = log?.work_time || log?.work_hrs || log?.WorkTime || '00:00';
+                    const punchOut = isMultiLog ? (log?.out_time || log?.OUTTime || log?.PunchOut || '----') : '----';
+                    const workHrs = isMultiLog ? (log?.work_time || log?.work_hrs || log?.WorkTime || '00:00') : '00:00';
                     const pDate = log?.punch_date || log?.date || log?.created_at;
 
                     return (
@@ -886,14 +916,14 @@ export default function AttendanceManagement() {
                           <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '950' }}>
                             {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <div 
+                          <div
                             onClick={() => navigate(`/attendance/detail/${emp.id}`)}
                             style={{ flex: 1, cursor: 'pointer' }}
                           >
-                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown User'}</div>
+                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>{emp.name || emp.user_name || 'Unknown'}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>#{emp.id} • {emp.role || 'Employee'}</div>
                           </div>
-                          <button 
+                          <button
                             onClick={() => navigate(`/attendance/detail/${emp.id}`)}
                             style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#3b82f6' }}
                           >
@@ -947,14 +977,15 @@ export default function AttendanceManagement() {
                             const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
                             const isHoliday = holidays.includes(dayMonth);
 
-                            let rawStatus = todayPunchIn ? 'Present' : 'Absent';
-                            if (!todayPunchIn) {
+                            const hasValidPunchIn = todayPunchIn && todayPunchIn !== '----' && todayPunchIn !== '--:--' && todayPunchIn !== '00:00';
+                            let rawStatus = hasValidPunchIn ? 'Present' : 'Absent';
+                            if (!hasValidPunchIn) {
                               if (isSunday) rawStatus = 'WO';
                               else if (isHoliday) rawStatus = 'NH';
                               else rawStatus = 'Absent';
                             }
 
-                            const isPresent = rawStatus.includes('PRESENT');
+                            const isPresent = rawStatus.toUpperCase().includes('PRESENT');
                             const isWO = rawStatus === 'WO';
                             const isNH = rawStatus === 'NH';
 
@@ -996,28 +1027,66 @@ export default function AttendanceManagement() {
                       const logsForEmp = (attendanceLogs || [])
                         .filter(l => {
                           if (!l) return false;
-                          const logUserId = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+                          const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
                           const empId = String(emp?.id || '').trim();
                           const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
-                          return empId && logUserId && (logUserId === empId) && (logDate >= fromDate && logDate <= toDate);
+                          return empId && logId && (logId === empId) && (logDate >= fromDate && logDate <= toDate);
                         })
                         .sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
 
-                      const firstLog = logsForEmp[0];
-                      const lastLog = logsForEmp.length > 1 ? logsForEmp[logsForEmp.length - 1] : null;
+                      // 1. Group logs by date to prevent cross-day data leaking
+                      const groupedByDate = (logsForEmp || []).reduce((acc, log) => {
+                        const d = (log.punch_date || log.date || log.created_at || '').split('T')[0];
+                        if (d) {
+                          if (!acc[d]) acc[d] = [];
+                          acc[d].push(log);
+                        }
+                        return acc;
+                      }, {});
+
+                      // 2. Get the latest date available in the range for this employee
+                      const dates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+                      const latestDate = dates[0];
+                      const latestDayLogs = groupedByDate[latestDate] || [];
+
+                      // 3. Sort logs within THAT day only
+                      const sortedDayLogs = latestDayLogs.sort((a, b) => new Date(a.created_at || a.punch_time) - new Date(b.created_at || b.punch_time));
+
+                      const firstLog = sortedDayLogs[0];
+                      const lastLog = sortedDayLogs.length > 1 ? sortedDayLogs[sortedDayLogs.length - 1] : null;
 
                       const log = firstLog ? {
                         ...firstLog,
-                        in_time: firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time,
-                        out_time: lastLog ? (lastLog?.out_time || lastLog?.OUTTime || lastLog?.PunchOut || lastLog?.punch_time) : '----',
-                        in_location: firstLog?.punchin_location || firstLog?.in_location || firstLog?.PunchIn_location || firstLog?.location,
-                        out_location: lastLog ? (lastLog?.punchout_location || lastLog?.out_location || lastLog?.PunchOut_location || lastLog?.location) : '----',
-                        work_time: lastLog ? (lastLog?.work_time || firstLog?.work_time || '00:00') : '00:00'
+                        punch_date: latestDate,
+                        in_time: firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time || '----',
+                        out_time: (latestDate === todayStr && sortedDayLogs.length === 1) ? '----' : (lastLog?.out_time || lastLog?.OUTTime || lastLog?.PunchOut || '----'),
+                        in_location: firstLog?.punchin_location || firstLog?.in_location || '----',
+                        out_location: (latestDate === todayStr && sortedDayLogs.length === 1) ? '----' : (lastLog?.punchout_location || lastLog?.out_location || '----'),
+                        work_hrs: (latestDate === todayStr && sortedDayLogs.length === 1) ? '00:00' : (lastLog?.work_hrs || firstLog?.work_hrs || '00:00')
                       } : null;
+
+                      const getCleanAttendance = (record) => {
+                        if (!record) return { displayInTime: '----', displayOutTime: '----', displayWorkTime: '00:00' };
+                        const today = new Date().toLocaleDateString('en-CA');
+                        const rawDate = record?.punch_date || record?.date || record?.created_at || '';
+                        const recordDate = rawDate ? String(rawDate).split('T')[0].split(' ')[0] : '';
+                        const isToday = recordDate === today;
+                        const isMissing = (t) => !t || t === '--:--' || t === '00:00' || t === 'null' || t === '----';
+                        const rawIn = record?.in_time || record?.INTime;
+                        const rawOut = record?.out_time || record?.OUTTime || record?.PunchOut;
+                        const rawWork = record?.work_time || record?.work_hrs;
+                        return {
+                          displayInTime: isMissing(rawIn) ? '----' : rawIn,
+                          displayOutTime: (isToday && logsForEmp.length < 2) || isMissing(rawOut) ? '----' : rawOut,
+                          displayWorkTime: (isToday && logsForEmp.length < 2) || isMissing(rawWork) ? '00:00' : rawWork
+                        };
+                      };
+                      const cleanLog = getCleanAttendance(log);
+
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
-                          <td 
+                          <td
                             onClick={() => navigate(`/attendance/detail/${emp.id}`)}
                             style={{ padding: '20px', fontWeight: '800', color: '#1e293b', cursor: 'pointer' }}
                           >
@@ -1026,7 +1095,7 @@ export default function AttendanceManagement() {
                                 {String(emp?.name || emp?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
                               <span style={{ borderBottom: '1px solid transparent' }} onMouseOver={e => e.currentTarget.style.borderBottom = '1px solid #1e293b'} onMouseOut={e => e.currentTarget.style.borderBottom = '1px solid transparent'}>
-                                {emp?.name || emp?.user_name}
+                                {emp?.name || emp?.user_name || 'Unknown'}
                               </span>
                             </div>
                           </td>
@@ -1042,25 +1111,25 @@ export default function AttendanceManagement() {
                             })()}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
-                            {log?.in_time || log?.INTime || log?.PunchIn || '----'}
+                            {cleanLog.displayInTime}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
-                            {log?.out_time || log?.OUTTime || log?.PunchOut || '----'}
+                            {cleanLog.displayOutTime}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '800', color: '#6366f1' }}>
-                            {log?.work_time || log?.work_hrs || '00:00'}
+                            {cleanLog.displayWorkTime}
                           </td>
                           <td style={{ padding: '20px' }}>
                             <div style={{
                               display: 'inline-flex',
                               padding: '6px 12px',
                               borderRadius: '8px',
-                              background: log ? '#f0fdf4' : '#fef2f2',
-                              color: log ? '#16a34a' : '#ef4444',
+                              background: (log && cleanLog.displayInTime !== '----') ? '#f0fdf4' : '#fef2f2',
+                              color: (log && cleanLog.displayInTime !== '----') ? '#16a34a' : '#ef4444',
                               fontSize: '11px',
                               fontWeight: '950'
                             }}>
-                              {log ? 'Present' : 'Absent'}
+                              {(log && cleanLog.displayInTime !== '----') ? 'Present' : 'Absent'}
                             </div>
                           </td>
                           <td style={{ padding: '20px', fontSize: '12px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log?.in_location || '----'}>
@@ -1075,7 +1144,7 @@ export default function AttendanceManagement() {
                   ) : (
                     <tr>
                       <td colSpan="9" style={{ padding: '60px', textAlign: 'center', color: '#64748b', fontWeight: '800' }}>
-                        No attendance records found for the selected period.
+                        Loading.....
                       </td>
                     </tr>
                   )}
@@ -1087,300 +1156,300 @@ export default function AttendanceManagement() {
 
 
 
-          {/* Late Logins Modal */}
-          {showLateLoginsModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-              <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                <button onClick={() => setShowLateLoginsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Sparkles size={24} /></div>
-                  <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Late Login Reports</h2>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Employees logged in after 09:30 today.</p>
+        {/* Late Logins Modal */}
+        {showLateLoginsModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => setShowLateLoginsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Sparkles size={24} /></div>
+                <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Late Login Reports</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Employees logged in after 09:30 today.</p>
+              </div>
+
+              {/* Filter Controls Start Here */}
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by ID, Name or Role..."
+                    value={lateLoginSearch}
+                    onChange={(e) => setLateLoginSearch(e.target.value)}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
+                  />
                 </div>
-                
-                {/* Filter Controls Start Here */}
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                   <div style={{ flex: 1, minWidth: '200px' }}>
-                     <input 
-                       type="text" 
-                       placeholder="Search by ID, Name or Role..." 
-                       value={lateLoginSearch}
-                       onChange={(e) => setLateLoginSearch(e.target.value)}
-                       style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
-                     />
-                   </div>
-                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                     <input 
-                       type="date"
-                       value={fromDate}
-                       onChange={(e) => setFromDate(e.target.value)} 
-                       style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
-                     />
-                     <span style={{ fontSize: '12px', fontWeight: '900', color: '#64748b' }}>to</span>
-                     <input 
-                       type="date"
-                       value={toDate}
-                       onChange={(e) => setToDate(e.target.value)} 
-                       style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
-                     />
-                   </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
+                  />
+                  <span style={{ fontSize: '12px', fontWeight: '900', color: '#64748b' }}>to</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
+                  />
                 </div>
-                {/* Filter Controls End Here */}
-                
-                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
-                  {(() => {
-                    const pool = lateLoginSearch
-                      ? metrics.lateLogins.filter(log => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const s = lateLoginSearch.toLowerCase();
-                          return empId.toLowerCase().includes(s) ||
-                                 (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
-                                 (emp?.role || '').toLowerCase().includes(s);
-                        })
-                      : metrics.lateLogins;
-                    return pool.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {pool.map((log, idx) => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
-                          return (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
-                                  {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
-                                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
-                                </div>
+              </div>
+              {/* Filter Controls End Here */}
+
+              <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
+                {(() => {
+                  const pool = lateLoginSearch
+                    ? metrics.lateLogins.filter(log => {
+                      const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                      const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                      const s = lateLoginSearch.toLowerCase();
+                      return empId.toLowerCase().includes(s) ||
+                        (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
+                        (emp?.role || '').toLowerCase().includes(s);
+                    })
+                    : metrics.lateLogins;
+                  return pool.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {pool.map((log, idx) => {
+                        const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                        const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                        const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
+                                {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#ef4444' }}>{String(log.in_time || log.INTime || log.PunchIn || log.punch_time || '----').trim()}</div>
-                                <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch In</div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                        <p style={{ fontWeight: '800' }}>{lateLoginSearch ? `No records found for "${lateLoginSearch}"` : 'No late logins in selected range. 🎉'}</p>
-                      </div>
-                    );
-                  })()}
-                </div>
-                
-                <button onClick={() => setShowLateLoginsModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '950', color: '#ef4444' }}>{String(log.in_time || log.INTime || log.PunchIn || log.punch_time || '----').trim()}</div>
+                              <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch In</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      <p style={{ fontWeight: '800' }}>{lateLoginSearch ? `No records found for "${lateLoginSearch}"` : 'No late logins in selected range. 🎉'}</p>
+                    </div>
+                  );
+                })()}
               </div>
-            </div>
-          )}
-          {/* Early Logouts Modal */}
-          {showEarlyLogoutsModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-              <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                <button onClick={() => setShowEarlyLogoutsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Coffee size={24} /></div>
-                  <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Early Logout Reports</h2>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Employees logged out before 17:00 (5 PM) today.</p>
-                </div>
 
-                {/* Filter Controls Start Here */}
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                   <div style={{ flex: 1, minWidth: '200px' }}>
-                     <input 
-                       type="text" 
-                       placeholder="Search by ID, Name or Role..." 
-                       value={earlyLogoutSearch}
-                       onChange={(e) => setEarlyLogoutSearch(e.target.value)}
-                       style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
-                     />
-                   </div>
-                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                     <input 
-                       type="date"
-                       value={fromDate}
-                       onChange={(e) => setFromDate(e.target.value)} 
-                       style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
-                     />
-                     <span style={{ fontSize: '12px', fontWeight: '900', color: '#64748b' }}>to</span>
-                     <input 
-                       type="date"
-                       value={toDate}
-                       onChange={(e) => setToDate(e.target.value)} 
-                       style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
-                     />
-                   </div>
+              <button onClick={() => setShowLateLoginsModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+            </div>
+          </div>
+        )}
+        {/* Early Logouts Modal */}
+        {showEarlyLogoutsModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => setShowEarlyLogoutsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Coffee size={24} /></div>
+                <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Early Logout Reports</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Employees logged out before 17:00 (5 PM) today.</p>
+              </div>
+
+              {/* Filter Controls Start Here */}
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by ID, Name or Role..."
+                    value={earlyLogoutSearch}
+                    onChange={(e) => setEarlyLogoutSearch(e.target.value)}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
+                  />
                 </div>
-                {/* Filter Controls End Here */}
-                
-                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
-                  {(() => {
-                    const pool = earlyLogoutSearch
-                      ? metrics.earlyLogouts.filter(log => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const s = earlyLogoutSearch.toLowerCase();
-                          return empId.toLowerCase().includes(s) ||
-                                 (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
-                                 (emp?.role || '').toLowerCase().includes(s);
-                        })
-                      : metrics.earlyLogouts;
-                    return pool.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {pool.map((log, idx) => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
-                          return (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
-                                  {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
-                                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
-                                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
+                  />
+                  <span style={{ fontSize: '12px', fontWeight: '900', color: '#64748b' }}>to</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    style={{ padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #eef2f6', outline: 'none', background: 'white', fontSize: '13px', fontWeight: '700', color: '#1e293b' }}
+                  />
+                </div>
+              </div>
+              {/* Filter Controls End Here */}
+
+              <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
+                {(() => {
+                  const pool = earlyLogoutSearch
+                    ? metrics.earlyLogouts.filter(log => {
+                      const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                      const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                      const s = earlyLogoutSearch.toLowerCase();
+                      return empId.toLowerCase().includes(s) ||
+                        (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
+                        (emp?.role || '').toLowerCase().includes(s);
+                    })
+                    : metrics.earlyLogouts;
+                  return pool.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {pool.map((log, idx) => {
+                        const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                        const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                        const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
+                                {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#3b82f6' }}>{String(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || '----').trim()}</div>
-                                <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch Out</div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                        <p style={{ fontWeight: '800' }}>{earlyLogoutSearch ? `No records found for "${earlyLogoutSearch}"` : 'No early logouts in selected range. 🏢'}</p>
-                      </div>
-                    );
-                  })()}
-                </div>
-                
-                <button onClick={() => setShowEarlyLogoutsModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '950', color: '#3b82f6' }}>{String(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || '----').trim()}</div>
+                              <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch Out</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      <p style={{ fontWeight: '800' }}>{earlyLogoutSearch ? `No records found for "${earlyLogoutSearch}"` : 'No early logouts in selected range. 🏢'}</p>
+                    </div>
+                  );
+                })()}
               </div>
-            </div>
-          )}
-          
-          {/* Half Days Modal */}
-          {showHalfDaysModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-              <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                <button onClick={() => setShowHalfDaysModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Clock size={24} /></div>
-                  <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Half Day Reports</h2>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>In: {'>'}13:30 OR Out: 14:30-17:00</p>
-                </div>
 
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                   <div style={{ flex: 1, minWidth: '200px' }}>
-                     <input 
-                       type="text" 
-                       placeholder="Search ID, Name or Role..." 
-                       value={halfDaySearch}
-                       onChange={(e) => setHalfDaySearch(e.target.value)}
-                       style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
-                     />
-                   </div>
+              <button onClick={() => setShowEarlyLogoutsModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+            </div>
+          </div>
+        )}
+
+        {/* Half Days Modal */}
+        {showHalfDaysModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => setShowHalfDaysModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Clock size={24} /></div>
+                <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Half Day Reports</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>In: {'>'}13:30 OR Out: 14:30-17:00</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search ID, Name or Role..."
+                    value={halfDaySearch}
+                    onChange={(e) => setHalfDaySearch(e.target.value)}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #eef2f6', background: 'white', boxSizing: 'border-box', outline: 'none', fontSize: '13px', fontWeight: '700' }}
+                  />
                 </div>
-                
-                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
-                  {(() => {
-                    const pool = halfDaySearch
-                      ? metrics.halfDayLogs.filter(log => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const s = halfDaySearch.toLowerCase();
-                          return empId.toLowerCase().includes(s) ||
-                                 (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
-                                 (emp?.role || '').toLowerCase().includes(s);
-                        })
-                      : metrics.halfDayLogs;
-                    return pool.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {pool.map((log, idx) => {
-                          const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-                          const emp = allEmployees.find(e => String(e.id).trim() === empId);
-                          const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
-                          const pIn = String(log.in_time || log.INTime || log.PunchIn || log.punch_time || '----').trim();
-                          const pOut = String(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || '----').trim();
-                          
-                          return (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
-                                  {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown Employee'}</div>
-                                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
-                                </div>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
+                {(() => {
+                  const pool = halfDaySearch
+                    ? metrics.halfDayLogs.filter(log => {
+                      const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                      const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                      const s = halfDaySearch.toLowerCase();
+                      return empId.toLowerCase().includes(s) ||
+                        (emp?.name || log?.user_name || '').toLowerCase().includes(s) ||
+                        (emp?.role || '').toLowerCase().includes(s);
+                    })
+                    : metrics.halfDayLogs;
+                  return pool.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {pool.map((log, idx) => {
+                        const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
+                        const emp = allEmployees.find(e => String(e.id).trim() === empId);
+                        const logDate = (log?.punch_date || log?.date || log?.created_at || '').split('T')[0];
+                        const pIn = String(log.in_time || log.INTime || log.PunchIn || log.punch_time || '----').trim();
+                        const pOut = String(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || '----').trim();
+
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '950' }}>
+                                {String(emp?.name || log?.user_name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '13px', fontWeight: '950', color: '#f97316' }}>{pIn} - {pOut}</div>
-                                <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch In / Out</div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `· ${logDate}` : ''}</div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                        <p style={{ fontWeight: '800' }}>{halfDaySearch ? `No records for "${halfDaySearch}"` : 'No half days in selected range. ☀️'}</p>
-                      </div>
-                    );
-                  })()}
-                </div>
-                
-                <button onClick={() => setShowHalfDaysModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '950', color: '#f97316' }}>{pIn} - {pOut}</div>
+                              <div style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Punch In / Out</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      <p style={{ fontWeight: '800' }}>{halfDaySearch ? `No records for "${halfDaySearch}"` : 'No half days in selected range. ☀️'}</p>
+                    </div>
+                  );
+                })()}
               </div>
-            </div>
-          )}
 
-          {showPunchEditModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-              <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '420px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative' }}>
-                <button onClick={() => setShowPunchEditModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#fdf2f8', color: '#db2777', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><AlertTriangle size={24} /></div>
-                  <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Edit Punch-In Time</h2>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Modify the arrival log for selected date.</p>
+              <button onClick={() => setShowHalfDaysModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Close Report</button>
+            </div>
+          </div>
+        )}
+
+        {showPunchEditModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '420px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative' }}>
+              <button onClick={() => setShowPunchEditModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#fdf2f8', color: '#db2777', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><AlertTriangle size={24} /></div>
+                <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Edit Punch-In Time</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Modify the arrival log for selected date.</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 1: Select Employee</label>
+                  <select value={punchEditData.empId} onChange={(e) => handlePunchEditEmpChange(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }}>
+                    <option value="">Choose an employee...</option>
+                    {allEmployees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name || emp.user_name} ({emp.role || 'Member'})</option>
+                    ))}
+                  </select>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 1: Select Employee</label>
-                    <select value={punchEditData.empId} onChange={(e) => handlePunchEditEmpChange(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }}>
-                      <option value="">Choose an employee...</option>
-                      {allEmployees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.name || emp.user_name} ({emp.role || 'Member'})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 2: Select Date</label>
-                    <input type="date" value={punchEditData.date} onChange={(e) => handlePunchEditEmpChange(punchEditData.empId, e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Punch-In</label>
-                    <input type="text" readOnly value={punchEditData.actualTime || '--:--'} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f1f5f9', fontSize: '15px', fontWeight: '900', color: '#64748b', outline: 'none', opacity: 0.8 }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#db2777', textTransform: 'uppercase', letterSpacing: '0.5px' }}>New Punch-In Time</label>
-                    <input type="time" value={punchEditData.newTime} onChange={(e) => setPunchEditData({...punchEditData, newTime: e.target.value})} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #fbcfe8', background: '#fff1f2', fontSize: '15px', fontWeight: '900', color: '#be185d', outline: 'none', cursor: 'pointer' }} />
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 2: Select Date</label>
+                  <input type="date" value={punchEditData.date} onChange={(e) => handlePunchEditEmpChange(punchEditData.empId, e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }} />
                 </div>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                  <button onClick={() => setShowPunchEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={submitPunchInEdit} style={{ flex: 2, padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #db2777 0%, #9d174d 100%)', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(219, 39, 119, 0.3)' }}>Update Time</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Punch-In</label>
+                  <input type="text" readOnly value={punchEditData.actualTime || '--:--'} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f1f5f9', fontSize: '15px', fontWeight: '900', color: '#64748b', outline: 'none', opacity: 0.8 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#db2777', textTransform: 'uppercase', letterSpacing: '0.5px' }}>New Punch-In Time</label>
+                  <input type="time" value={punchEditData.newTime} onChange={(e) => setPunchEditData({ ...punchEditData, newTime: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #fbcfe8', background: '#fff1f2', fontSize: '15px', fontWeight: '900', color: '#be185d', outline: 'none', cursor: 'pointer' }} />
                 </div>
               </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button onClick={() => setShowPunchEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={submitPunchInEdit} style={{ flex: 2, padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #db2777 0%, #9d174d 100%)', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(219, 39, 119, 0.3)' }}>Update Time</button>
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
 
 

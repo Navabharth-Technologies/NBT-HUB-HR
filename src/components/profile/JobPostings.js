@@ -101,6 +101,10 @@ export default function JobPostings() {
   };
 
   const handleSubmit = async () => {
+    if (!navigator.onLine) {
+      alert('Submission Failed: Network disconnected ❌');
+      return;
+    }
     if (!form.title || !form.department) {
       alert('Please fill in Job Title and Department');
       return;
@@ -182,6 +186,16 @@ export default function JobPostings() {
     post.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+
+  const handleFormChange = (name, value) => {
+    if (name === 'location') {
+      if (value !== '' && !/^[a-zA-Z\s,]+$/.test(value)) return;
+    }
+    if (name === 'experience') {
+      if (value !== '' && !/^[0-9\-+]+$/.test(value)) return;
+    }
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2' }}>
@@ -289,8 +303,8 @@ export default function JobPostings() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <FormField label="Job Title" name="title" value={form.title} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. Senior Frontend Developer" required />
                 <FormField label="Department" name="department" value={form.department} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. Engineering" required />
-                <FormField label="Experience Required" name="experience" value={form.experience} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. 5+ years" />
-                <FormField label="Location" name="location" value={form.location} onChange={(n, v) => setForm({...form, [n]: v})} placeholder="e.g. Remote / Bangalore" />
+                <FormField label="Experience Required" name="experience" value={form.experience} onChange={handleFormChange} placeholder="e.g. 0-1 or 5+" />
+                <FormField label="Location" name="location" value={form.location} onChange={handleFormChange} placeholder="e.g. Bangalore" />
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Job Type</label>
                   <select 

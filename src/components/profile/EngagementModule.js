@@ -46,6 +46,26 @@ export default function EngagementModule() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // AUTO-FETCH COMMENT COUNTS ON LOAD
+    useEffect(() => {
+        const fetchAllCommentCounts = async () => {
+            if (threads && threads.length > 0) {
+                for (const post of threads) {
+                    // Check if we already have comments for this post to avoid redundant API calls
+                    if (postComments[post.id] === undefined) {
+                        try {
+                            const comments = await fetchComments(post.id);
+                            setPostComments(prev => ({ ...prev, [post.id]: Array.isArray(comments) ? comments : [] }));
+                        } catch (err) {
+                            console.error("Error auto-fetching comments for count:", err);
+                        }
+                    }
+                }
+            }
+        };
+        fetchAllCommentCounts();
+    }, [threads, fetchComments]);
+
     const fetchProfiles = async () => {
         try {
             const resp = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`);
@@ -175,7 +195,7 @@ export default function EngagementModule() {
             flexDirection: 'column', 
             gap: isMobile ? '12px' : '20px', 
             padding: isMobile ? '20px 15px' : (isTablet ? '20px 25px' : '20px 40px'), 
-            marginTop: isMobile ? '100px' : '130px',
+            marginTop: isMobile ? '95px' : '110px',
             maxWidth: '100%', 
             margin: '0', 
             boxSizing: 'border-box' 
@@ -258,6 +278,30 @@ export default function EngagementModule() {
             <AppHeader />
             
             <main style={styles.container}>
+                {/* BACK NAVIGATION */}
+                <div style={{ marginBottom: '15px' }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{
+                            background: '#ffffff',
+                            width: '45px',
+                            height: '45px',
+                            borderRadius: '50%',
+                            border: '2.5px solid #315A9E',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                        <ChevronLeft size={24} color="#315A9E" strokeWidth={3} />
+                    </button>
+                </div>
+
                 {/* CREATE THREAD */}
                 <div style={{ ...styles.card, borderTop: '5px solid #FDB913' }}>
                     <input style={styles.tagInput} placeholder="Add a tagline..." value={tagline} onChange={e => setTagline(e.target.value)} />

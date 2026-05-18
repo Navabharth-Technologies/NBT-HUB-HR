@@ -1,4 +1,4 @@
-import { useAuth } from './context/AuthContext';
+import { useAuth, AuthProvider } from './context/AuthContext';
 import { ThreadProvider } from './context/ThreadContext';
 import HRDashboard from './components/profile/HRDashboard';
 import PerformanceModule from './components/profile/PerformanceModule';
@@ -33,12 +33,15 @@ import JobApplications from './components/profile/JobApplications';
 import JobPostings from './components/profile/JobPostings';
 import MyLeaves from './components/profile/MyLeaves';
 
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { WifiOff, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) return null; // Prevent flicker and redirect on refresh
 
   if (!user) {
     return (
@@ -90,11 +93,107 @@ function AppRoutes() {
   );
 }
 
+function NetworkStatus() {
+  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log("🌐 App is ONLINE");
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.log("❌ App is OFFLINE");
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Polling fallback - every 1 second with verification
+    const interval = setInterval(() => {
+      const currentStatus = navigator.onLine;
+      if (currentStatus !== isOnline) {
+        // Double check to prevent flickering
+        setTimeout(() => {
+          if (navigator.onLine === currentStatus) {
+            setIsOnline(currentStatus);
+          }
+        }, 500);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, [isOnline]);
+
+  return (
+    <>
+      {!isOnline && (
+        <div
+          style={{
+            position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+            background: '#ef4444', color: 'white', padding: '12px 24px',
+            borderRadius: '16px', zIndex: 2147483647,
+            display: 'flex', alignItems: 'center', gap: '12px',
+            boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.4)',
+            border: '2px solid rgba(255,255,255,0.2)',
+            animation: 'slideDown 0.4s ease-out, pulse 2s infinite',
+            fontWeight: '800', fontSize: '15px', letterSpacing: '0.5px'
+          }}
+        >
+          <WifiOff size={20} />
+          NETWORK DISCONNECTED • PLEASE RECONNECT
+          <style>{`
+            @keyframes slideDown {
+              from { transform: translate(-50%, -100px); opacity: 0; }
+              to { transform: translate(-50%, 0); opacity: 1; }
+            }
+            @keyframes pulse {
+              0% { transform: translate(-50%, 0) scale(1); }
+              50% { transform: translate(-50%, 0) scale(1.02); }
+              100% { transform: translate(-50%, 0) scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
+      {!isOnline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+          zIndex: 2147483646, cursor: 'not-allowed'
+        }} />
+      )}
+    </>
+  );
+}
+
 function App() {
   return (
-    <ThreadProvider>
-      <AppRoutes />
-    </ThreadProvider>
+    <>
+      <NetworkStatus />
+      <AuthProvider>
+        <ThreadProvider>
+          <AppRoutes />
+          <style>{`
+            html, body {
+              overflow-x: hidden;
+              width: 100%;
+              position: relative;
+              margin: 0;
+              padding: 0;
+              touch-action: pan-y;
+              overscroll-behavior-x: none;
+            }
+            * {
+              box-sizing: border-box;
+            }
+          `}</style>
+        </ThreadProvider>
+      </AuthProvider>
+    </>
   );
 }
 
