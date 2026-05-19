@@ -19,7 +19,6 @@ export default function AssetsManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [editModal, setEditModal] = useState({ show: false, employee: null, isReadOnly: false });
-  const [availableAssetsModal, setAvailableAssetsModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [showToast, setShowToast] = useState(false);
@@ -319,7 +318,7 @@ export default function AssetsManagement() {
     });
 
     return combined.filter(emp => {
-      const matchesSearch = (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (emp.name || '').toLowerCase().startsWith(searchTerm.toLowerCase()) ||
         (String(emp.id || '')).includes(searchTerm);
       const matchesDept = selectedDept === 'All' || (emp.team && emp.team.includes(selectedDept));
       return matchesSearch && matchesDept;
@@ -354,13 +353,6 @@ export default function AssetsManagement() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
-            <button
-              onClick={() => setAvailableAssetsModal(true)}
-              style={{ flex: 1, background: 'white', color: '#3163aa', border: '2px solid #3163aa', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}
-            >
-              <Package size={16} />
-              Available Assets
-            </button>
             <button
               onClick={() => {
                 setForm({
@@ -695,66 +687,7 @@ export default function AssetsManagement() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Available Assets Modal */}
-      {availableAssetsModal && (
-        <div className="modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
-        }}>
-          <div className="modal-content animate-slide-up" style={{
-            background: 'white', borderRadius: '30px', width: '90%', maxWidth: '600px',
-            padding: '40px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
-          }}>
-            <button
-              onClick={() => setAvailableAssetsModal(false)}
-              style={{ position: 'absolute', top: '25px', right: '25px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', color: '#64748b' }}
-            >
-              <X size={20} />
-            </button>
-
-            <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-              <div style={{ background: '#eff6ff', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
-                <Package size={30} color="#3163aa" />
-              </div>
-              <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: '0 0 8px 0' }}>Available Hardware Inventory</h2>
-              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Current unassigned assets in stock</p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px' }}>
-              {[
-                { label: 'Laptops', icon: <Laptop size={18} />, count: 5, color: '#3b82f6' },
-                { label: 'Mouse', icon: <MousePointer size={18} />, count: 12, color: '#10b981' },
-                { label: 'Keyboards', icon: <Keyboard size={18} />, count: 8, color: '#f59e0b' },
-                { label: 'Laptop Stands', icon: <Package size={18} />, count: 4, color: '#6366f1' },
-                { label: 'Ruf Pads', icon: <ScrollText size={18} />, count: 15, color: '#ec4899' },
-                { label: 'Pendrives', icon: <HardDrive size={18} />, count: 20, color: '#14b8a6' },
-                { label: 'Webcams', icon: <Camera size={18} />, count: 3, color: '#8b5cf6' },
-                { label: 'Earphones', icon: <Headphones size={18} />, count: 10, color: '#ef4444' }
-              ].map((item, i) => (
-                <div key={i} style={{
-                  background: '#f8fafc', padding: '20px', borderRadius: '20px',
-                  border: '1px solid #e2e8f0', textAlign: 'center',
-                  transition: 'transform 0.2s'
-                }}>
-                  <div style={{ color: item.color, marginBottom: '10px', display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
-                  <div style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b' }}>{item.count}</div>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginTop: '4px' }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: '35px', padding: '20px', background: '#fffbeb', borderRadius: '20px', border: '1px solid #fde68a', display: 'flex', gap: '15px', alignItems: 'center' }}>
-              <div style={{ fontSize: '20px' }}>⚠️</div>
-              <div style={{ fontSize: '12px', color: '#92400e', fontWeight: '600', lineHeight: '1.5' }}>
-                Inventory levels are updated automatically when new assets are assigned or returned. Contact IT warehouse for physical verification.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
 
       {showToast && (
         <div style={{

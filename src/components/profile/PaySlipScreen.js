@@ -233,8 +233,16 @@ export default function PaySlipScreen() {
                 const res = await fetch(API_ENDPOINTS.USERS, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
-                const data = await res.json();
-                if (res.ok) setUsersList(data);
+                 if (res.ok) {
+                    const data = await res.json();
+                    const sorted = [...data].sort((a, b) => {
+                        const idA = parseInt(String(a.employee_id || a.id || '').replace(/[^\d]/g, ''), 10) || 0;
+                        const idB = parseInt(String(b.employee_id || b.id || '').replace(/[^\d]/g, ''), 10) || 0;
+                        if (idA !== idB) return idA - idB;
+                        return String(a.employee_id || a.id || '').localeCompare(String(b.employee_id || b.id || ''));
+                    });
+                    setUsersList(sorted);
+                }
             } catch (err) { console.error('User fetch error:', err); }
         };
         fetchUsers();
@@ -682,8 +690,8 @@ export default function PaySlipScreen() {
                     <div id="payslip-document" style={{ background: 'white', borderRadius: winWidth < 768 ? '16px' : '0', padding: winWidth < 768 ? '20px' : '25px 40px', boxShadow: '0 4px 50px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
 
                         {/* Decorative Corners */}
-                        <div style={{ position: 'absolute', top: 0, right: 0, width: winWidth < 768 ? '60px' : '120px', height: winWidth < 768 ? '60px' : '120px', background: 'linear-gradient(225deg, #1e40af 50%, transparent 50%)' }}></div>
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, width: winWidth < 768 ? '60px' : '120px', height: winWidth < 768 ? '60px' : '120px', background: 'linear-gradient(45deg, #1e40af 50%, transparent 50%)' }}></div>
+                        <div style={{ position: 'absolute', top: 0, right: 0, width: winWidth < 768 ? '60px' : '120px', height: winWidth < 768 ? '60px' : '120px', background: 'linear-gradient(225deg, #3b82f6 50%, transparent 50%)' }}></div>
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, width: winWidth < 768 ? '60px' : '120px', height: winWidth < 768 ? '60px' : '120px', background: 'linear-gradient(45deg, #3b82f6 50%, transparent 50%)' }}></div>
 
                         {/* Company Branding */}
                         <div style={{ textAlign: 'center', marginBottom: '30px', position: 'relative', zIndex: 2 }}>
@@ -827,14 +835,18 @@ export default function PaySlipScreen() {
                         </div>
 
                         {/* Footer */}
-                        <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '30px', borderTop: '1px solid #f1f5f9', paddingTop: '15px', gap: '10px' }}>
-                            <p style={{ margin: 0, fontSize: '9px', color: '#94a3b8', fontStyle: 'italic', fontWeight: '700' }}>
-                                Computer generated payslip. No signature required.
-                            </p>
-                            <div style={{ textAlign: winWidth < 600 ? 'center' : 'right' }}>
-                                <span style={{ fontSize: '10px', fontWeight: '800', color: '#3163aa' }}>navabharathtechnologies.com</span>
-                                <span style={{ margin: '0 8px', color: '#cbd5e1' }}>|</span>
-                                <span style={{ fontSize: '10px', fontWeight: '950', color: '#0f172a' }}>0821-3128831</span>
+                        <div style={{ marginTop: '40px', position: 'relative', zIndex: 10 }}>
+                            <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', fontWeight: '600' }}>
+                                    This is a computer generated payslip and does not require a physical signature.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: '10px' }}>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: '1.3' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '850', color: '#0f3a78' }}>Phone: 0821-3128831</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '850', color: '#0f3a78' }}>www.navabharathtechnologies.com</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '850', color: '#0f3a78' }}>contact@navabharathtechnologies.com</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -869,13 +881,13 @@ export default function PaySlipScreen() {
                                 <FormSelect label="Year" name="year" icon={<Clock size={16} />} value={formData.year} onChange={handleInputChange} options={yearsList.map(y => ({ value: y, label: y }))} />
 
                                 <FormField label="Basic Salary" name="basic_salary" type="number" value={formData.basic_salary} onChange={handleInputChange} />
-                                <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+                                <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', display: 'flex', justifyContent: 'center', marginTop: '10px', borderTop: '1px dashed #e2e8f0', paddingTop: '20px' }}>
                                     <button
                                         type="button"
                                         onClick={handleModalLoadData}
                                         disabled={isFormFetching}
                                         style={{
-                                            width: '100%',
+                                            width: winWidth < 768 ? '100%' : '300px',
                                             background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
                                             color: 'white',
                                             border: 'none',
@@ -889,13 +901,13 @@ export default function PaySlipScreen() {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            gap: '8px'
+                                            gap: '8px',
+                                            opacity: isFormFetching ? 0.7 : 1
                                         }}
                                     >
                                         {isFormFetching ? 'Loading...' : 'Load Data'}
                                     </button>
                                 </div>
-                                <div style={{ display: winWidth < 768 ? 'none' : 'block' }}></div> {/* Spacer */}
 
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
                                     <h3 style={sectionHeaderStyle}><Landmark size={16} /> Earnings</h3>

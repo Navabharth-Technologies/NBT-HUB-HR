@@ -45,7 +45,7 @@ export default function EmployeeModule() {
   }, [user]);
 
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = emp.name.toLowerCase().startsWith(searchTerm.toLowerCase()) ||
       (emp.team && emp.team.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (emp.role && emp.role.toLowerCase().includes(searchTerm.toLowerCase()));
     

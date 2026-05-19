@@ -186,6 +186,15 @@ export default function NewJoineeModule() {
     } else if (name === 'duration') {
       // Only digits
       filteredValue = value.replace(/\D/g, '');
+    } else if (name === 'email_id') {
+      const atIndex = value.indexOf('@');
+      if (atIndex !== -1) {
+        const domainPart = value.substring(atIndex + 1);
+        const comIndex = domainPart.indexOf('.com');
+        if (comIndex !== -1) {
+          filteredValue = value.substring(0, atIndex + 1 + comIndex + 4);
+        }
+      }
     }
 
     setFormData(prev => ({ ...prev, [name]: filteredValue }));
@@ -236,9 +245,9 @@ export default function NewJoineeModule() {
       return;
     }
 
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/;
     if (!emailRegex.test(formData.email_id)) {
-      setToastMessage('Please enter a valid email address (e.g. abc@gmail.com)');
+      setToastMessage('Please enter a valid email address ending with .com (e.g. abc@gmail.com)');
       setToastType('error');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
@@ -493,7 +502,7 @@ export default function NewJoineeModule() {
   };
 
   const filteredJoinees = joinees.filter(j => {
-    const matchesSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = j.name.toLowerCase().startsWith(searchTerm.toLowerCase()) ||
       j.role.toLowerCase().includes(searchTerm.toLowerCase());
     const isBlocked = Number(j.is_blocked) === 1;
     if (viewBlocked) return matchesSearch && isBlocked;

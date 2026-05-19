@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 import { API_ENDPOINTS } from '../../config';
 import './Dashboard.css';
 
@@ -39,10 +40,19 @@ export default function AlertScreen() {
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
             <button 
               onClick={() => navigate(-1)} 
-              className="btn-outline"
-              style={{ padding: '8px 12px' }}
+              style={{
+                background: 'white',
+                padding: '10px',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}
             >
-              ← Back
+              <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--secondary)' }}>System Alerts</h1>

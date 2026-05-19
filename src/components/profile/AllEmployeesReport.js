@@ -85,7 +85,13 @@ export default function AllEmployeesReport() {
               punchout_location: log.punchout_location || log.out_location || log.PunchOut_location || '----'
             };
           });
-          setEmployees(mapped);
+          const sorted = [...mapped].sort((a, b) => {
+            const idA = parseInt(String(a.id || '').replace(/[^\d]/g, ''), 10) || 0;
+            const idB = parseInt(String(b.id || '').replace(/[^\d]/g, ''), 10) || 0;
+            if (idA !== idB) return idA - idB;
+            return String(a.id || '').localeCompare(String(b.id || ''));
+          });
+          setEmployees(sorted);
         }
       } catch (err) {
         console.error('Fetch error:', err);
@@ -97,7 +103,7 @@ export default function AllEmployeesReport() {
   }, [user]);
 
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = emp.name.toLowerCase().startsWith(searchTerm.toLowerCase()) ||
                          String(emp.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
                          emp.role.toLowerCase().includes(searchTerm.toLowerCase());
     

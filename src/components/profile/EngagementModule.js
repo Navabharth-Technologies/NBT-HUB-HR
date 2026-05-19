@@ -5,7 +5,7 @@ import { useThread } from '../../context/ThreadContext';
 import { useAuth } from '../../context/AuthContext';
 import {
     Heart, MessageSquare, Smile,
-    Send, MoreHorizontal, User, Share2, Cake, Gift, Plus, ChevronLeft,
+    Send, MoreHorizontal, User, Share2, Cake, Gift, Plus, ArrowLeft,
     Trash2, Edit3, X, Check, Image as ImageIcon, Film, XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -195,9 +195,8 @@ export default function EngagementModule() {
             flexDirection: 'column', 
             gap: isMobile ? '12px' : '20px', 
             padding: isMobile ? '20px 15px' : (isTablet ? '20px 25px' : '20px 40px'), 
-            marginTop: isMobile ? '95px' : '110px',
+            paddingTop: isMobile ? '90px' : '110px',
             maxWidth: '100%', 
-            margin: '0', 
             boxSizing: 'border-box' 
         },
         card: { backgroundColor: 'white', borderRadius: isMobile ? '25px' : '40px', padding: isMobile ? '20px' : '30px', boxShadow: '0 10px 40px rgba(0,0,0,0.04)', border: '1px solid #eef2f6' },
@@ -230,48 +229,6 @@ export default function EngagementModule() {
         commentBadge: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#315A9E', fontSize: '12px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }
     };
 
-    if (loading) {
-        return (
-            <div className="hr-dashboard-container">
-                <AppHeader />
-                <main style={{ ...styles.container, justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                    >
-                        <motion.div 
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                            style={{ 
-                                width: '80px', 
-                                height: '80px', 
-                                border: '4px solid rgba(49, 90, 158, 0.1)', 
-                                borderTop: '4px solid #315A9E', 
-                                borderRight: '4px solid #315A9E',
-                                borderRadius: '50%',
-                                boxShadow: '0 0 20px rgba(49, 90, 158, 0.1)'
-                            }} 
-                        />
-                        <motion.div
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                            style={{ 
-                                marginTop: '30px', 
-                                color: '#315A9E', 
-                                fontWeight: '900', 
-                                fontSize: '14px', 
-                                letterSpacing: '3px',
-                                textTransform: 'uppercase'
-                            }}
-                        >
-                            Syncing Team Feed
-                        </motion.div>
-                    </motion.div>
-                </main>
-            </div>
-        );
-    }
 
     return (
         <div className="hr-dashboard-container">
@@ -279,26 +236,34 @@ export default function EngagementModule() {
             
             <main style={styles.container}>
                 {/* BACK NAVIGATION */}
-                <div style={{ marginBottom: '15px' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-start', 
+                    width: '100%', 
+                    position: 'sticky', 
+                    top: isMobile ? '70px' : '85px', 
+                    zIndex: 1000, 
+                    backgroundColor: '#eaeff2', 
+                    paddingTop: '10px',
+                    marginTop: '-10px',
+                    paddingBottom: '5px' 
+                }}>
                     <button
                         onClick={() => navigate(-1)}
                         style={{
-                            background: '#ffffff',
-                            width: '45px',
-                            height: '45px',
-                            borderRadius: '50%',
-                            border: '2.5px solid #315A9E',
+                            background: 'white',
+                            padding: '10px',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                            transition: 'all 0.2s ease'
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                            marginBottom: '20px'
                         }}
-                        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        <ChevronLeft size={24} color="#315A9E" strokeWidth={3} />
+                        <ArrowLeft size={18} color="#64748b" />
                     </button>
                 </div>
 
@@ -345,6 +310,23 @@ export default function EngagementModule() {
                 </AnimatePresence>
 
                 {/* THREAD FEED */}
+                {loading && threads.length === 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px', gap: '15px' }}>
+                        <motion.div 
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                            style={{ 
+                                width: '40px', 
+                                height: '40px', 
+                                border: '3px solid rgba(49, 90, 158, 0.1)', 
+                                borderTop: '3px solid #315A9E', 
+                                borderRadius: '50%'
+                            }} 
+                        />
+                        <div style={{ color: '#315A9E', fontWeight: '800', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase' }}>Syncing Team Feed...</div>
+                    </div>
+                )}
+
                 {threads.map(post => {
                     const authorId = user?.email || user?.name;
                     const uid = post.user_email || post.user_id || post.userId;

@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, Building2,
   AlertCircle, CheckCircle2, User, Landmark, RefreshCw,
   MapPin, GraduationCap, History,
-  FileCheck, Users, Trash2, Pencil, Upload, ChevronDown, ChevronLeft, ChevronRight
+  FileCheck, Users, Trash2, Pencil, Upload, ChevronDown, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { BASE_URL, API_ENDPOINTS } from '../../config';
@@ -434,6 +434,17 @@ export default function PersonalInfo({ onBack }) {
   const handleChange = (key, value) => {
     let sanitizedValue = value;
 
+    if (key === 'personal_email' || key === 'official_email') {
+      const atIndex = value.indexOf('@');
+      if (atIndex !== -1) {
+        const domainPart = value.substring(atIndex + 1);
+        const comIndex = domainPart.indexOf('.com');
+        if (comIndex !== -1) {
+          sanitizedValue = value.substring(0, atIndex + 1 + comIndex + 4);
+        }
+      }
+    }
+
     // Strict validation logic
     const alphaFields = [
       'emp_name', 'religion', 'nationality', 'father_husband_name', 'designation', 
@@ -451,7 +462,8 @@ export default function PersonalInfo({ onBack }) {
 
     if (alphaFields.includes(key)) {
       if (key === 'blood_group') {
-        sanitizedValue = value.replace(/[^a-zA-Z0-9+\-\s]/g, '').toUpperCase();
+        sanitizedValue = value.replace(/[^a-zA-Z+\-\s]/g, '').toUpperCase();
+        if (sanitizedValue.length > 5) sanitizedValue = sanitizedValue.substring(0, 5);
       } else {
         sanitizedValue = value.replace(/[^a-zA-Z\s.]/g, '');
       }
@@ -467,6 +479,9 @@ export default function PersonalInfo({ onBack }) {
     } else if (key === 'pan_number') {
       sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       if (sanitizedValue.length > 10) sanitizedValue = sanitizedValue.substring(0, 10);
+    } else if (key === 'passport_no') {
+      sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      if (sanitizedValue.length > 15) sanitizedValue = sanitizedValue.substring(0, 15);
     } else if (key === 'ifsc_code') {
       sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       if (sanitizedValue.length > 11) sanitizedValue = sanitizedValue.substring(0, 11);
@@ -561,7 +576,7 @@ export default function PersonalInfo({ onBack }) {
     }
 
     // Validation before save
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.com$/;
 
     const getSection = (key) => {
       const s = SECTIONS.find(sec => sec.fields.some(field => field.key === key));
@@ -718,7 +733,7 @@ export default function PersonalInfo({ onBack }) {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1, color: '#0B1E3F'
                   }}
                 >
-                  <Trash2 size={20} />
+                  <X size={20} />
                 </button>
 
                 <div style={{ maxHeight: '80vh', overflowY: 'auto', borderRadius: '20px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
@@ -1020,7 +1035,18 @@ export default function PersonalInfo({ onBack }) {
                         value={form[field.key]}
                         readOnly={isDisabled}
                         onChange={e => handleChange(field.key, e.target.value)}
-                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
+                        style={{ 
+                          width: '100%', 
+                          padding: '16px 20px', 
+                          borderRadius: '16px', 
+                          fontWeight: '900', 
+                          border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', 
+                          backgroundColor: isDisabled ? '#f1f5f9' : 'white', 
+                          boxSizing: 'border-box', 
+                          fontFamily: 'inherit', 
+                          fontSize: '16px',
+                          textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
+                        }}
                       />
                     )}
                   </div>

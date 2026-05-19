@@ -200,10 +200,32 @@ export default function JobApplications() {
     });
   };
 
+  const handleFormChange = (name, value) => {
+    let val = value;
+    if (name === 'email') {
+      const atIndex = value.indexOf('@');
+      if (atIndex !== -1) {
+        const domainPart = value.substring(atIndex + 1);
+        const comIndex = domainPart.indexOf('.com');
+        if (comIndex !== -1) {
+          val = value.substring(0, atIndex + 1 + comIndex + 4);
+        }
+      }
+    }
+    setForm(prev => ({ ...prev, [name]: val }));
+  };
+
   const handleSubmit = async () => {
     if (!form.applicant_name || !form.position) {
       alert('Please fill in Applicant Name and Position');
       return;
+    }
+    if (form.email) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/;
+      if (!emailRegex.test(form.email)) {
+        alert('Please enter a valid email address ending with .com (e.g. abc@gmail.com)');
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -634,16 +656,16 @@ export default function JobApplications() {
 
             <div style={{ padding: winWidth < 768 ? '25px' : '40px', overflowY: 'auto', flex: 1, background: '#f8fafc' }} className="custom-scroll">
               <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : '1fr 1fr', gap: winWidth < 768 ? '16px' : '24px' }}>
-                <FormField label="Name" icon={<User size={14} />} name="applicant_name" placeholder="Priya Sharma" value={form.applicant_name} onChange={(n, v) => setForm({...form, [n]: v})} required />
-                <FormField label="Email" icon={<Mail size={14} />} type="email" name="email" placeholder="priya@example.com" value={form.email} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Phone" icon={<Phone size={14} />} name="phone" placeholder="+91 98765 43210" value={form.phone} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Position" icon={<Briefcase size={14} />} name="position" placeholder="Frontend Dev" value={form.position} onChange={(n, v) => setForm({...form, [n]: v})} required />
-                <FormField label="Dept" icon={<Filter size={14} />} type="select" name="department" value={form.department} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Exp" icon={<FileText size={14} />} name="experience" placeholder="e.g. 3" value={form.experience} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Location" icon={<MapPin size={14} />} name="location" placeholder="e.g. Bangalore" value={form.location} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Date" icon={<Calendar size={14} />} type="date" name="applied_date" value={form.applied_date} onChange={(n, v) => setForm({...form, [n]: v})} />
-                <FormField label="Resume" icon={<Download size={14} />} name="resume_link" placeholder="https://..." value={form.resume_link} onChange={(n, v) => setForm({...form, [n]: v})} fullWidth />
-                <FormField label="Notes" icon={<FileText size={14} />} type="textarea" name="notes" placeholder="Feedback..." value={form.notes} onChange={(n, v) => setForm({...form, [n]: v})} fullWidth />
+                <FormField label="Name" icon={<User size={14} />} name="applicant_name" placeholder="Priya Sharma" value={form.applicant_name} onChange={handleFormChange} required />
+                <FormField label="Email" icon={<Mail size={14} />} type="email" name="email" placeholder="priya@example.com" value={form.email} onChange={handleFormChange} />
+                <FormField label="Phone" icon={<Phone size={14} />} name="phone" placeholder="+91 98765 43210" value={form.phone} onChange={handleFormChange} />
+                <FormField label="Position" icon={<Briefcase size={14} />} name="position" placeholder="Frontend Dev" value={form.position} onChange={handleFormChange} required />
+                <FormField label="Dept" icon={<Filter size={14} />} type="select" name="department" value={form.department} onChange={handleFormChange} />
+                <FormField label="Exp" icon={<FileText size={14} />} name="experience" placeholder="e.g. 3" value={form.experience} onChange={handleFormChange} />
+                <FormField label="Location" icon={<MapPin size={14} />} name="location" placeholder="e.g. Bangalore" value={form.location} onChange={handleFormChange} />
+                <FormField label="Date" icon={<Calendar size={14} />} type="date" name="applied_date" value={form.applied_date} onChange={handleFormChange} />
+                <FormField label="Resume" icon={<Download size={14} />} name="resume_link" placeholder="https://..." value={form.resume_link} onChange={handleFormChange} fullWidth />
+                <FormField label="Notes" icon={<FileText size={14} />} type="textarea" name="notes" placeholder="Feedback..." value={form.notes} onChange={handleFormChange} fullWidth />
               </div>
             </div>
 

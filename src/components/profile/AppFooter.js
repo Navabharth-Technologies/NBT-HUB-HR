@@ -175,10 +175,6 @@ export default function AppFooter({ onCreateTeam }) {
           <div key={item.name} className="footer-item-container" style={{ position: 'relative' }}>
             {item.isAction && showAddMenu && (
               <div className="add-upward-menu animate-slide-up">
-                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); if (onCreateTeam) onCreateTeam(); else navigate('/teams'); setShowAddMenu(false); }}>
-                  <span className="add-menu-icon">👥</span>
-                  <span>Create New Team</span>
-                </button>
                 <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); navigate('/courses'); setShowAddMenu(false); }}>
                   <span className="add-menu-icon">📚</span>
                   <span>Add Course</span>

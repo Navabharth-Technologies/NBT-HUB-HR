@@ -389,7 +389,7 @@ export default function HRDashboard() {
           </div>
         </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Leave/Attendance Management */}
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div style={{ 
