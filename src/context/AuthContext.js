@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   // Restore session from localStorage on app load
   useEffect(() => {
-    const savedUser = localStorage.getItem('navAuthUser');
+    const savedUser = localStorage.getItem('user') || localStorage.getItem('navAuthUser');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
@@ -42,6 +42,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         setUser(authData);
+        localStorage.setItem('user', JSON.stringify(authData));
         localStorage.setItem('navAuthUser', JSON.stringify(authData));
         localStorage.setItem('token', data.token);
         localStorage.setItem('userRole', data.user.role);
@@ -78,6 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('user');
     localStorage.removeItem('navAuthUser');
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
@@ -86,6 +88,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (newUserData) => {
     const updatedUser = { ...user, ...newUserData };
     setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
     localStorage.setItem('navAuthUser', JSON.stringify(updatedUser));
   };
 
