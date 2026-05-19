@@ -470,8 +470,13 @@ export default function PersonalInfo({ onBack }) {
     } else if (numericFields.includes(key)) {
       sanitizedValue = value.replace(/\D/g, '');
       // Max length constraints
-      if ((key === 'contact_no' || key === 'emergency_contact_no') && sanitizedValue.length > 10) {
-        sanitizedValue = sanitizedValue.substring(0, 10);
+      if ((key === 'contact_no' || key === 'emergency_contact_no')) {
+        if (sanitizedValue.length > 0 && !/^[6-9]/.test(sanitizedValue)) {
+          sanitizedValue = '';
+        }
+        if (sanitizedValue.length > 10) {
+          sanitizedValue = sanitizedValue.substring(0, 10);
+        }
       }
       if (key === 'aadhar_number' && sanitizedValue.length > 12) {
         sanitizedValue = sanitizedValue.substring(0, 12);
@@ -598,9 +603,25 @@ export default function PersonalInfo({ onBack }) {
       setToast({ type: 'error', msg: `Invalid Official Email format${getSection('official_email')}` });
       return;
     }
-    if (activeSectionFields.includes('contact_no') && form.contact_no && form.contact_no.length !== 10) {
-      setToast({ type: 'error', msg: `Contact No must be 10 digits${getSection('contact_no')}` });
-      return;
+    if (activeSectionFields.includes('contact_no') && form.contact_no) {
+      if (form.contact_no.length !== 10) {
+        setToast({ type: 'error', msg: `Contact No must be 10 digits${getSection('contact_no')}` });
+        return;
+      }
+      if (!/^[6-9]/.test(form.contact_no)) {
+        setToast({ type: 'error', msg: `Contact No must start with 6, 7, 8, or 9${getSection('contact_no')}` });
+        return;
+      }
+    }
+    if (activeSectionFields.includes('emergency_contact_no') && form.emergency_contact_no) {
+      if (form.emergency_contact_no.length !== 10) {
+        setToast({ type: 'error', msg: `Emergency Contact No must be 10 digits${getSection('emergency_contact_no')}` });
+        return;
+      }
+      if (!/^[6-9]/.test(form.emergency_contact_no)) {
+        setToast({ type: 'error', msg: `Emergency Contact No must start with 6, 7, 8, or 9${getSection('emergency_contact_no')}` });
+        return;
+      }
     }
     if (activeSectionFields.includes('aadhar_number') && form.aadhar_number && form.aadhar_number.length !== 12) {
       setToast({ type: 'error', msg: `Aadhar Number must be 12 digits${getSection('aadhar_number')}` });

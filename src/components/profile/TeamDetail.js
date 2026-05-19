@@ -173,7 +173,6 @@ export default function TeamDetail() {
                           OFFICIAL STATUS: ONLINE
                         </div>
                       </div>
-                      <div style={{ fontSize: '20px', color: '#3863a8' }}>→</div>
                     </div>
                   );
                 })()

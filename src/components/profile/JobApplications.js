@@ -411,30 +411,6 @@ export default function JobApplications() {
               <Plus size={winWidth < 768 ? 16 : 20} strokeWidth={3} />
               Add
             </button>
-            <button
-              onClick={() => navigate('/job-postings')}
-              style={{ 
-                flex: winWidth < 640 ? 1 : 'none',
-                background: '#ffffff', 
-                color: '#1e293b', 
-                border: '1.5px solid #e2e8f0', 
-                padding: winWidth < 768 ? '10px 16px' : '14px 28px', 
-                borderRadius: '14px', 
-                fontWeight: '800', 
-                fontSize: winWidth < 768 ? '12px' : '14px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                gap: '6px', 
-                transition: '0.3s all' 
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-            >
-              <ClipboardList size={winWidth < 768 ? 16 : 20} />
-              Vacancy
-            </button>
           </div>
         </div>
 

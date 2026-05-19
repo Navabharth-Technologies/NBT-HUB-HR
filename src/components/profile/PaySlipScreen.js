@@ -856,13 +856,13 @@ export default function PaySlipScreen() {
             {/* Add Payslip Modal */}
             {showAddForm && (
                 <div style={modalOverlayStyle}>
-                    <div style={{ ...modalContentStyle, maxWidth: winWidth < 768 ? '100%' : '1100px', padding: winWidth < 768 ? '24px' : '40px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
+                    <div style={{ ...modalContentStyle, maxWidth: winWidth < 768 ? '100%' : '920px', padding: winWidth < 768 ? '24px' : '30px 40px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px', flexShrink: 0 }}>
                             <h2 style={{ margin: 0, fontSize: winWidth < 768 ? '18px' : '20px', fontWeight: '900', color: '#0f172a' }}>Add New Payslip</h2>
                             <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
                         </div>
 
-                        <form onSubmit={handleAddPayslip}>
+                        <form onSubmit={handleAddPayslip} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                             {isFormFetching && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(30, 64, 175, 0.05)', color: '#1e40af', padding: '12px 16px', borderRadius: '12px', marginBottom: '24px', fontWeight: '850', fontSize: '13px', gridColumn: 'span 3' }}>
                                     <svg className="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
@@ -961,7 +961,7 @@ export default function PaySlipScreen() {
                                 <FormField label="LOP" name="lop" type="number" value={formData.lop} onChange={handleInputChange} />
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', gap: '12px', marginTop: '32px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '24px' }}>
+                            <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', gap: '12px', marginTop: '20px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '16px', flexShrink: 0 }}>
                                 <button type="button" onClick={() => setShowAddForm(false)} style={{ ...cancelButtonStyle, width: winWidth < 480 ? '100%' : 'auto' }}>Cancel</button>
                                 <button type="submit" style={{ ...submitButtonStyle, width: winWidth < 480 ? '100%' : 'auto' }}>Save Entry</button>
                             </div>
@@ -1144,7 +1144,7 @@ const formGridStyle = {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '20px 24px',
-    maxHeight: '65vh',
+    maxHeight: '48vh',
     overflowY: 'auto',
     paddingRight: '12px',
     paddingBottom: '20px'
@@ -1168,13 +1168,16 @@ const modalOverlayStyle = {
 const modalContentStyle = {
     background: 'white',
     width: '100%',
-    maxWidth: '1100px',
+    maxWidth: '920px',
     borderRadius: '32px',
     padding: '40px',
     boxShadow: '0 40px 100px -20px rgba(15, 23, 42, 0.3)',
     animation: 'modal-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
     position: 'relative',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    maxHeight: '85vh',
+    display: 'flex',
+    flexDirection: 'column'
 };
 
 const submitButtonStyle = {

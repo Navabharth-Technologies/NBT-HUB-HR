@@ -43,8 +43,13 @@ export default function TeamsModule() {
   };
 
   return (
-    <div className="hr-dashboard-container">
+    <div className="hr-dashboard-container" style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
+      
+      <style>{`
+        .team-card { transition: all 0.2s ease-in-out; }
+        .team-card:hover { border-color: #3b82f6 !important; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important; transform: translateY(-4px); }
+      `}</style>
       
       <main className="dashboard-content" style={{ padding: winWidth < 768 ? '100px 16px 120px' : '120px 26px 120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header" style={{ marginBottom: '30px' }}>
@@ -156,36 +161,14 @@ export default function TeamsModule() {
                     {team.description || `Active operations team for ${team.name}.`}
                   </p>
 
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: winWidth < 480 ? '16px' : '24px' }}>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
                     <div style={{ flex: 1, background: '#f8fafc', padding: winWidth < 480 ? '12px' : '16px', borderRadius: '16px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
                       <div style={{ fontSize: winWidth < 480 ? '18px' : '24px', fontWeight: '900', color: '#1e293b' }}>{team.members || 0}</div>
                       <div style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>MEMBERS</div>
                     </div>
-                    <div style={{ flex: 1, background: '#f8fafc', padding: winWidth < 480 ? '12px' : '16px', borderRadius: '16px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: winWidth < 480 ? '18px' : '24px', fontWeight: '900', color: '#1e293b' }}>{team.pending || 0}</div>
-                      <div style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>TASKS</div>
-                    </div>
                   </div>
 
-                  <div style={{ marginTop: 'auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>PROGRESS</span>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b' }}>{team.progress || 0}%</span>
-                    </div>
-                    <div style={{ height: winWidth < 480 ? '6px' : '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${team.progress || 0}%`, height: '100%', background: '#3b82f6', borderRadius: '4px' }}></div>
-                    </div>
-                  </div>
 
-                  <div style={{ textAlign: 'right', marginTop: winWidth < 480 ? '16px' : '24px' }}>
-                    <button style={{
-                      background: 'none', border: 'none', color: '#3863a8', 
-                      fontSize: '12px', fontWeight: '800', cursor: 'pointer', 
-                      display: 'inline-flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      View Team Roster →
-                    </button>
-                  </div>
                 </div>
 
               </div>

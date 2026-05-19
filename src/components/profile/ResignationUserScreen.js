@@ -450,7 +450,7 @@ export default function ResignationUserScreen() {
                 {selectedRequest && (
                     <div
                         className="no-scrollbar"
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: winWidth < 768 ? 'center' : 'flex-start', justifyContent: 'center', padding: winWidth < 768 ? '10px' : '100px 20px 40px', overflowY: 'auto' }}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: winWidth < 768 ? '10px 10px 100px' : '50px 20px 140px', overflowY: 'auto' }}
                         onClick={() => setSelectedRequest(null)}
                     >
                         <div
@@ -462,8 +462,10 @@ export default function ResignationUserScreen() {
                                 position: 'relative',
                                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
                                 animation: 'modalSlideUp 0.3s ease-out',
-                                maxHeight: winWidth < 768 ? '90vh' : 'auto',
-                                overflowY: winWidth < 768 ? 'auto' : 'visible'
+                                maxHeight: '80vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden'
                             }}
                             onClick={e => e.stopPropagation()}
                         >
@@ -473,15 +475,15 @@ export default function ResignationUserScreen() {
                             >
                                 <X size={18} color="#64748b" />
                             </button>
-                            <div style={{ height: '4px', background: 'linear-gradient(90deg, #ef4444, #fca5a5)' }} />
-                            <div style={{ padding: winWidth < 768 ? '30px 20px' : '50px' }}>
-                                <div style={{ display: 'flex', flexDirection: winWidth < 500 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 500 ? 'flex-start' : 'flex-start', marginBottom: winWidth < 768 ? '25px' : '40px', paddingRight: winWidth < 768 ? '0' : '20px', gap: winWidth < 500 ? '15px' : '0' }}>
+                            <div style={{ height: '4px', background: 'linear-gradient(90deg, #ef4444, #fca5a5)', flexShrink: 0 }} />
+                            <div style={{ padding: winWidth < 768 ? '20px' : '30px 40px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
+                                <div style={{ display: 'flex', flexDirection: winWidth < 500 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 500 ? 'flex-start' : 'flex-start', marginBottom: winWidth < 768 ? '20px' : '24px', paddingRight: winWidth < 768 ? '0' : '20px', gap: winWidth < 500 ? '15px' : '0', flexShrink: 0 }}>
                                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                        <div style={{ width: winWidth < 768 ? '40px' : '48px', height: winWidth < 768 ? '40px' : '48px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <LogOut color="#ef4444" size={winWidth < 768 ? 20 : 24} />
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <LogOut color="#ef4444" size={20} />
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: winWidth < 768 ? '16px' : '18px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.5px' }}>Resignation Letter</div>
+                                            <div style={{ fontSize: winWidth < 768 ? '16px' : '17px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.5px' }}>Resignation Letter</div>
                                             <div style={{ fontSize: winWidth < 768 ? '11px' : '12px', color: '#64748b', fontWeight: '600' }}>Formal Exit Documentation</div>
                                         </div>
                                     </div>
@@ -496,8 +498,8 @@ export default function ResignationUserScreen() {
                                         </span>
                                     </div>
                                 </div>
-                                <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '15px' : '15px 20px', borderRadius: '20px', border: '1px dashed #e2e8f0' }}>
-                                    <div style={{ marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0' }}>
+                                <div style={{ background: '#f8fafc', padding: '15px 20px', borderRadius: '20px', border: '1px dashed #e2e8f0' }}>
+                                    <div style={{ marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '10px', marginBottom: '6px' }}>
                                             <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8' }}>TO:</span>
                                             <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>HR Department</span>
@@ -511,42 +513,42 @@ export default function ResignationUserScreen() {
                                             <span style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase' }}>Formal Resignation</span>
                                         </div>
                                     </div>
-                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', margin: '0 0 15px 0' }}>Dear HR Team,</p>
-                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', margin: '0 0 15px 0' }}>
+                                    <p style={{ fontSize: winWidth < 768 ? '13px' : '15px', color: '#334155', fontWeight: '500', lineHeight: '1.6', margin: '0 0 10px 0' }}>Dear HR Team,</p>
+                                    <p style={{ fontSize: winWidth < 768 ? '13px' : '15px', color: '#334155', fontWeight: '500', lineHeight: '1.6', margin: '0 0 10px 0' }}>
                                         Resigning due to&nbsp;<span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedRequest.reason || 'N/A'}</span>.
                                         LWD:&nbsp;<span style={{ fontWeight: '900', color: '#ef4444' }}>{selectedRequest.last_working_day ? new Date(selectedRequest.last_working_day).toLocaleDateString() : 'N/A'}</span>.
                                     </p>
                                     {selectedRequest.letter_content && (
-                                        <div style={{ marginTop: '15px' }}>
-                                            <div style={{ background: 'white', padding: winWidth < 768 ? '15px' : '25px', borderRadius: '18px', border: '1.5px solid #e2e8f0', fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+                                        <div style={{ marginTop: '10px' }}>
+                                            <div style={{ background: 'white', padding: winWidth < 768 ? '12px' : '16px 20px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: winWidth < 768 ? '13px' : '15px', color: '#334155', fontWeight: '500', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                                                 {selectedRequest.letter_content}
                                             </div>
                                         </div>
                                     )}
-                                    <p style={{ fontSize: winWidth < 768 ? '14px' : '18px', color: '#334155', fontWeight: '500', margin: '20px 0 0 0' }}>
+                                    <p style={{ fontSize: winWidth < 768 ? '13px' : '15px', color: '#334155', fontWeight: '500', margin: '15px 0 0 0' }}>
                                         Sincerely,<br />
-                                        <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '16px' : '20px' }}>{selectedRequest.employee_name}</span>
+                                        <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '14px' : '16px' }}>{selectedRequest.employee_name}</span>
                                     </p>
                                         <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                                 <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Pending')}
-                                                    style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#fffbeb', color: '#d97706', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fffbeb', color: '#d97706', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
                                                 >
                                                     Wait
                                                 </button>
                                                 <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Rejected')}
-                                                    style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#fef2f2', color: '#dc2626', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fef2f2', color: '#dc2626', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
                                                 >
                                                     Reject
                                                 </button>
                                                 <button
                                                     disabled={updating}
                                                     onClick={() => handleStatusUpdate(selectedRequest.id, 'Approved')}
-                                                    style={{ padding: '10px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
                                                 >
                                                     {updating ? '...' : 'Approved'}
                                                 </button>

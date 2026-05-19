@@ -528,21 +528,6 @@ export default function HRDashboard() {
                 <ChevronRight size={32} color="#3863a8" />
               </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
-               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '3px solid #cbd5e1', cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                     <PartyPopper size={18} color="#ef4444" />
-                     <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b' }}>Upcoming Recognition</div>
-                  </div>
-               </div>
-               <div onClick={() => navigate('/awards')} style={{ background: '#f8fafc', padding: '15px', borderRadius: '15px', border: '3px solid #cbd5e1', cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                     <Star size={18} color="#f59e0b" />
-                     <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b' }}>Total Badges</div>
-                  </div>
-               </div>
-            </div>
           </section>
 
 

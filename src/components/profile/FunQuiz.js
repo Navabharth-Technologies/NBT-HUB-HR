@@ -767,8 +767,8 @@ const FunQuiz = ({ onBack }) => {
                 initial={{ scale: 0.9, y: 20, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)', borderRadius: '40px', padding: '45px',
-                  width: '100%', maxWidth: '550px', position: 'relative',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)', borderRadius: '32px', padding: '30px 40px',
+                  width: '100%', maxWidth: '550px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', position: 'relative',
                   boxShadow: '0 40px 80px -20px rgba(0,0,0,0.3)',
                   border: '1px solid rgba(255,255,255,0.5)'
                 }}
@@ -780,22 +780,22 @@ const FunQuiz = ({ onBack }) => {
                     setEditId(null);
                     setNewQuiz({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: '', points_reward: 10 });
                   }}
-                  style={{ position: 'absolute', top: '25px', right: '25px', background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer' }}
+                  style={{ position: 'absolute', top: '20px', right: '20px', background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer' }}
                 >✕</button>
 
-                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 20px', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }}>📝</div>
-                  <h2 style={{ fontSize: '28px', fontWeight: '1000', color: '#0B1E3F', letterSpacing: '-0.5px' }}>{isEditing ? 'Edit Quiz Question' : 'Add New Quiz Question'}</h2>
+                <div style={{ textAlign: 'center', marginBottom: '20px', flexShrink: 0 }}>
+                  <div style={{ width: '60px', height: '60px', borderRadius: '20px', backgroundColor: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', margin: '0 auto 12px', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }}>📝</div>
+                  <h2 style={{ fontSize: '24px', fontWeight: '1000', color: '#0B1E3F', letterSpacing: '-0.5px', margin: 0 }}>{isEditing ? 'Edit Quiz Question' : 'Add New Quiz Question'}</h2>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', paddingRight: '10px', flex: 1 }} className="custom-scroll">
                   <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Question Text</label>
+                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Question Text</label>
                     <textarea
                       value={newQuiz.question}
                       onChange={(e) => setNewQuiz({ ...newQuiz, question: e.target.value })}
                       placeholder="Enter the quiz question..."
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', outline: 'none', minHeight: '80px' }}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', outline: 'none', minHeight: '60px', resize: 'none' }}
                     />
                   </div>
 
@@ -1062,18 +1062,18 @@ const FunQuiz = ({ onBack }) => {
       <AnimatePresence>
         {feedback.show && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
             style={{
-              position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+              position: 'fixed', top: '50%', left: '50%',
               backgroundColor: feedback.type === 'success' ? '#0d676c' : '#ef4444',
-              color: 'white', padding: '16px 32px', borderRadius: '16px',
-              fontSize: '14px', fontWeight: '800', zIndex: 20000,
-              boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '10px'
+              color: 'white', padding: '20px 40px', borderRadius: '20px',
+              fontSize: '16px', fontWeight: '850', zIndex: 30000,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '12px'
             }}
           >
-            {feedback.type === 'success' ? <CheckCircle size={18} /> : <XIcon size={18} />}
+            {feedback.type === 'success' ? <CheckCircle size={20} /> : <XIcon size={20} />}
             {feedback.msg}
           </motion.div>
         )}
