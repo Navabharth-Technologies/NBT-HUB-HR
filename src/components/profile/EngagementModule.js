@@ -575,13 +575,7 @@ export default function EngagementModule() {
                                                             <div style={{ flex: 1, padding: '15px', background: 'white', borderRadius: '20px', border: '1.5px solid #f1f5f9', position: 'relative' }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                                                                     <span style={{ fontSize: '12px', fontWeight: '1000', color: '#0B1E3F' }}>{cUser}</span>
-                                                                    {isMyComment && (
-                                                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                                                            {/* Note: Edit/Delete handlers not fully implemented in HR EngagementModule yet, keeping static for now or using parent scope if passed */}
-                                                                            <button style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}><Edit3 size={13} /></button>
-                                                                            <button style={{ border: 'none', background: 'none', color: '#fda4af', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
-                                                                        </div>
-                                                                    )}
+
                                                                 </div>
                                                                 <div style={{ fontSize: '13px', color: '#475569', fontWeight: '600', lineHeight: '1.5' }}>{cText}</div>
                                                             </div>

@@ -599,7 +599,7 @@ export default function AssetsManagement() {
                       type="text"
                       placeholder="Enter Name"
                       value={form.employee_name}
-                      onChange={(e) => setForm({ ...form, employee_name: e.target.value })}
+                      onChange={(e) => setForm({ ...form, employee_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                       style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
@@ -609,14 +609,14 @@ export default function AssetsManagement() {
                       type="text"
                       placeholder={editModal.employee.is_new ? "Auto/Manual" : "System ID"}
                       value={form.employee_id}
-                      onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                      onChange={(e) => setForm({ ...form, employee_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
                       style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>DESIGNATION</label>
-                  <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
+                  <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div>

@@ -401,27 +401,15 @@ export default function HRDashboard() {
               gap: '12px'
             }}>
               <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" /> Leave/Attendance Management</h2>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  className="btn-ghost" 
-                  style={{ fontSize: '13px', padding: '8px 16px', flex: 1, whiteSpace: 'nowrap' }}
-                  onClick={() => navigate('/attendance')}
-                >
-                  Attendance
-                </button>
-                <button 
-                  className="btn-ghost" 
-                  style={{ fontSize: '13px', padding: '8px 16px', flex: 1, whiteSpace: 'nowrap' }}
-                  onClick={() => navigate('/leaves')}
-                >
-                  Leaves
-                </button>
-              </div>
+
             </div>
 
             {/* Attendance Quick Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginBottom: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '15px', borderRadius: '20px', border: '1px solid #dcfce7', textAlign: 'center' }}>
+              <div 
+                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
+                style={{ background: '#f0fdf4', padding: '15px', borderRadius: '20px', border: '1px solid #dcfce7', textAlign: 'center', cursor: 'pointer' }}
+              >
                 <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Present</div>
                 <div style={{ fontSize: '24px', fontWeight: '950', color: '#166534' }}>{attendanceStats.present}</div>
               </div>

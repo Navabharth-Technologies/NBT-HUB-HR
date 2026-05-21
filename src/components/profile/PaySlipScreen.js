@@ -233,7 +233,7 @@ export default function PaySlipScreen() {
                 const res = await fetch(API_ENDPOINTS.USERS, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
-                 if (res.ok) {
+                if (res.ok) {
                     const data = await res.json();
                     const sorted = [...data].sort((a, b) => {
                         const idA = parseInt(String(a.employee_id || a.id || '').replace(/[^\d]/g, ''), 10) || 0;
@@ -377,13 +377,13 @@ export default function PaySlipScreen() {
         }
         try {
             setIsFilterLoading(true);
-            
+
             // 1. Fetch main summary details
             const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(filterData.employee_id, filterData.month, filterData.year);
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
-            
+
             let mapped = {};
             if (res.ok) {
                 const data = await res.json();
@@ -428,7 +428,7 @@ export default function PaySlipScreen() {
                 `${BASE_URL}/api/leave-stats?month=${filterData.month}&year=${filterData.year}`,
                 `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${filterData.month}&year=${filterData.year}`
             ];
-            
+
             for (const ep of endpointsToTry) {
                 try {
                     const statsRes = await fetch(ep, {
@@ -473,7 +473,7 @@ export default function PaySlipScreen() {
             };
 
             setPreviewData(finalPreview);
-            
+
             setFormData(prev => ({
                 ...prev,
                 ...finalPreview
@@ -494,13 +494,13 @@ export default function PaySlipScreen() {
         }
         try {
             setIsFormFetching(true);
-            
+
             // 1. Fetch main summary details
             const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
-            
+
             let mapped = {};
             if (res.ok) {
                 const data = await res.json();
@@ -515,7 +515,7 @@ export default function PaySlipScreen() {
                 `${BASE_URL}/api/leave-stats?month=${formData.month}&year=${formData.year}`,
                 `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${formData.month}&year=${formData.year}`
             ];
-            
+
             for (const ep of endpointsToTry) {
                 try {
                     const statsRes = await fetch(ep, {
@@ -677,7 +677,6 @@ export default function PaySlipScreen() {
                                 {showExportOptions && (
                                     <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '8px', width: '220px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 1000, animation: 'dropdown-fade-in 0.2s ease-out' }}>
                                         <button onClick={handleDownloadPDF} style={dropdownItemStyle}><FileText size={16} color="#ef4444" /> PDF</button>
-                                        <button onClick={handleDownloadExcel} style={dropdownItemStyle}><FileSpreadsheet size={16} color="#22c55e" /> Excel</button>
                                         <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
                                         <button onClick={handlePrint} style={dropdownItemStyle}><Printer size={16} color="#64748b" /> Print</button>
                                     </div>
@@ -709,21 +708,21 @@ export default function PaySlipScreen() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1.5px solid #e2e8f0' }}>
                                 <div style={{ padding: '12px 15px', borderRight: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>EMPCODE</span>
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.employee_id || '202516'}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.employee_id || ''}</span>
                                 </div>
                                 <div style={{ padding: '12px 15px', display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>DEPARTMENT</span>
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.department || 'Information Technology'}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.department || ''}</span>
                                 </div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                                 <div style={{ padding: '12px 15px', borderRight: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>EMP. NAME</span>
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.emp_name || 'Sahana Nv'}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.emp_name || ''}</span>
                                 </div>
                                 <div style={{ padding: '12px 15px', display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>DESIGNATION</span>
-                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.designation || 'Lead Software Engineer'}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{previewData?.designation || ''}</span>
                                 </div>
                             </div>
                         </div>
@@ -768,7 +767,7 @@ export default function PaySlipScreen() {
                                 <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: '950' }}>EARNING</div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                     {[
-                                        { l: 'Basic', v: previewData?.basic_salary || '25,000' },
+                                        { l: 'Basic', v: previewData?.basic_salary || '' },
                                         { l: 'HRA', v: previewData?.hra || '0' },
                                         { l: 'Conveyance', v: previewData?.conveyance || '0' },
                                         { l: 'Special Allowance', v: previewData?.special_allowance || '0' }
@@ -781,7 +780,7 @@ export default function PaySlipScreen() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', marginTop: 'auto', borderTop: '2px solid #e2e8f0', fontWeight: '950', background: '#f8fafc' }}>
                                     <span>Total Earning</span>
-                                    <span>{previewData?.total_earnings || '30,000'}</span>
+                                    <span>{previewData?.total_earnings || ''}</span>
                                 </div>
                             </div>
 
@@ -810,9 +809,9 @@ export default function PaySlipScreen() {
                                 <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: '950' }}>DEDUCTION</div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                     {[
-                                        { l: 'PF', v: previewData?.pf_deduction || '1,000' },
-                                        { l: 'ESI', v: previewData?.esi_deduction || '500' },
-                                        { l: 'PT', v: previewData?.pt_deduction || '100' },
+                                        { l: 'PF', v: previewData?.pf_deduction || '0' },
+                                        { l: 'ESI', v: previewData?.esi_deduction || '0' },
+                                        { l: 'PT', v: previewData?.pt_deduction || '0' },
                                         { l: 'LWF', v: previewData?.lwf_deduction || '0' },
                                         { l: 'Income Tax', v: previewData?.income_tax || '0' },
                                         { l: 'LOP Deduction', v: previewData?.lop_deduction || '0' }
@@ -825,11 +824,11 @@ export default function PaySlipScreen() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderTop: '2px solid #e2e8f0', fontWeight: '950', background: '#f8fafc' }}>
                                     <span>Total Deduct.</span>
-                                    <span>{previewData?.total_deductions || '1,600'}</span>
+                                    <span>{previewData?.total_deductions || ''}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderTop: '1px solid #e2e8f0', fontWeight: '950' }}>
                                     <span>Net Payable</span>
-                                    <span style={{ color: '#16a34a', fontWeight: '950', fontSize: '13px' }}>{previewData?.net_payable || '28,400'}</span>
+                                    <span style={{ color: '#16a34a', fontWeight: '950', fontSize: '13px' }}>{previewData?.net_payable || ''}</span>
                                 </div>
                             </div>
                         </div>
@@ -970,7 +969,7 @@ export default function PaySlipScreen() {
                 </div>
             )}
 
-             <div className="no-print">
+            <div className="no-print">
                 <AppFooter />
             </div>
 

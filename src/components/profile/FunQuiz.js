@@ -22,6 +22,7 @@ const FunQuiz = ({ onBack }) => {
   const [submissionFeedback, setSubmissionFeedback] = useState({ show: false, points: 0 });
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [quizActive, setQuizActive] = useState(false);
+  const [customAlert, setCustomAlert] = useState({ show: false, message: '' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newQuiz, setNewQuiz] = useState({
@@ -34,6 +35,9 @@ const FunQuiz = ({ onBack }) => {
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, message: '', onConfirm: null });
+
+  const [existingScore, setExistingScore] = useState(0);
 
   const showSuccessState = (pts) => {
     setSubmissionFeedback({ show: true, points: pts });
@@ -62,19 +66,19 @@ const FunQuiz = ({ onBack }) => {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data || []);
 
-        const mapped = list.filter(i => i !== null).map(item => ({
-          id: item.id,
-          question: item.question,
+        const mapped = list.filter(i => i !== null).map(q => ({
+          id: q.id,
+          question: q.question,
           options: [
-            { letter: 'A', text: item.option_a },
-            { letter: 'B', text: item.option_b },
-            { letter: 'C', text: item.option_c },
-            { letter: 'D', text: item.option_d }
+            { letter: 'A', text: q.option_a },
+            { letter: 'B', text: q.option_b },
+            { letter: 'C', text: q.option_c },
+            { letter: 'D', text: q.option_d }
           ],
-          points_reward: item.points_reward,
-          has_answered: item.has_answered || false,
-          previous_result: item.previous_result ? (item.previous_result === true || item.previous_result === 'correct' ? 'correct' : 'wrong') : null,
-          correct_answer: item.correct_answer || null,
+          points_reward: q.points_reward,
+          has_answered: q.has_answered || false,
+          previous_result: q.previous_result ? (q.previous_result === true || q.previous_result === 'correct' ? 'correct' : 'wrong') : null,
+          correct_answer: q.correct_answer || null,
           user_selected_letter: null
         }));
         setQuestions(mapped);
@@ -107,7 +111,63 @@ const FunQuiz = ({ onBack }) => {
         ...(Array.isArray(subData) ? subData : (subData.data || [])).map(u => ({ id: u.employee_id || u.id, name: u.employee_name || u.name }))
       ];
 
-      const scoreList = Array.isArray(scoreData) ? scoreData : (scoreData.data || []);
+      let scoreList = Array.isArray(scoreData) ? scoreData : (scoreData.data || []);
+
+      // Local Cache & Merge Strategy to prevent historical score loss when quiz is deleted
+      try {
+        let cachedQuizScores = [];
+        const localData = localStorage.getItem('nbt_historical_quiz_scores');
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          if (Array.isArray(parsed)) {
+            cachedQuizScores = parsed;
+          }
+        }
+
+        const mergedMap = new Map();
+        // 1. Load historical cache first
+        cachedQuizScores.forEach(item => {
+          if (item) {
+            const empId = item.employee_id || item.user_id || item.userId || item.id || '';
+            const score = Number(item.quiz_score || item.score || item.total_score || item.points || 0);
+            const qId = item.quiz_id || item.quizId || '';
+            const date = item.created_at || item.completion_date || item.date || '';
+            const datePart = (date || '').split('T')[0];
+            const uniqueKey = `${empId}-${qId || 'default'}-${score}-${datePart}`;
+            mergedMap.set(uniqueKey, item);
+          }
+        });
+
+        // 2. Overlay new active quiz scores
+        scoreList.forEach(item => {
+          if (item) {
+            const empId = item.employee_id || item.user_id || item.userId || item.id || '';
+            const score = Number(item.quiz_score || item.score || item.total_score || item.points || 0);
+            const qId = item.quiz_id || item.quizId || '';
+            const date = item.created_at || item.completion_date || item.date || '';
+            const datePart = (date || '').split('T')[0];
+            const uniqueKey = `${empId}-${qId || 'default'}-${score}-${datePart}`;
+            mergedMap.set(uniqueKey, item);
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        localStorage.setItem('nbt_historical_quiz_scores', JSON.stringify(mergedList));
+        scoreList = mergedList;
+      } catch (cacheErr) {
+        console.error("Local quiz score caching error:", cacheErr);
+      }
+
+      // Calculate and store current user's existing total score
+      const uidStr = String(uid);
+      const myName = user?.employee_name || user?.name;
+      const myScores = scoreList.filter(s => {
+        const targetId = String(s.employee_id || s.user_id || s.id || '');
+        const targetName = s.employee_name || s.name;
+        return (targetId && targetId === uidStr) || (myName && targetName && targetName.toLowerCase() === myName.toLowerCase());
+      });
+      const myExistingScore = myScores.reduce((sum, s) => sum + Number(s.quiz_score || s.score || s.total_score || s.points || 0), 0);
+      setExistingScore(myExistingScore);
 
       // 2. Map and Deduplicate precise quiz scores to exact employee name strings
       const deduplicatedMap = new Map();
@@ -117,10 +177,10 @@ const FunQuiz = ({ onBack }) => {
         const userInfo = userList.find(u => String(u.id) === String(targetId));
 
         const name = userInfo?.name || s.employee_name || s.name || `Employee ${targetId || 'Resource'}`;
-        const score = Number(s.total_score || s.points || s.quiz_score || s.score || 0);
+        const score = Number(s.quiz_score || s.score || s.total_score || s.points || 0);
 
         if (deduplicatedMap.has(name)) {
-          deduplicatedMap.set(name, Math.max(deduplicatedMap.get(name), score));
+          deduplicatedMap.set(name, deduplicatedMap.get(name) + score);
         } else {
           deduplicatedMap.set(name, score);
         }
@@ -200,7 +260,14 @@ const FunQuiz = ({ onBack }) => {
 
         // Brief visual confirmation then redirect
         showSuccessState(totalPoints);
-        setTimeout(() => setQuizActive(false), 1500);
+        setTimeout(() => {
+          setQuizActive(false);
+          setCustomAlert({ show: true, message: "Quiz submitted successfully! 🎉" });
+        }, 1500);
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        setCustomAlert({ show: true, message: "Submission failed: The server rejected the request. Please check the backend field names." });
+        console.error("Submission failed:", errData);
       }
     } catch (err) {
       console.error("Batch submit failed:", err);
@@ -209,8 +276,7 @@ const FunQuiz = ({ onBack }) => {
     }
   };
 
-  const handleDeleteQuestion = async (qId) => {
-    if (!qId || !window.confirm('Are you sure you want to delete this quiz question?')) return;
+  const performDeleteQuestion = async (qId) => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${BASE_URL}/api/fun-quizzes/${qId}`, {
@@ -231,10 +297,16 @@ const FunQuiz = ({ onBack }) => {
     }
   };
 
-  const handleDeleteMultipleQuestions = async () => {
-    if (selectedQuestionIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedQuestionIds.length} question(s)? This action cannot be undone.`)) return;
-    
+  const handleDeleteQuestion = (qId) => {
+    if (!qId) return;
+    setDeleteConfirm({
+      show: true,
+      message: 'Are you sure you want to delete this quiz question?',
+      onConfirm: () => performDeleteQuestion(qId)
+    });
+  };
+
+  const performDeleteMultipleQuestions = async () => {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem('token');
@@ -263,6 +335,15 @@ const FunQuiz = ({ onBack }) => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteMultipleQuestions = () => {
+    if (selectedQuestionIds.length === 0) return;
+    setDeleteConfirm({
+      show: true,
+      message: `Are you sure you want to delete ${selectedQuestionIds.length} question(s)? This action cannot be undone.`,
+      onConfirm: () => performDeleteMultipleQuestions()
+    });
   };
 
   const toggleSelectAll = () => {
@@ -387,6 +468,51 @@ const FunQuiz = ({ onBack }) => {
                 <p style={{ fontSize: '18px', fontWeight: '800', color: '#15803d', margin: 0 }}>+{submissionFeedback.points} REP Points Stored</p>
                 <div style={{ marginTop: '20px', fontSize: '14px', color: '#64748b', fontWeight: '700' }}>Returning to dashboard...</div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {customAlert.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
+                zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '20px'
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                style={{
+                  backgroundColor: 'white', borderRadius: '24px', padding: '30px',
+                  width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', textAlign: 'center',
+                  boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+                  border: '1px solid #cbd5e1'
+                }}
+              >
+                <div style={{ width: '56px', height: '56px', borderRadius: '18px', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', marginBottom: '16px' }}>🎉</div>
+                <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0F172A', margin: '0 0 10px 0' }}>Success</h3>
+                <p style={{ fontSize: '14px', fontWeight: '700', color: '#64748b', margin: '0 0 24px 0', lineHeight: 1.5 }}>{customAlert.message}</p>
+                <button
+                  onClick={() => setCustomAlert({ show: false, message: '' })}
+                  style={{
+                    backgroundColor: '#10b981', color: 'white', border: 'none', padding: '12px 36px',
+                    borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)', width: '100%', transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#059669'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#10b981'}
+                >
+                  OK
+                </button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -795,7 +921,7 @@ const FunQuiz = ({ onBack }) => {
                       value={newQuiz.question}
                       onChange={(e) => setNewQuiz({ ...newQuiz, question: e.target.value })}
                       placeholder="Enter the quiz question..."
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', outline: 'none', minHeight: '60px', resize: 'none' }}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid black', fontSize: '14px', outline: 'none', minHeight: '60px', resize: 'none' }}
                     />
                   </div>
 
@@ -807,7 +933,7 @@ const FunQuiz = ({ onBack }) => {
                           type="text"
                           value={newQuiz[`option_${opt}`]}
                           onChange={(e) => setNewQuiz({ ...newQuiz, [`option_${opt}`]: e.target.value })}
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', outline: 'none' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid black', fontSize: '13px', outline: 'none' }}
                         />
                       </div>
                     ))}
@@ -820,7 +946,7 @@ const FunQuiz = ({ onBack }) => {
                       value={newQuiz.correct_answer}
                       onChange={(e) => setNewQuiz({ ...newQuiz, correct_answer: e.target.value })}
                       placeholder="Paste the correct option text here"
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid black', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
 
@@ -830,7 +956,7 @@ const FunQuiz = ({ onBack }) => {
                       type="number"
                       value={newQuiz.points_reward}
                       onChange={(e) => setNewQuiz({ ...newQuiz, points_reward: parseInt(e.target.value) })}
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid black', fontSize: '14px', outline: 'none' }}
                     />
                   </div>
                 </div>
@@ -1075,6 +1201,84 @@ const FunQuiz = ({ onBack }) => {
           >
             {feedback.type === 'success' ? <CheckCircle size={20} /> : <XIcon size={20} />}
             {feedback.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteConfirm.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+              backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
+              zIndex: 30005, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              style={{
+                backgroundColor: 'white', borderRadius: '32px', padding: '35px',
+                width: '100%', maxWidth: '420px', textAlign: 'center',
+                boxShadow: '0 40px 80px -20px rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.5)'
+              }}
+            >
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 20px', color: '#ef4444'
+              }}>
+                <Trash2 size={32} />
+              </div>
+              
+              <h3 style={{ fontSize: '20px', fontWeight: '1000', color: '#0B1E3F', margin: '0 0 10px 0' }}>
+                Confirm Deletion
+              </h3>
+              
+              <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '700', lineHeight: '1.6', margin: '0 0 25px 0' }}>
+                {deleteConfirm.message}
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setDeleteConfirm({ show: false, message: '', onConfirm: null })}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: '50px',
+                    border: '1.5px solid #e2e8f0', background: 'white',
+                    color: '#64748b', fontWeight: '900', fontSize: '14px',
+                    cursor: 'pointer', transition: '0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.target.style.background = '#f8fafc'; }}
+                  onMouseLeave={(e) => { e.target.style.background = 'white'; }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (deleteConfirm.onConfirm) deleteConfirm.onConfirm();
+                    setDeleteConfirm({ show: false, message: '', onConfirm: null });
+                  }}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: '50px',
+                    border: 'none', background: '#ef4444',
+                    color: 'white', fontWeight: '900', fontSize: '14px',
+                    cursor: 'pointer', transition: '0.2s',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                  }}
+                  onMouseEnter={(e) => { e.target.style.background = '#dc2626'; }}
+                  onMouseLeave={(e) => { e.target.style.background = '#ef4444'; }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

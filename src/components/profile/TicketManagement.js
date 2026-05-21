@@ -19,7 +19,7 @@ export default function TicketManagement() {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [priorityFilter, setPriorityFilter] = useState('All Priority');
   const [winWidth, setWinWidth] = useState(window.innerWidth);
-  
+
   // Action System State
   const [isManaging, setIsManaging] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -61,10 +61,10 @@ export default function TicketManagement() {
   const filteredTickets = tickets.filter(ticket => {
     const searchStr = `${ticket.ticket_number || ticket.id} ${ticket.subject} ${ticket.creatorName || ticket.name || ''} ${ticket.description} ${ticket.department || ''}`.toLowerCase();
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'All Status' || (ticket.status || '').toLowerCase() === statusFilter.toLowerCase();
     const matchesPriority = priorityFilter === 'All Priority' || (ticket.priority || '').toLowerCase() === priorityFilter.toLowerCase();
-    
+
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -104,7 +104,7 @@ export default function TicketManagement() {
     doc.setFontSize(22);
     doc.setTextColor(30, 41, 59);
     doc.text('TITAN SUPPORT HUB', 14, 20);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
     doc.text('OFFICIAL TICKET PERFORMANCE REPORT', 14, 28);
@@ -143,7 +143,7 @@ export default function TicketManagement() {
     setSubmitting(true);
     try {
       const ticketId = selectedTicket.id || selectedTicket.ticket_id || selectedTicket.ticket_number;
-      const updatePayload = { 
+      const updatePayload = {
         id: ticketId,
         ticket_id: ticketId,
         action: actionText,
@@ -152,7 +152,7 @@ export default function TicketManagement() {
       };
       const res = await fetch(`${API_ENDPOINTS.SUPPORT_TICKETS}/${encodeURIComponent(ticketId)}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user?.token}`
         },
@@ -194,7 +194,7 @@ export default function TicketManagement() {
   return (
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
-      
+
       {toast.show && (
         <div style={{
           position: 'fixed', top: '90px', left: '50%', transform: 'translateX(-50%)',
@@ -207,22 +207,22 @@ export default function TicketManagement() {
           {toast.msg}
         </div>
       )}
-      
+
       <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '70px' : '85px' }}>
-        <header style={{ 
-          marginBottom: '32px', 
-          display: 'flex', 
+        <header style={{
+          marginBottom: '32px',
+          display: 'flex',
           flexDirection: winWidth < 768 ? 'column' : 'row',
-          justifyContent: 'space-between', 
-          alignItems: winWidth < 768 ? 'flex-start' : 'flex-end', 
-          gap: '24px' 
+          justifyContent: 'space-between',
+          alignItems: winWidth < 768 ? 'flex-start' : 'flex-end',
+          gap: '24px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <button 
+            <button
               onClick={() => navigate(-1)}
-              style={{ 
-                width: '40px', height: '40px', borderRadius: '12px', background: 'white', border: '1.5px solid #e2e8f0', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: 'all 0.2s' 
+              style={{
+                width: '40px', height: '40px', borderRadius: '12px', background: 'white', border: '1.5px solid #e2e8f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: 'all 0.2s'
               }}
               onMouseOver={(e) => e.currentTarget.style.borderColor = '#3863a8'}
               onMouseOut={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
@@ -230,57 +230,56 @@ export default function TicketManagement() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '26px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Support Hub</h1>
+              <h1 style={{ fontSize: winWidth < 768 ? '26px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Ticket Management</h1>
               <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '600', lineHeight: '1.5' }}>Manage organization-wide support requests and resolutions</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto' }}>
-             <button 
-               className="btn-primary" 
-               onClick={handleExportPDF}
-               style={{ flex: 1, background: 'white', color: '#3863a8', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}
-             >
-               <Download size={16} /> Export
-             </button>
-             <button className="btn-primary" style={{ flex: 1, padding: '12px' }} onClick={() => fetchTickets()}>Refresh</button>
+            <button
+              className="btn-primary"
+              onClick={handleExportPDF}
+              style={{ flex: 1, background: 'white', color: '#3863a8', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}
+            >
+              <Download size={16} /> Export
+            </button>
           </div>
         </header>
 
         {/* Filters */}
         <div className="flex-responsive-stack" style={{ marginBottom: '32px', gap: '16px' }}>
           <div style={{ flex: 1, position: 'relative', width: '100%' }}>
-             <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
-             <input 
-               type="text" 
-               placeholder="Search tickets..."
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', outline: 'none', fontSize: '14px', boxSizing: 'border-box', transition: '0.2s', fontWeight: '600' }}
-               onFocus={(e) => e.target.style.borderColor = '#3863a8'}
-               onBlur={(e) => e.target.style.borderColor = '#eef2f6'}
-             />
+            <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
+            <input
+              type="text"
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', outline: 'none', fontSize: '14px', boxSizing: 'border-box', transition: '0.2s', fontWeight: '600' }}
+              onFocus={(e) => e.target.style.borderColor = '#3863a8'}
+              onBlur={(e) => e.target.style.borderColor = '#eef2f6'}
+            />
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto' }}>
-            <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ flex: 1, padding: '14px 16px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ flex: 1, padding: '14px 16px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
             >
-                <option>All Status</option>
-                <option value="Open">Pending</option>
-                <option>In Progress</option>
-                <option>Resolved</option>
-                <option>Closed</option>
+              <option>All Status</option>
+              <option value="Open">Pending</option>
+              <option>In Progress</option>
+              <option>Resolved</option>
+              <option>Closed</option>
             </select>
-            <select 
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                style={{ flex: 1, padding: '14px 16px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              style={{ flex: 1, padding: '14px 16px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
             >
-                <option>All Priority</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
+              <option>All Priority</option>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
             </select>
           </div>
         </div>
@@ -296,16 +295,16 @@ export default function TicketManagement() {
                   const priority = getPriorityStyle(ticket.priority);
                   const createdAt = Array.isArray(ticket.created_at) ? ticket.created_at[0] : ticket.created_at;
                   const requesterName = ticket.creatorName || ticket.name || ticket.user_name || 'Anonymous';
-                  
+
                   return (
-                    <motion.div 
+                    <motion.div
                       key={ticket.id || index}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      style={{ 
-                        background: 'white', 
-                        padding: '24px', 
-                        borderRadius: '24px', 
+                      style={{
+                        background: 'white',
+                        padding: '24px',
+                        borderRadius: '24px',
                         border: '1.5px solid #f1f5f9',
                         boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
                         display: 'flex',
@@ -317,7 +316,7 @@ export default function TicketManagement() {
                         <span style={{ fontSize: '12px', fontWeight: '800', color: '#3863a8', backgroundColor: '#f0f4ff', padding: '4px 12px', borderRadius: '8px' }}>
                           #{ticket.ticket_number || ticket.id || index + 1}
                         </span>
-                        <span style={{ 
+                        <span style={{
                           fontSize: '10px', fontWeight: '950', padding: '6px 12px', borderRadius: '8px', textTransform: 'uppercase', letterSpacing: '0.5px',
                           backgroundColor: status.bg, color: status.text, border: `1px solid ${status.border}`, display: 'inline-flex', alignItems: 'center', gap: '6px'
                         }}>
@@ -343,15 +342,15 @@ export default function TicketManagement() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
                           <div style={{ fontSize: '11px', fontWeight: '900', color: priority.color, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: priority.color }}></span>
-                             {priority.label}
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: priority.color }}></span>
+                            {priority.label}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontWeight: '700', fontSize: '12px' }}>
                             <Clock size={12} />
                             {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
                           </div>
                         </div>
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedTicket(ticket);
                             setActionText(ticket.action || '');
@@ -367,9 +366,9 @@ export default function TicketManagement() {
                 })
               ) : (
                 <div style={{ textAlign: 'center', padding: '60px', background: 'white', borderRadius: '24px', border: '2px dashed #f1f5f9' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '20px' }}>🎫</div>
-                    <h3 style={{ color: '#1e293b', marginBottom: '8px' }}>No Tickets Found</h3>
-                    <p style={{ color: '#64748b' }}>Awaiting new support requests...</p>
+                  <div style={{ fontSize: '40px', marginBottom: '20px' }}>🎫</div>
+                  <h3 style={{ color: '#1e293b', marginBottom: '8px' }}>No Tickets Found</h3>
+                  <p style={{ color: '#64748b' }}>Awaiting new support requests...</p>
                 </div>
               )}
             </div>
@@ -396,7 +395,7 @@ export default function TicketManagement() {
                       const priority = getPriorityStyle(ticket.priority);
                       const createdAt = Array.isArray(ticket.created_at) ? ticket.created_at[0] : ticket.created_at;
                       const requesterName = ticket.creatorName || ticket.name || ticket.user_name || 'Anonymous';
-                      
+
                       return (
                         <tr key={ticket.id || index} style={{ borderBottom: '1.5px solid #f8fafc', transition: '0.2s' }}>
                           <td style={{ padding: '20px 25px' }}>
@@ -418,15 +417,15 @@ export default function TicketManagement() {
                           </td>
                           <td style={{ padding: '20px 25px' }}>
                             <div style={{ fontSize: '11px', fontWeight: '900', color: priority.color, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: priority.color }}></span>
-                               {priority.label}
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: priority.color }}></span>
+                              {priority.label}
                             </div>
                           </td>
                           <td style={{ padding: '20px 25px', color: '#64748b', fontWeight: '600', fontSize: '12px' }}>
                             {createdAt ? new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
                           </td>
                           <td style={{ padding: '20px 25px' }}>
-                            <span style={{ 
+                            <span style={{
                               fontSize: '10px', fontWeight: '900', padding: '6px 12px', borderRadius: '8px', textTransform: 'uppercase', letterSpacing: '0.5px',
                               backgroundColor: status.bg, color: status.text, border: `1px solid ${status.border}`, display: 'inline-flex', alignItems: 'center', gap: '6px'
                             }}>
@@ -434,8 +433,8 @@ export default function TicketManagement() {
                             </span>
                           </td>
                           <td style={{ padding: '20px 25px' }}>
-                            <button 
-                              className="btn-ghost" 
+                            <button
+                              className="btn-ghost"
                               style={{ color: '#3863a8', fontWeight: '800', fontSize: '12px', padding: '6px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px' }}
                               onClick={() => {
                                 setSelectedTicket(ticket);
@@ -443,7 +442,7 @@ export default function TicketManagement() {
                                 setIsManaging(true);
                               }}
                             >
-                               Manage
+                              Manage
                             </button>
                           </td>
                         </tr>
@@ -452,9 +451,9 @@ export default function TicketManagement() {
                   ) : (
                     <tr>
                       <td colSpan="7" style={{ textAlign: 'center', padding: '100px', backgroundColor: '#fcfcfd' }}>
-                          <div style={{ fontSize: '40px', marginBottom: '20px' }}>🎫</div>
-                          <h3 style={{ color: '#1e293b', marginBottom: '8px' }}>No Tickets Found</h3>
-                          <p style={{ color: '#64748b' }}>Awaiting new support requests...</p>
+                        <div style={{ fontSize: '40px', marginBottom: '20px' }}>🎫</div>
+                        <h3 style={{ color: '#1e293b', marginBottom: '8px' }}>No Tickets Found</h3>
+                        <p style={{ color: '#64748b' }}>Awaiting new support requests...</p>
                       </td>
                     </tr>
                   )}
@@ -467,14 +466,14 @@ export default function TicketManagement() {
         <AnimatePresence>
           {isManaging && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
               >
-                <button 
-                  onClick={() => setIsManaging(false)} 
+                <button
+                  onClick={() => setIsManaging(false)}
                   style={{ position: 'absolute', top: '20px', right: '20px', background: '#f8fafc', border: '1px solid #f1f5f9', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: '0.2s' }}
                 >
                   <X size={18} />
@@ -493,16 +492,16 @@ export default function TicketManagement() {
                 </div>
 
                 <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '18px', marginBottom: '24px', border: '1px solid #f1f5f9' }}>
-                   <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Original Request</div>
-                   <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>{selectedTicket?.subject}</div>
-                   <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5' }}>{selectedTicket?.description}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Original Request</div>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>{selectedTicket?.subject}</div>
+                  <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5' }}>{selectedTicket?.description}</div>
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#1e293b', textTransform: 'uppercase', marginBottom: '10px', marginLeft: '4px' }}>
                     Action Taken / Response
                   </label>
-                  <textarea 
+                  <textarea
                     value={actionText}
                     onChange={(e) => setActionText(e.target.value)}
                     placeholder="Type your resolution or update here..."
@@ -513,13 +512,13 @@ export default function TicketManagement() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button 
+                  <button
                     onClick={() => setIsManaging(false)}
                     style={{ flex: 1, padding: '14px', borderRadius: '15px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '800', cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleSaveAction}
                     disabled={submitting}
                     style={{ flex: 2, padding: '14px', borderRadius: '15px', border: 'none', background: '#3863a8', color: 'white', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: submitting ? 0.7 : 1 }}
@@ -534,7 +533,7 @@ export default function TicketManagement() {
       </main>
 
       <AppFooter />
-      
+
       <style>{`
         .animate-fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
