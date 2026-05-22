@@ -1,10 +1,56 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Star, Award, Zap, ArrowLeft, ShieldCheck, UserCheck, Flame, Edit, Trash2, Plus, Users, Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Trophy, Star, Award, Zap, ArrowLeft, ShieldCheck, UserCheck, Flame, Edit, Trash2, Plus, Users, Search, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+
+const parsePoints = (val) => {
+    if (val === undefined || val === null) return 0;
+    if (typeof val === 'number') return val;
+    const cleaned = String(val).replace(/,/g, '').trim();
+    const num = Number(cleaned);
+    return isNaN(num) ? 0 : num;
+};
+
+const formatPoints = (val) => {
+    if (val === undefined || val === null) return '0';
+    if (typeof val === 'string' && val.includes(',')) {
+        return val;
+    }
+    const num = Number(val);
+    if (isNaN(num)) return String(val);
+    try {
+        const str = String(num).trim();
+        const parts = str.split('.');
+        let integerPart = parts[0];
+        const decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+        let isNegative = false;
+        if (integerPart.startsWith('-')) {
+            isNegative = true;
+            integerPart = integerPart.substring(1);
+        }
+        if (integerPart.length <= 3) {
+            return (isNegative ? '-' : '') + integerPart + decimalPart;
+        }
+        const lastThree = integerPart.substring(integerPart.length - 3);
+        const remaining = integerPart.substring(0, integerPart.length - 3);
+        let formattedRemaining = '';
+        let count = 0;
+        for (let i = remaining.length - 1; i >= 0; i--) {
+            formattedRemaining = remaining[i] + formattedRemaining;
+            count++;
+            if (count === 2 && i > 0) {
+                formattedRemaining = ',' + formattedRemaining;
+                count = 0;
+            }
+        }
+        return (isNegative ? '-' : '') + formattedRemaining + ',' + lastThree + decimalPart;
+    } catch (e) {
+        return num.toLocaleString('en-IN');
+    }
+};
 
 export default function AwardsScreen() {
     const navigate = useNavigate();
@@ -46,6 +92,22 @@ export default function AwardsScreen() {
     const [recipientSearch, setRecipientSearch] = React.useState('');
     const [auditSearch, setAuditSearch] = React.useState('');
     const [showRewardDropdown, setShowRewardDropdown] = React.useState(false);
+
+    const recipientDropdownRef = React.useRef(null);
+    const rewardDropdownRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (recipientDropdownRef.current && !recipientDropdownRef.current.contains(event.target)) {
+                setShowRecipientDropdown(false);
+            }
+            if (rewardDropdownRef.current && !rewardDropdownRef.current.contains(event.target)) {
+                setShowRewardDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     const [availableAwards] = React.useState([
         { id: 'visionary', title: "Visionary Lead", rep: 200, desc: "Acknowledge exceptional leadership and vision." },
         { id: 'achiever', title: "Goal Achiever", rep: 150, desc: "Recognize consistent goal hitting and performance." },
@@ -119,7 +181,7 @@ export default function AwardsScreen() {
                 cachedQuizScores.forEach(item => {
                     if (item) {
                         const empId = item.employee_id || item.user_id || item.userId || item.id || '';
-                        const score = Number(item.total_score || item.points || item.quiz_score || item.score || 0);
+                        const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
                         const qId = item.quiz_id || item.quizId || '';
                         const date = item.created_at || item.completion_date || item.date || '';
                         const datePart = (date || '').split('T')[0];
@@ -132,7 +194,7 @@ export default function AwardsScreen() {
                 qList.forEach(item => {
                     if (item) {
                         const empId = item.employee_id || item.user_id || item.userId || item.id || '';
-                        const score = Number(item.total_score || item.points || item.quiz_score || item.score || 0);
+                        const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
                         const qId = item.quiz_id || item.quizId || '';
                         const date = item.created_at || item.completion_date || item.date || '';
                         const datePart = (date || '').split('T')[0];
@@ -218,7 +280,7 @@ export default function AwardsScreen() {
                     mergedMap.set(id, {
                         id: isNaN(id) ? id : Number(id),
                         name: item.name || item.employee_name || resolveEmployeeName(id),
-                        total_reward_points: Number(item.total_reward_points || item.total_points || 0),
+                        total_reward_points: parsePoints(item.total_reward_points || item.total_points || 0),
                         total_quiz_points: 0
                     });
                 });
@@ -226,7 +288,7 @@ export default function AwardsScreen() {
                 // Then add quiz points
                 activeQuizScores.forEach(q => {
                     const id = String(q.employee_id || q.user_id || q.userId || q.id);
-                    const score = Number(q.total_score || q.points || q.quiz_score || q.score || 0);
+                    const score = parsePoints(q.total_score || q.points || q.quiz_score || q.score || 0);
                     if (mergedMap.has(id)) {
                         const existing = mergedMap.get(id);
                         existing.total_quiz_points += score;
@@ -286,7 +348,7 @@ export default function AwardsScreen() {
             id: `quiz-${q.employee_id || q.user_id || q.userId || q.id}-${q.id || index}`,
             employee_id: q.employee_id || q.user_id || q.userId || q.id,
             reward_name: 'Quiz Excellence',
-            points: Number(q.total_score || q.points || q.quiz_score || q.score || 0),
+            points: parsePoints(q.total_score || q.points || q.quiz_score || q.score || 0),
             created_at: q.created_at || q.completion_date || q.date || new Date().toISOString(),
             note: 'Earned from Quiz Hub'
         })).filter(q => q.points > 0);
@@ -308,7 +370,7 @@ export default function AwardsScreen() {
 
         const stats = Array.from(new Set(filteredRewards.map(r => r.employee_id))).map(id => {
             const userRewards = filteredRewards.filter(r => String(r.employee_id) === String(id));
-            const totalRep = userRewards.reduce((sum, r) => sum + (Number(r.points) || 0), 0);
+            const totalRep = userRewards.reduce((sum, r) => sum + parsePoints(r.points), 0);
             const emp = employees.find(e => String(e.id) === String(id) || String(e.employee_id) === String(id) || String(e.userId) === String(id));
             return {
                 id,
@@ -524,7 +586,7 @@ export default function AwardsScreen() {
                         <div style={{ textAlign: winWidth < 768 ? 'left' : 'center', borderRight: winWidth < 768 ? 'none' : '1.5px solid rgba(255,255,255,0.1)', borderBottom: winWidth < 768 ? '1.5px solid rgba(255,255,255,0.1)' : 'none', paddingBottom: winWidth < 768 ? '20px' : '0' }}>
                             <p style={{ margin: '0 0 5px 0', fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Top Contributor Score</p>
                             <h3 style={{ margin: 0, fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#facc15' }}>
-                                {topContributor ? Number(topContributor.total_points || 0).toLocaleString() : "0"} <span style={{ fontSize: '18px' }}>REP</span>
+                                {topContributor ? formatPoints(topContributor.total_points) : "0"} <span style={{ fontSize: '18px' }}>REP</span>
                             </h3>
                         </div>
 
@@ -580,7 +642,7 @@ export default function AwardsScreen() {
                                             {(() => {
                                                 const employeeStats = Array.from(new Set(filteredRewards.map(r => r.employee_id))).map(id => {
                                                     const userRewards = filteredRewards.filter(r => String(r.employee_id) === String(id));
-                                                    const totalRep = userRewards.reduce((sum, r) => sum + (Number(r.points) || 0), 0);
+                                                    const totalRep = userRewards.reduce((sum, r) => sum + parsePoints(r.points), 0);
                                                     return { id, totalRep, userRewards };
                                                 }).sort((a, b) => b.totalRep - a.totalRep);
 
@@ -600,7 +662,7 @@ export default function AwardsScreen() {
                                                                 </div>
                                                             </div>
                                                             <div style={{ textAlign: 'right' }}>
-                                                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '1000', color: '#10b981' }}>+{totalRep}</div>
+                                                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '1000', color: '#10b981' }}>+{formatPoints(totalRep)}</div>
                                                                 <div style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>REP</div>
                                                             </div>
                                                         </div>
@@ -615,7 +677,7 @@ export default function AwardsScreen() {
                                                 <div key={i} style={{ padding: '20px', borderRadius: '24px', background: 'white', border: '1px solid #f1f5f9' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                         <div style={{ fontWeight: '1000' }}>{r.reward_name || 'Excellence'}</div>
-                                                        <div style={{ color: '#38bdf8', fontWeight: '1000' }}>+{r.points} REP</div>
+                                                        <div style={{ color: '#38bdf8', fontWeight: '1000' }}>+{formatPoints(r.points)} REP</div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -656,7 +718,7 @@ export default function AwardsScreen() {
                                                 {(() => {
                                                     const uid = user?.employee_id || user?.userId || user?.id;
                                                     const myGrants = filteredRewards.filter(r => String(r.granted_by) === String(uid));
-                                                    return myGrants.reduce((sum, r) => sum + (Number(r.points) || 0), 0).toLocaleString();
+                                                    return formatPoints(myGrants.reduce((sum, r) => sum + parsePoints(r.points), 0));
                                                 })()} REP
                                             </div>
                                         </div>
@@ -727,7 +789,7 @@ export default function AwardsScreen() {
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                                 <div style={{ background: '#ecfdf5', color: '#10b981', fontWeight: '1000', fontSize: '14px', padding: '6px 16px', borderRadius: '10px' }}>
-                                                                    +{r.points} REP
+                                                                    +{formatPoints(r.points)} REP
                                                                 </div>
                                                                 {canRevoke && (
                                                                     <button
@@ -797,7 +859,7 @@ export default function AwardsScreen() {
                                                     <div style={{ fontSize: winWidth < 768 ? '10px' : '12px', color: '#64748b', fontWeight: '700' }}>{award.desc}</div>
                                                 </div>
                                             </div>
-                                            <div style={{ background: '#eff6ff', padding: winWidth < 768 ? '6px 12px' : '10px 25px', borderRadius: '12px', color: '#2563eb', fontWeight: '1000', fontSize: winWidth < 768 ? '12px' : '14px' }}>{award.rep} R</div>
+                                            <div style={{ background: '#eff6ff', padding: winWidth < 768 ? '6px 12px' : '10px 25px', borderRadius: '12px', color: '#2563eb', fontWeight: '1000', fontSize: winWidth < 768 ? '12px' : '14px' }}>{formatPoints(award.rep)} R</div>
                                         </div>
                                     ))}
                                 </div>
@@ -852,7 +914,7 @@ export default function AwardsScreen() {
                                                     </div>
                                                     <div>
                                                         <div style={{ fontSize: '17px', fontWeight: '900', color: '#ffffff' }}>{topContributor.name}</div>
-                                                        <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>{topContributor.total_points} Reputation Points</div>
+                                                        <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>{formatPoints(topContributor.total_points)} Reputation Points</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -879,15 +941,18 @@ export default function AwardsScreen() {
 
             {showGrantModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div style={{ background: 'white', borderRadius: '30px', padding: winWidth < 768 ? '25px' : '40px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', minHeight: winWidth < 768 ? '350px' : '400px', background: 'white', borderRadius: '30px', padding: winWidth < 768 ? '25px' : '50px', width: '100%', maxWidth: '680px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <button onClick={() => setShowGrantModal(false)} style={{ position: 'absolute', top: winWidth < 768 ? '15px' : '25px', right: winWidth < 768 ? '15px' : '25px', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: '#64748b', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <X size={24} />
+                        </button>
                         <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', marginBottom: '30px', textAlign: 'center' }}>Grant Recognition</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div style={{ position: 'relative' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, justifyContent: 'space-between' }}>
+                            <div style={{ position: 'relative' }} ref={recipientDropdownRef}>
                                 <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Select Recipient</label>
                                 <div
                                     onClick={() => setShowRecipientDropdown(!showRecipientDropdown)}
                                     style={{
-                                        width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9',
+                                        width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #cbd5e1',
                                         background: '#f8fafc', fontWeight: '700', cursor: 'pointer', display: 'flex',
                                         justifyContent: 'space-between', alignItems: 'center'
                                     }}>
@@ -917,7 +982,11 @@ export default function AwardsScreen() {
                                         {employees.filter(emp => {
                                             const uid = user?.employee_id || user?.userId || user?.id;
                                             const empId = emp.id || emp.employee_id || emp.userId;
-                                            return String(empId) !== String(uid) && (emp.name || emp.employee_name || '').toLowerCase().includes(recipientSearch.toLowerCase());
+                                            const empName = emp.name || emp.employee_name || '';
+                                            return String(empId) !== String(uid) && 
+                                                   empName.toLowerCase().includes(recipientSearch.toLowerCase()) &&
+                                                   empName !== 'Anish V N' && 
+                                                   empName !== 'Dinesh';
                                         }).map(emp => {
                                             const stableId = emp.id || emp.employee_id || emp.userId;
                                             return (
@@ -942,12 +1011,12 @@ export default function AwardsScreen() {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'relative' }} ref={rewardDropdownRef}>
                                     <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Reward Name (Mandatory)</label>
                                     <div
                                         onClick={() => setShowRewardDropdown(!showRewardDropdown)}
                                         style={{
-                                            width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9',
+                                            width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #cbd5e1',
                                             background: '#f8fafc', fontWeight: '700', cursor: 'pointer', display: 'flex',
                                             justifyContent: 'space-between', alignItems: 'center'
                                         }}>
@@ -958,7 +1027,7 @@ export default function AwardsScreen() {
                                     {showRewardDropdown && (
                                         <div style={{
                                             position: 'absolute', top: '100%', left: 0, right: 0, background: 'white',
-                                            borderRadius: '14px', border: '1.5px solid #f1f5f9', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                            borderRadius: '14px', border: '1.5px solid #cbd5e1', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
                                             zIndex: 10, marginTop: '8px', maxHeight: '200px', overflowY: 'auto'
                                         }}>
                                             {rewardNames.map(name => (
@@ -988,13 +1057,13 @@ export default function AwardsScreen() {
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Points (REP)</label>
-                                    <input type="number" value={grantData.points} readOnly style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #f1f5f9', background: '#f8fafc', fontWeight: '700', outline: 'none', cursor: 'not-allowed' }} />
+                                    <input type="number" value={grantData.points} readOnly style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', fontWeight: '700', outline: 'none', cursor: 'not-allowed' }} />
                                 </div>
                             </div>
                             {feedback && <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: '800', color: feedback.type === 'success' ? '#10b981' : '#ef4444' }}>{feedback.msg}</div>}
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <button onClick={() => setShowGrantModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1.5px solid #f1f5f9', background: 'white', fontWeight: '900', cursor: 'pointer' }}>Cancel</button>
-                                <button onClick={handleGrantAward} disabled={granting} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: 'none', background: '#0f172a', color: 'white', fontWeight: '900', cursor: 'pointer' }}>{granting ? 'Granting...' : 'Confirm'}</button>
+                            <div style={{ display: 'flex', gap: '15px', marginTop: 'auto' }}>
+                                <button onClick={() => setShowGrantModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1.5px solid #cbd5e1', background: 'white', fontWeight: '900', cursor: 'pointer' }}>Cancel</button>
+                                <button onClick={handleGrantAward} disabled={granting} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1.5px solid #0f172a', background: '#0f172a', color: 'white', fontWeight: '900', cursor: 'pointer' }}>{granting ? 'Granting...' : 'Confirm'}</button>
                             </div>
                         </div>
                     </div>

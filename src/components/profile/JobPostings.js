@@ -44,6 +44,8 @@ export default function JobPostings() {
   const [editingPost, setEditingPost] = useState(null);
   const [saving, setSaving] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
 
   const [form, setForm] = useState({
     title: '',
@@ -166,8 +168,16 @@ export default function JobPostings() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this vacancy?')) return;
+  const handleDeleteClick = (post) => {
+    setPostToDelete(post);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!postToDelete) return;
+    const id = postToDelete.id;
+    setShowDeleteConfirm(false);
+    setPostToDelete(null);
     try {
       const res = await fetch(API_ENDPOINTS.JOB_POSTING_DELETE(id), {
         method: 'DELETE',
@@ -249,8 +259,8 @@ export default function JobPostings() {
                     <Briefcase size={22} color="#3b82f6" />
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => { setEditingPost(post); setForm(post); setShowAddModal(true); }} style={{ padding: '8px', borderRadius: '10px', border: 'none', background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}><Edit3 size={16} /></button>
-                    <button onClick={() => handleDelete(post.id)} style={{ padding: '8px', borderRadius: '10px', border: 'none', background: '#fff1f2', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                     <button onClick={() => { setEditingPost(post); setForm(post); setShowAddModal(true); }} style={{ padding: '8px', borderRadius: '10px', border: 'none', background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}><Edit3 size={16} /></button>
+                     <button onClick={() => handleDeleteClick(post)} style={{ padding: '8px', borderRadius: '10px', border: 'none', background: '#fff1f2', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
                   </div>
                 </div>
 
@@ -337,6 +347,96 @@ export default function JobPostings() {
               <button onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', fontWeight: '800', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleSubmit} disabled={saving} style={{ flex: 2, padding: '14px', borderRadius: '50px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}>
                 {saving ? 'Saving...' : (editingPost ? 'Update Vacancy' : 'Post Vacancy')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Center Delete Confirmation Pop-Up Modal */}
+      {showDeleteConfirm && postToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '28px',
+            padding: winWidth < 768 ? '24px 20px' : '36px 40px',
+            width: '90%',
+            maxWidth: '440px',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+            border: '1.5px solid #e2e8f0',
+            textAlign: 'center',
+            fontFamily: "'Outfit', sans-serif"
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#fee2e2',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 18px',
+              boxShadow: '0 8px 20px rgba(239, 68, 68, 0.15)'
+            }}>
+              <Trash2 size={30} strokeWidth={2.5} />
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '0 0 8px' }}>
+              Confirm Deletion
+            </h3>
+            <p style={{ fontSize: '14px', color: '#475569', margin: '0 0 24px', lineHeight: '1.6', fontWeight: '600' }}>
+              Are you sure you want to delete the vacancy <span style={{ fontWeight: '900', color: '#ef4444' }}>{postToDelete.title}</span>? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '14px', justifyContent: 'center' }}>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setPostToDelete(null); }}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  background: 'white',
+                  color: '#64748b',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '14px',
+                  fontWeight: '900',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                style={{
+                  flex: 1.2,
+                  padding: '12px 20px',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: '900',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(239, 68, 68, 0.3)',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+              >
+                Yes, Delete
               </button>
             </div>
           </div>

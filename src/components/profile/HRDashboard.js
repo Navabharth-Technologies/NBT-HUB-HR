@@ -5,10 +5,11 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN, BASE_URL } from '../../config';
-import { 
-  Users, MessageSquare, Briefcase, 
+import {
+  Users, MessageSquare, Briefcase,
   ChevronRight, ArrowRight, User, CheckSquare, Hourglass, Sparkles,
-  Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList, Gift, Cake
+  Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList, Gift, Cake,
+  FileText
 } from 'lucide-react';
 import './Dashboard.css';
 import TaskNotification from './TaskNotification';
@@ -45,6 +46,7 @@ export default function HRDashboard() {
 
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leavesLoading, setLeavesLoading] = useState(true);
+  const [absentees, setAbsentees] = useState([]);
 
   const fetchDashboardData = async () => {
     if (!user?.token) return;
@@ -54,11 +56,13 @@ export default function HRDashboard() {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
       const userLookup = {};
+      let currentUsers = [];
       if (usersRes.ok) {
         const uData = await usersRes.json();
-        const uList = Array.isArray(uData) ? uData : (uData?.data || []);
-        setEmployeesCount(uList.length);
-        uList.forEach(u => {
+        const rawUsers = Array.isArray(uData) ? uData : (uData?.data || []);
+        currentUsers = rawUsers.filter(u => String(u.employee_id || u.id || u.empId || '').trim() !== '20250');
+        setEmployeesCount(currentUsers.length);
+        currentUsers.forEach(u => {
           const uid = String(u.id || u.empId || u.employee_id || '').trim();
           if (uid) userLookup[uid] = u.name;
         });
@@ -69,7 +73,7 @@ export default function HRDashboard() {
         fetch(API_ENDPOINTS.NEW_JOINEES, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
         fetch(API_ENDPOINTS.INTERNS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
       ]);
-      
+
       let totalActiveJoinees = 0;
       if (joineeRes && joineeRes.ok) {
         const jData = await joineeRes.json();
@@ -101,10 +105,12 @@ export default function HRDashboard() {
       const attLogsRes = await fetch(API_ENDPOINTS.ATTENDANCE_LOGS_GET, {
         headers: { 'Authorization': `Bearer ${user.token || TEAM_OFFICE_AUTH_TOKEN}` }
       });
+      let masterLogs = [];
       if (attLogsRes.ok) {
         const logData = await attLogsRes.json();
-        const masterLogs = logData.data || logData.attendance || logData.logs || (Array.isArray(logData) ? logData : []);
-        
+        const rawLogs = logData.data || logData.attendance || logData.logs || (Array.isArray(logData) ? logData : []);
+        masterLogs = Array.isArray(rawLogs) ? rawLogs.filter(l => String(l?.user_id || l?.Empcode || l?.EmpID || '').trim() !== '20250') : [];
+
         if (Array.isArray(masterLogs)) {
           const todayStr = new Date().toISOString().split('T')[0];
           const todayLogs = masterLogs.filter(l => {
@@ -122,12 +128,13 @@ export default function HRDashboard() {
       const leavesRes = await fetch(API_ENDPOINTS.LEAVES_GET, {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
+      let resolvedLeaves = [];
       if (leavesRes.ok) {
         const lData = await leavesRes.json();
         const lList = Array.isArray(lData) ? lData : (lData?.leaves || lData?.all || lData?.data || lData?.requests || []);
-        
+
         // RESOLVE: Resolve employee names using our lookup
-        const resolvedLeaves = (Array.isArray(lList) ? lList : []).map(r => {
+        resolvedLeaves = (Array.isArray(lList) ? lList : []).map(r => {
           if (!r.employee_name && !r.name) {
             const uid = String(r.userId || r.user_id || r.employee_id || r.empId || '').trim();
             if (uid && userLookup[uid]) {
@@ -138,12 +145,57 @@ export default function HRDashboard() {
         });
 
         setLeaveRequests(resolvedLeaves);
-        
+
         // Count all active leaves (Pending + Approved)
-        const totalActiveLeaves = resolvedLeaves.filter(r => 
+        const totalActiveLeaves = resolvedLeaves.filter(r =>
           ['PENDING', 'APPROVED'].includes(String(r.status || '').toUpperCase())
         ).length;
         setAttendanceStats(prev => ({ ...prev, onLeave: totalActiveLeaves }));
+      }
+
+      // Calculate daily absentees
+      const todayStr = new Date().toISOString().split('T')[0];
+      const presentIds = new Set();
+      if (Array.isArray(masterLogs)) {
+        const todayLogs = masterLogs.filter(l => {
+          let lDate = (l?.punch_date || l?.PunchDate || l?.date || l?.created_at || '').split('T')[0].split(' ')[0];
+          if (lDate.includes('-') && lDate.split('-')[0].length !== 4) {
+            const parts = lDate.split('-');
+            if (parts.length === 3) lDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          return lDate === todayStr;
+        });
+        todayLogs.forEach(l => {
+          const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+          if (pid) presentIds.add(pid);
+        });
+      }
+
+      const activeLeavesToday = (resolvedLeaves || []).filter(r => {
+        const rStatus = String(r?.status || '').toUpperCase();
+        if (!['PENDING', 'APPROVED'].includes(rStatus)) return false;
+        let rDate = (r?.date || r?.start_date || '').split('T')[0];
+        if (rDate.includes('-') && rDate.split('-')[0].length !== 4) {
+          const parts = rDate.split('-');
+          if (parts.length === 3) rDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return rDate === todayStr;
+      });
+      const leaveUserIds = new Set(activeLeavesToday.map(r => String(r.user_id || r.userId || r.empId || '').trim()));
+
+      if (Array.isArray(currentUsers)) {
+        const todayAbsentees = currentUsers.filter(u => {
+          const uid = String(u.id || u.empId || u.employee_id || '').trim();
+          return uid && !presentIds.has(uid);
+        }).map(u => {
+          const uid = String(u.id || u.empId || u.employee_id || '').trim();
+          const isOnLeave = leaveUserIds.has(uid);
+          return {
+            ...u,
+            status: isOnLeave ? 'ON LEAVE' : 'ABSENT'
+          };
+        });
+        setAbsentees(todayAbsentees);
       }
 
       // Fetch Rewards History
@@ -172,7 +224,7 @@ export default function HRDashboard() {
         if (bRes.ok) {
           const bData = await bRes.json();
           const bList = Array.isArray(bData) ? bData : (bData.data || []);
-          
+
           const today = new Date();
           const currentMonth = today.getMonth();
           const currentDay = today.getDate();
@@ -227,7 +279,7 @@ export default function HRDashboard() {
           const today = new Date();
           const currentMonth = today.getMonth();
           const currentDay = today.getDate();
-          
+
           const processedH = hList.map(h => {
             const d = new Date(h.date || h.holiday_date);
             return { ...h, d, month: d.getMonth(), day: d.getDate() };
@@ -250,7 +302,7 @@ export default function HRDashboard() {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
 
-        let title = 'Tech Trivia Champions';
+        let title = 'Tech Champions';
         let participants = 0;
         let topParticipants = [];
 
@@ -298,23 +350,24 @@ export default function HRDashboard() {
   const hrStats = [
     { label: 'Total Teams', value: teamsCount || 'View', icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
     { label: 'Total Employees', value: employeesCount || 'View', icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
-    { label: 'Personal Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
+    { label: 'Employee Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
     { label: 'Awards and Recognition', value: rewardsCount || 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
     { label: 'Assets Management', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
     { label: 'New Joinee', value: joineeCount || 'View', icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
     { label: 'New Hirings', value: jobAppCount || 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
     { label: 'Post Vacancy', value: 'Create', icon: <ClipboardList size={20} color="#3b82f6" />, badge: 'Hiring', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/job-postings' },
+    { label: 'Add Employee Payslip', value: 'Manage', icon: <FileText size={20} color="#0284c7" />, badge: 'Pay', badgeClass: 'badge-blue', iconBg: '#e0f2fe', path: '/payslip', state: { openAddForm: true } },
   ];
 
   return (
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
-      <main style={{ 
-        flex: 1, 
-        padding: winWidth < 768 ? '20px 16px 40px' : '40px 26px 40px', 
-        maxWidth: '100%', 
-        margin: '0 auto', 
-        width: '100%', 
+      <main style={{
+        flex: 1,
+        padding: winWidth < 768 ? '20px 16px 40px' : '40px 26px 40px',
+        maxWidth: '100%',
+        margin: '0 auto',
+        width: '100%',
         boxSizing: 'border-box',
         marginTop: winWidth < 768 ? '85px' : '100px'
       }}>
@@ -336,17 +389,17 @@ export default function HRDashboard() {
 
         {/* Stats Grid */}
         <section style={{ marginBottom: winWidth < 768 ? '32px' : '40px' }}>
-          <div style={{ 
-            display: 'grid', 
+          <div style={{
+            display: 'grid',
             gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : winWidth < 1024 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
             gap: winWidth < 768 ? '12px' : '20px'
           }}>
             {hrStats.map((stat, i) => (
-              <div 
-                key={i} 
-                className="stat-card animate-fade-in" 
-                style={{ 
-                  padding: winWidth < 768 ? '16px' : '24px', 
+              <div
+                key={i}
+                className="stat-card animate-fade-in"
+                style={{
+                  padding: winWidth < 768 ? '16px' : '24px',
                   cursor: stat.path ? 'pointer' : 'default',
                   borderRadius: '24px',
                   background: 'white',
@@ -357,7 +410,7 @@ export default function HRDashboard() {
                   gap: '12px',
                   transition: '0.2s transform, 0.2s box-shadow'
                 }}
-                onClick={() => stat.path && navigate(stat.path)}
+                onClick={() => stat.path && navigate(stat.path, stat.state ? { state: stat.state } : undefined)}
                 onMouseOver={e => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
                   e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
@@ -368,7 +421,7 @@ export default function HRDashboard() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ 
+                  <div style={{
                     background: stat.iconBg, width: winWidth < 768 ? '36px' : '44px', height: winWidth < 768 ? '36px' : '44px', borderRadius: '12px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
@@ -377,9 +430,9 @@ export default function HRDashboard() {
                 </div>
                 <div>
                   <div style={{ fontSize: winWidth < 768 ? '11px' : '13px', color: '#64748b', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
-                  <div style={{ 
-                    fontSize: winWidth < 768 ? '20px' : '28px', 
-                    fontWeight: '950', 
+                  <div style={{
+                    fontSize: winWidth < 768 ? '20px' : '28px',
+                    fontWeight: '950',
                     color: '#0f172a',
                     lineHeight: 1
                   }}>{stat.value}</div>
@@ -392,67 +445,83 @@ export default function HRDashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Leave/Attendance Management */}
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div style={{ 
-              display: 'flex', 
+            <div style={{
+              display: 'flex',
               flexDirection: winWidth < 640 ? 'column' : 'row',
-              justifyContent: 'space-between', 
-              alignItems: winWidth < 640 ? 'stretch' : 'center', 
+              justifyContent: 'space-between',
+              alignItems: winWidth < 640 ? 'stretch' : 'center',
               marginBottom: '20px',
               gap: '12px'
             }}>
-              <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" /> Leave/Attendance Management</h2>
+              <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" />Attendance Management</h2>
 
             </div>
 
             {/* Attendance Quick Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginBottom: '24px' }}>
-              <div 
+            <div style={{ display: 'flex', marginBottom: '24px', width: '100%', boxSizing: 'border-box' }}>
+              <div
                 onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
-                style={{ background: '#f0fdf4', padding: '15px', borderRadius: '20px', border: '1px solid #dcfce7', textAlign: 'center', cursor: 'pointer' }}
+                style={{
+                  padding: winWidth < 768 ? '16px 8px' : '24px',
+                  flex: 1,
+                  background: '#f0fdf4',
+                  borderRadius: winWidth < 768 ? '16px' : '24px',
+                  border: '1px solid #dcfce7',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
+                  minWidth: 0,
+                  cursor: 'pointer'
+                }}
               >
-                <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Present</div>
-                <div style={{ fontSize: '24px', fontWeight: '950', color: '#166534' }}>{attendanceStats.present}</div>
-              </div>
-              <div 
-                onClick={(e) => { e.stopPropagation(); navigate('/leaves'); }}
-                style={{ background: '#fffbeb', padding: '15px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center', cursor: 'pointer' }}
-              >
-                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>Total Leaves</div>
-                <div style={{ fontSize: '24px', fontWeight: '950', color: '#92400e' }}>{attendanceStats.onLeave}</div>
+                <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#15803d', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Present</div>
+                <div style={{ fontSize: winWidth < 768 ? '24px' : '36px', fontWeight: '950', color: '#166534', lineHeight: 1 }}>{attendanceStats.present || 0}</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pending Requests</div>
-              {leavesLoading ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>Syncing requests...</div>
-              ) : leaveRequests.filter(r => String(r.status || '').toUpperCase().includes('PENDING')).length > 0 ? (
-                leaveRequests.filter(r => String(r.status || '').toUpperCase().includes('PENDING')).slice(0, 3).map(request => (
-                  <div key={request.id} onClick={() => navigate(`/attendance/leave/${request.id}`)} style={{ 
-                    display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
-                    borderRadius: '16px', background: '#ffffff', border: '3px solid #cbd5e1',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)', cursor: 'pointer'
-                  }}>
-                    <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '12px' }}>
-                      <Clock size={18} color="#64748b" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>{request.employee_name || request.name}</div>
-                        <div style={{ fontSize: '11px', fontWeight: '900', color: '#3863a8', background: '#eff6ff', padding: '2px 8px', borderRadius: '8px' }}>{String(request.status || 'PENDING').split(',')[0]}</div>
+            <div style={{ marginBottom: '20px', flex: 1 }}>
+              <div style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '15px' }}>Total Absents</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {absentees.length > 0 ? (
+                  absentees.map((abs, aid) => (
+                    <div key={aid} style={{
+                      display: 'flex', alignItems: 'center', padding: winWidth < 768 ? '10px' : '16px',
+                      borderRadius: winWidth < 768 ? '18px' : '24px', background: '#ffffff', border: '1px solid #cbd5e1',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)', width: '100%', boxSizing: 'border-box',
+                      gap: winWidth < 768 ? '8px' : '12px'
+                    }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#fee2e2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>👤</div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                          <div style={{ fontSize: '15px', fontWeight: '950', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{abs.name || abs.employee_name}</div>
+                          <div style={{ 
+                            padding: '3px 10px', 
+                            background: abs.status === 'ON LEAVE' ? '#fffbeb' : '#fef2f2', 
+                            color: abs.status === 'ON LEAVE' ? '#d97706' : '#dc2626', 
+                            borderRadius: '50px', 
+                            fontSize: '10px', 
+                            fontWeight: '900', 
+                            textTransform: 'uppercase' 
+                          }}>
+                            {abs.status || 'Absent'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {abs.role || abs.designation || 'Staff'} • {abs.empId || abs.id || 'N/A'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-                        {request.leave_type || 'Leave'} • {(request.start_date || '').split('T')[0].split('-').reverse().join('-') || 'N/A'}
-                      </div>
                     </div>
-                    <ChevronRight size={16} color="#94a3b8" />
+                  ))
+                ) : (
+                  <div style={{ padding: '30px 20px', textAlign: 'center', color: '#16a34a', fontSize: '13px', border: '2px dashed #bbf7d0', borderRadius: '24px', background: '#f0fdf4', fontWeight: '700' }}>
+                    Zero Absents Today 🎉
                   </div>
-                ))
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px', border: '1px dashed #e2e8f0', borderRadius: '16px' }}>
-                  No pending requests found
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </section>
 
@@ -460,19 +529,19 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Sparkles size={20} color="#3863a8" /> Fun and Quiz</h2>
-              <button 
-                className="btn-ghost" 
+              <button
+                className="btn-ghost"
                 style={{ fontSize: '14px', padding: '8px 12px' }}
                 onClick={() => navigate('/fun-quiz')}
               >
                 Join the Hub
               </button>
             </div>
-            
-            <div 
+
+            <div
               onClick={() => navigate('/fun-quiz')}
-              style={{ 
-                background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', 
+              style={{
+                background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
                 borderRadius: '24px', padding: '30px', color: 'white', cursor: 'pointer',
                 position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
               }}
@@ -486,15 +555,15 @@ export default function HRDashboard() {
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
                 <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', maxWidth: '200px' }}>{challengeData.participants} employees are currently competing for the top spot!</p>
-                
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ display: 'flex', marginLeft: '5px' }}>
                     {challengeData.topParticipants.map((p, i) => (
-                      <div key={i} style={{ 
-                        width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b', 
-                        background: '#3863a8', marginLeft: i === 0 ? '0' : '-8px', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        fontSize: '10px', fontWeight: '800', overflow: 'hidden' 
+                      <div key={i} style={{
+                        width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b',
+                        background: '#3863a8', marginLeft: i === 0 ? '0' : '-8px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '10px', fontWeight: '800', overflow: 'hidden'
                       }}>
                         {p.pic ? (
                           <img src={p.pic.startsWith('http') ? p.pic : `${BASE_URL}${p.pic.startsWith('/') ? '' : '/'}${p.pic}`} alt="p" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -507,7 +576,7 @@ export default function HRDashboard() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Decorative elements */}
               <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.1 }}>
                 <Sparkles size={150} color="white" />
@@ -525,11 +594,11 @@ export default function HRDashboard() {
               <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
               <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {holidays.length > 0 ? holidays.map((holiday, idx) => (
-                <div key={idx} style={{ 
-                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
+              {holidays.length > 0 ? holidays.slice(0, 3).map((holiday, idx) => (
+                <div key={idx} style={{
+                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px',
                   borderRadius: '16px', background: '#f0fdfa', border: '3px solid #cbd5e1',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                 }}>
@@ -559,11 +628,11 @@ export default function HRDashboard() {
               <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
               <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {upcomingBirthdays.length > 0 ? upcomingBirthdays.map((bday, idx) => (
-                <div key={idx} style={{ 
-                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px', 
+              {upcomingBirthdays.length > 0 ? upcomingBirthdays.slice(0, 3).map((bday, idx) => (
+                <div key={idx} style={{
+                  display: 'flex', alignItems: 'center', gap: '15px', padding: '14px',
                   borderRadius: '16px', background: '#ffffff', border: '3px solid #cbd5e1',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                 }}>
@@ -593,20 +662,20 @@ export default function HRDashboard() {
 
       <AppFooter />
       <TaskNotification onOpenTask={() => navigate('/performance')} />
-      
+
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="animate-slide-up" style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '420px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
-            <button 
-              onClick={() => setShowAddModal(false)} 
+            <button
+              onClick={() => setShowAddModal(false)}
               style={{ position: 'absolute', top: '20px', right: '20px', background: '#f8fafc', border: '1px solid #f1f5f9', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontSize: '14px', transition: '0.2s' }}
             >
               ✕
             </button>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '35px' }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-                 <img src={logo} alt="Logo" style={{ width: '35px', height: 'auto', objectFit: 'contain' }} />
+                <img src={logo} alt="Logo" style={{ width: '35px', height: 'auto', objectFit: 'contain' }} />
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', marginBottom: '6px' }}>New Employee Alignment</h2>
               <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center' }}>Configure the unit for immediate deployment.</p>

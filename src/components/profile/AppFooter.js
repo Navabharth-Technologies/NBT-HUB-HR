@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Home, Ticket, PlusCircle, 
+import {
+  Home, Ticket, PlusCircle,
   ClipboardList, MessageSquare, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +28,7 @@ export default function AppFooter({ onCreateTeam }) {
     if (!user?.token) return;
     try {
       const uid = user?.id || user?.userId || user?.employee_id;
-      
+
       const [leaveRes, ticketRes, notifRes] = await Promise.all([
         fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
         fetch(API_ENDPOINTS.SUPPORT_TICKETS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
@@ -46,8 +46,8 @@ export default function AppFooter({ onCreateTeam }) {
       if (ticketRes?.ok) {
         const tData = await ticketRes.json();
         const tList = Array.isArray(tData) ? tData : (tData.data || tData.value || []);
-        updates.tickets = tList.filter(t => 
-          ((t.department || '').toUpperCase() === 'HR') && 
+        updates.tickets = tList.filter(t =>
+          ((t.department || '').toUpperCase() === 'HR') &&
           (String(t.status || '').toLowerCase() === 'open' || String(t.status || '').toLowerCase() === 'pending')
         ).length;
       }
@@ -152,7 +152,7 @@ export default function AppFooter({ onCreateTeam }) {
     { name: 'Create', path: '/dashboard', icon: <PlusCircle size={24} />, isAction: true },
     { name: 'Leaves', path: '/leaves', icon: <ClipboardList size={22} /> },
     { name: 'Thread', path: '/engagement', icon: <MessageSquare size={22} /> },
-    { name: 'Attendance', path: '/attendance', icon: <UserCheck size={22} /> },
+    { name: 'Profile', path: '/profile', icon: <UserCheck size={22} /> },
   ];
 
   const handleNavClick = (item) => {
@@ -167,9 +167,9 @@ export default function AppFooter({ onCreateTeam }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div 
-        className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
-        onMouseEnter={() => setIsVisible(true)}
+    <div
+      className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
+      onMouseEnter={() => setIsVisible(true)}
     >
       <nav className="app-footer">
         {navItems.map((item) => (

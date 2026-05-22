@@ -12,6 +12,7 @@ import AlertScreen from './components/profile/AlertScreen';
 import BirthdayScreen from './components/profile/BirthdayScreen';
 import HolidayScreen from './components/profile/HolidayScreen';
 
+
 import TeamsModule from './components/profile/TeamsModule';
 import TicketManagement from './components/profile/TicketManagement';
 import AttendanceManagement from './components/profile/AttendanceManagement';
@@ -21,6 +22,7 @@ import AllEmployeesReport from './components/profile/AllEmployeesReport';
 import FunQuiz from './components/profile/FunQuiz';
 import LeaveRequestDetail from './components/profile/LeaveRequestDetail';
 import PaySlipScreen from './components/profile/PaySlipScreen';
+import SalaryStatements from './components/profile/SalaryStatements';
 import AwardsScreen from './components/profile/AwardsScreen';
 import TeamDetail from './components/profile/TeamDetail';
 import ServiceCertificateManagement from './components/profile/ServiceCertificateManagement';
@@ -74,10 +76,11 @@ function AppRoutes() {
       <Route path="/all-employees" element={<AllEmployeesReport />} />
       <Route path="/fun-quiz" element={<FunQuiz />} />
       <Route path="/payslip" element={<PaySlipScreen />} />
+      <Route path="/salary-statements" element={<SalaryStatements />} />
       <Route path="/awards" element={<AwardsScreen />} />
       <Route path="/admin/certificates" element={<ServiceCertificateManagement />} />
       <Route path="/admin/resignations" element={<ResignationManagement />} />
-        
+
       {/* User Hubs */}
       <Route path="/service-certificates" element={<ServiceCertificateUserScreen />} />
       <Route path="/resignations" element={<ResignationUserScreen />} />

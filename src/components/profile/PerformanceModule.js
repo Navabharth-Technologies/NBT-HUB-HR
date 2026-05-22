@@ -176,8 +176,90 @@ export default function PerformanceModule() {
     }
   };
 
+  const validateDob = (dobStr) => {
+    if (!dobStr) return 'Date of Birth is required';
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dobStr)) {
+      return 'Date of Birth must be in DD/MM/YYYY format';
+    }
+    const [dStr, mStr, yStr] = dobStr.split('/');
+    const day = parseInt(dStr, 10);
+    const month = parseInt(mStr, 10);
+    const year = parseInt(yStr, 10);
+    
+    if (day < 1 || day > 31) {
+      return 'Day must be between 01 and 31';
+    }
+    if (month < 1 || month > 12) {
+      return 'Month must be between 01 and 12';
+    }
+    if (year > 2090) {
+      return 'Year cannot be above 2090';
+    }
+    const dateObj = new Date(year, month - 1, day);
+    if (dateObj.getFullYear() !== year || dateObj.getMonth() !== month - 1 || dateObj.getDate() !== day) {
+      return 'Please enter a valid calendar date';
+    }
+    return null;
+  };
+
+  const handleDobChange = (e) => {
+    const val = e.target.value;
+    if (val === '') {
+      setTempDob('');
+      return;
+    }
+
+    // Allow only digits and slashes
+    const cleanVal = val.replace(/[^0-9/]/g, '');
+
+    const parts = cleanVal.split('/');
+    if (parts.length > 3) return;
+
+    const dayStr = parts[0] || '';
+    const monthStr = parts[1] || '';
+    const yearStr = parts[2] || '';
+
+    if (dayStr) {
+      if (dayStr.length > 2) return;
+      const day = parseInt(dayStr, 10);
+      if (day > 31) return;
+    }
+
+    if (monthStr) {
+      if (monthStr.length > 2) return;
+      const month = parseInt(monthStr, 10);
+      if (month > 12) return;
+    }
+
+    if (yearStr) {
+      if (yearStr.length > 4) return;
+      if (yearStr.length === 4) {
+        const year = parseInt(yearStr, 10);
+        if (year > 2090) return;
+      }
+    }
+
+    let formatted = cleanVal;
+    if (dayStr.length === 2 && parts.length === 1 && val.length > (tempDob || '').length) {
+      formatted = dayStr + '/';
+    }
+    if (monthStr.length === 2 && parts.length === 2 && val.length > (tempDob || '').length) {
+      formatted = dayStr + '/' + monthStr + '/';
+    }
+
+    setTempDob(formatted);
+  };
+
   const updateProfileField = async (field, value) => {
     if (!user?.token || !user?.email) return;
+    if (field === 'date_of_birth') {
+      const error = validateDob(value);
+      if (error) {
+        setToast({ show: true, message: error, type: 'error' });
+        setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+        return;
+      }
+    }
     try {
       // Prepare full payload with current values to prevent "erasing" on backend
       // We use user context values as final fallback to ensure we never send empty strings if data exists
@@ -443,10 +525,16 @@ export default function PerformanceModule() {
           <div style={dashboardStyles.profileCard}>
             <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'center' : 'flex-start', gap: winWidth < 1024 ? '30px' : '0', textAlign: winWidth < 1024 ? 'center' : 'left' }}>
               <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
-                <div style={dashboardStyles.avatar}>
+                <div
+                  style={{ ...dashboardStyles.avatar, cursor: 'pointer' }}
+                  onClick={() => navigate('/personal-info?self=true')}
+                >
                   {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
                   <button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
                   >
                     <Camera size={winWidth < 768 ? 16 : 18} color="#0f172a" />
@@ -517,7 +605,7 @@ export default function PerformanceModule() {
                             <input
                               type="text"
                               value={tempDob}
-                              onChange={e => setTempDob(e.target.value)}
+                              onChange={handleDobChange}
                               onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
                               placeholder="DD/MM/YYYY"
                               autoFocus
@@ -533,6 +621,7 @@ export default function PerformanceModule() {
                               type="date"
                               ref={dobInputRef}
                               style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                              max="2090-12-31"
                               onChange={e => {
                                 const val = e.target.value; // YYYY-MM-DD
                                 if (val) {
@@ -642,7 +731,7 @@ export default function PerformanceModule() {
         <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px' }}>
           <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>HR Documents</h3>
           <div style={{ display: 'grid', gridTemplateColumns: winWidth < 1024 ? (winWidth < 600 ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)', gap: '24px' }}>
-            <div style={{ ...dashboardStyles.docCard, cursor: 'pointer' }} onClick={() => navigate('/payslip')}>
+            <div style={{ ...dashboardStyles.docCard, cursor: 'pointer' }} onClick={() => navigate('/salary-statements')}>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileText color="#22c55e" /></div>
                 <div>

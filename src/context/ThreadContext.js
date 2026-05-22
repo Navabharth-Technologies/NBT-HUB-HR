@@ -419,6 +419,44 @@ export const ThreadProvider = ({ children }) => {
     return [];
   };
 
+  const deleteComment = async (threadId, commentId) => {
+    if (!user?.token) return false;
+    try {
+      const response = await fetch(API_ENDPOINTS.COMMENT_DELETE(threadId, commentId), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (response.ok) {
+        fetchThreads(true);
+        return true;
+      }
+    } catch (error) {
+      console.error('Delete Comment Error:', error);
+    }
+    return false;
+  };
+
+  const updateComment = async (threadId, commentId, content) => {
+    if (!user?.token || !content.trim()) return false;
+    try {
+      const response = await fetch(API_ENDPOINTS.COMMENT_UPDATE(threadId, commentId), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (response.ok) {
+        fetchThreads(true);
+        return true;
+      }
+    } catch (error) {
+      console.error('Update Comment Error:', error);
+    }
+    return false;
+  };
+
   return (
     <ThreadContext.Provider value={{ 
       threads, 
@@ -428,7 +466,9 @@ export const ThreadProvider = ({ children }) => {
       updatePost,
       toggleReaction, 
       toggleBadge,
-      addComment, 
+      addComment,
+      deleteComment,
+      updateComment,
       deleteThread, 
       fetchComments,
       fetchUserThreads,

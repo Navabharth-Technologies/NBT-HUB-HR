@@ -130,7 +130,7 @@ export default function AppHeader() {
         </div>
 
         <div
-          onClick={() => navigate('/performance')}
+          onClick={() => navigate('/personal-info?self=true')}
           style={{
             width: winWidth < 768 ? '38px' : '48px',
             height: winWidth < 768 ? '38px' : '48px',

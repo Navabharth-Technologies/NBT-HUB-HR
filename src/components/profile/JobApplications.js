@@ -3,12 +3,42 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, User, Mail, Phone, FileText, Calendar,
   MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft
 } from 'lucide-react';
+
+const getGoogleDriveFileId = (url) => {
+  if (!url) return null;
+  const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileDMatch) return fileDMatch[1];
+  
+  const docDMatch = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docDMatch) return docDMatch[1];
+  
+  const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) return idMatch[1];
+  
+  if (/^[a-zA-Z0-9_-]{25,50}$/.test(url)) {
+    return url;
+  }
+  
+  return null;
+};
+
+const resolveResumeUrl = (link) => {
+  if (!link) return '';
+  const fileId = getGoogleDriveFileId(link);
+  if (fileId) {
+    const base = BASE_URL || 'http://localhost:5000';
+    return `${base}/api/uploads/uploads/drive/${fileId}`;
+  }
+  return link;
+};
+
+
 
 const STATUS_CONFIG = {
   APPLIED: { label: 'New Application', color: '#3b82f6', bg: '#eff6ff', border: '#dbeafe', icon: <Clock size={14} /> },
@@ -750,17 +780,22 @@ export default function JobApplications() {
                 </div>
 
                 {(app.resume_link || app.resume_url || app.resumeUrl) && (
-                  <a href={app.resume_link || app.resume_url || app.resumeUrl} target="_blank" rel="noreferrer" style={{
-                    display: 'flex', alignItems: 'center', gap: '12px', padding: '18px', borderRadius: '18px',
-                    background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', color: '#1d4ed8', textDecoration: 'none',
-                    fontWeight: '800', fontSize: '14px', marginBottom: '30px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.1)', transition: '0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  <a 
+                    href={resolveResumeUrl(app.resume_link || app.resume_url || app.resumeUrl)} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '18px', borderRadius: '18px',
+                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', color: '#1d4ed8', textDecoration: 'none',
+                      fontWeight: '800', fontSize: '14px', marginBottom: '30px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.1)', transition: '0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                   >
                     <Download size={20} strokeWidth={2.5} /> Download / View Resume (CV)
                   </a>
                 )}
+
 
                 <div style={{ padding: '25px', background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>

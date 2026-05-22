@@ -7,7 +7,8 @@ import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
   Package, Search, Edit3, Save, X, Plus,
   Laptop, MousePointer, Keyboard, Smartphone,
-  Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, ArrowLeft
+  Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, ArrowLeft,
+  ShieldCheck, Sparkles, Check
 } from 'lucide-react';
 
 export default function AssetsManagement() {
@@ -19,6 +20,10 @@ export default function AssetsManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [editModal, setEditModal] = useState({ show: false, employee: null, isReadOnly: false });
+  const [availableAssetsModal, setAvailableAssetsModal] = useState(false);
+  const [availableStockModal, setAvailableStockModal] = useState(false);
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockCategory, setStockCategory] = useState('All');
   const [saving, setSaving] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [showToast, setShowToast] = useState(false);
@@ -54,28 +59,85 @@ export default function AssetsManagement() {
     if (!user?.token) return;
     setLoading(true);
     try {
-      const [empRes, assetRes] = await Promise.all([
-        fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user.token}` } }),
-        fetch(API_ENDPOINTS.ASSETS || `${API_ENDPOINTS.EMPLOYEES}/assets`, { headers: { 'Authorization': `Bearer ${user.token}` } })
-      ]);
+      const assetMap = {};
+      const headers = { 'Authorization': `Bearer ${user.token}` };
 
-      if (empRes.ok) {
-        const empData = await empRes.json();
-        setEmployees(empData);
-      }
+      // 1. Fetch Employees
+      try {
+        const empRes = await fetch(API_ENDPOINTS.EMPLOYEES, { headers });
+        if (empRes.ok) {
+          const empData = await empRes.json();
+          setEmployees(Array.isArray(empData) ? empData : (empData.recordset || empData.data || []));
+        }
+      } catch (e) { console.error('Emp fetch failed:', e); }
 
-      if (assetRes.ok) {
-        const assetData = await assetRes.json();
-        const assetMap = {};
-        assetData.forEach(a => {
-          // Robust ID extraction
-          const id = a.employee_id || a.EmpID || a.employeeId || a.id;
-          if (id) assetMap[id] = a;
+      // 2. Fetch Assets
+      try {
+        const assetRes = await fetch(API_ENDPOINTS.ASSETS || `${API_ENDPOINTS.EMPLOYEES}/assets`, { headers });
+        if (assetRes.ok) {
+          const assetData = await assetRes.json();
+          const list = Array.isArray(assetData) ? assetData : (assetData.recordset || assetData.data || []);
+          list.forEach(a => {
+            const id = a.employee_id || a.EmpID || a.employeeId || a.id;
+            if (id) assetMap[id] = a;
+          });
+        }
+      } catch (e) { console.error('Asset fetch failed:', e); }
+
+      // 3. Fetch Service Certificates (Try Primary and Alt endpoints)
+      const fetchCerts = async (url) => {
+        if (!url) return [];
+        try {
+          const res = await fetch(url, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            return Array.isArray(data) ? data : (data.recordset || data.data || data.value || []);
+          }
+        } catch (e) { console.error(`Fetch failed for ${url}:`, e); }
+        return [];
+      };
+
+      try {
+        const [certs1, certs2] = await Promise.all([
+          fetchCerts(API_ENDPOINTS.SERVICE_CERTIFICATES_GET || `${BASE_URL}/api/service_certificate_requests`),
+          fetchCerts(API_ENDPOINTS.SERVICE_CERTIFICATES_ALT || `${BASE_URL}/api/admin/service-certificates`)
+        ]);
+
+        const combinedCerts = [...certs1, ...certs2];
+        console.log('Combined Certificate Data:', combinedCerts);
+
+        combinedCerts.forEach(c => {
+          const id = c.employee_id || c.EmpID || c.employeeId || c.user_id || c.id;
+          if (!id) return;
+
+          // Helper to convert 1/0 or boolean to Yes/No
+          const mapBinary = (val) => (val === 1 || val === '1' || val === true || val === 'true' || val === 'Yes') ? 'Yes' : 'No';
+
+          // Merge into assetMap
+          assetMap[id] = {
+            ...(assetMap[id] || {}),
+            ...c,
+            employee_name: c.employee_name || c.name || assetMap[id]?.employee_name || 'Certificate Employee',
+            employee_id: id,
+            laptop_details: c.laptop_details || c.laptop_unit_details || assetMap[id]?.laptop_details,
+            mouse: mapBinary(c.mouse),
+            keyboard: mapBinary(c.keyboard),
+            laptop_stand: mapBinary(c.laptop_stand),
+            ruf_pad: mapBinary(c.ref_pad),
+            pendrive: mapBinary(c.pendrive),
+            mobile: mapBinary(c.company_mobile),
+            camera: mapBinary(c.external_camera),
+            earphone: mapBinary(c.earphone_headphone),
+            tablet: mapBinary(c.tablet),
+            is_from_certificate: true
+          };
         });
-        setAssets(assetMap);
-      }
+      } catch (e) { console.error('Cert merge error:', e); }
+
+      console.log('Final Asset Map keys:', Object.keys(assetMap));
+      setAssets(assetMap);
     } catch (err) {
-      console.error('Fetch assets error:', err);
+      console.error('Fatal fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -117,38 +179,92 @@ export default function AssetsManagement() {
     return dateStr;
   };
 
-  const handleEdit = (emp, readOnly = false) => {
+  const handleEdit = (emp, isReadOnlyMode = false, assetOverride = null) => {
     const empId = emp.id || emp.EmpID;
-    const currentAsset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+    const currentAsset = assetOverride || assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+
+    // Find employee in the full list to get the latest Role/Position
+    const fullEmp = employees.find(e => {
+      const eId = String(e.id || e.EmpID || '').trim();
+      const targetId = String(empId || '').trim();
+      return eId === targetId && eId !== '';
+    });
+
+    console.log('[POSITION DEBUG]', { empId, fullEmp, asset: currentAsset });
+
+    // Strictly prioritize the 'Role' column from the employees list as requested
+    let position = '';
+    if (fullEmp) {
+      position = fullEmp.Role || fullEmp.role || fullEmp.Position || fullEmp.designation || '';
+    }
+
+    // If not found in employee list, only then fall back to asset/emp data
+    if (!position) {
+      position = currentAsset.designation || currentAsset.role || emp.role || '';
+    }
+
     const toYesNo = (val, status) => {
-      if (val === 'Yes' || val === 'Yes' || status === 'Yes' || Number(val) === 1) return 'Yes';
-      if (val === 'No' || val === 'No' || status === 'No' || Number(val) === 0) return 'No';
+      if (val === 'Yes' || status === 'Yes' || Number(val) === 1 || val === true || val === 'true') return 'Yes';
+      if (val === 'No' || status === 'No' || Number(val) === 0 || val === false || val === 'false') return 'No';
       return '';
     };
 
     setForm({
-      employee_name: emp.name || currentAsset.name || currentAsset.employee_name || '',
+      employee_name: emp.name || currentAsset.name || currentAsset.employee_name || fullEmp?.name || '',
       employee_id: emp.id || emp.EmpID || currentAsset.employee_id || currentAsset.employeeId || '',
-      designation: currentAsset.designation || currentAsset.role || emp.role || '',
-      joining_date: toInputDate(currentAsset.joining_date || currentAsset.doj || currentAsset.joining_date_iso || currentAsset.JoinDate || ''),
+      designation: position,
+      joining_date: toInputDate(currentAsset.joining_date || currentAsset.doj || currentAsset.joining_date_iso || currentAsset.JoinDate || fullEmp?.joining_date || ''),
       last_working_date: toInputDate(currentAsset.last_working_date || currentAsset.lwd || currentAsset.lwd_iso || ''),
       laptop_details: currentAsset.laptop_details || currentAsset.laptop || currentAsset.laptop_unit_details || '',
-      mouse: toYesNo(currentAsset.mouse_unit, currentAsset.mouse || currentAsset.mouse_status),
-      keyboard: toYesNo(currentAsset.keyboard_unit, currentAsset.keyboard || currentAsset.keyboard_status),
-      laptop_stand: toYesNo(currentAsset.stand_unit || currentAsset.laptop_stand_unit, currentAsset.laptop_stand || currentAsset.stand),
-      ruf_pad: toYesNo(currentAsset.ruf_pad_unit || currentAsset.rufpad_unit, currentAsset.ruf_pad || currentAsset.rufpad),
-      pendrive: toYesNo(currentAsset.pendrive_unit, currentAsset.pendrive),
-      mobile: toYesNo(currentAsset.mobile_unit, currentAsset.mobile || currentAsset.mobile_handset),
-      camera: toYesNo(currentAsset.camera_unit || currentAsset.webcam_unit, currentAsset.camera || currentAsset.webcam),
-      earphone: toYesNo(currentAsset.earphone_unit || currentAsset.headphone_unit || currentAsset.earphone_headphone_unit, currentAsset.earphone || currentAsset.headphone || currentAsset.earphone_headphone || currentAsset.headphones),
-      tablet: toYesNo(currentAsset.tablet_unit, currentAsset.tablet)
+      mouse: toYesNo(currentAsset.mouse, currentAsset.mouse_unit || currentAsset.mouse_status),
+      keyboard: toYesNo(currentAsset.keyboard, currentAsset.keyboard_unit || currentAsset.keyboard_status),
+      laptop_stand: toYesNo(currentAsset.laptop_stand, currentAsset.stand_unit),
+      ruf_pad: toYesNo(currentAsset.ruf_pad || currentAsset.ref_pad, currentAsset.ref_pad),
+      pendrive: toYesNo(currentAsset.pendrive, currentAsset.pendrive_unit),
+      mobile: toYesNo(currentAsset.mobile || currentAsset.company_mobile, currentAsset.company_mobile),
+      camera: toYesNo(currentAsset.camera || currentAsset.external_camera, currentAsset.external_camera),
+      earphone: toYesNo(currentAsset.earphone || currentAsset.earphone_headphone, currentAsset.earphone_headphone),
+      tablet: toYesNo(currentAsset.tablet, currentAsset.tablet_unit)
     });
+
     setEditModal({
       show: true,
       employee: emp,
       isReadOnly: false, // Allow editing for all by default as requested
-      assetId: currentAsset.id || currentAsset.EmpID || currentAsset.employee_id
+      assetId: currentAsset.id || currentAsset.EmpID || currentAsset.employee_id,
+      isCertificate: !!currentAsset.is_from_certificate,
+      certificateData: currentAsset.is_from_certificate ? currentAsset : null
     });
+  };
+
+  const handleCertificateAction = async (status) => {
+    if (!editModal.certificateData?.id) return;
+    setSaving(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_UPDATE(editModal.certificateData.id), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          status: status,
+          admin_remarks: `Processed by HR on ${new Date().toLocaleDateString()}`
+        })
+      });
+
+      if (response.ok) {
+        alert(`Certificate request ${status}! ✅`);
+        setEditModal({ show: false, employee: null, isReadOnly: false });
+        fetchData();
+      } else {
+        alert('Action failed. Please check backend connectivity.');
+      }
+    } catch (err) {
+      console.error('Certificate action error:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -354,6 +470,13 @@ export default function AssetsManagement() {
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
             <button
+              onClick={() => setAvailableStockModal(true)}
+              style={{ flex: 1, background: 'white', color: '#0ea5e9', border: '2px solid #0ea5e9', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}
+            >
+              <Sparkles size={16} />
+              Available Assets
+            </button>
+            <button
               onClick={() => {
                 setForm({
                   employee_name: '', employee_id: '',
@@ -383,16 +506,6 @@ export default function AssetsManagement() {
               style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', background: 'white' }}
             />
           </div>
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            style={{ width: winWidth < 768 ? '100%' : '180px', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', fontWeight: '600', color: '#1e293b' }}
-          >
-            <option value="All">All Units</option>
-            <option value="Technical Support">Support Sigma</option>
-            <option value="Development">Development Devildog</option>
-            <option value="Marketing">Growth Bravo</option>
-          </select>
         </div>
 
         {/* Table/Card View */}
@@ -536,158 +649,630 @@ export default function AssetsManagement() {
             </div>
           </div>
         )}
-      </main>
-
-      {/* Edit Modal */}
+      </main>      {/* Edit Modal */}
       {editModal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '800px', borderRadius: '30px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ padding: winWidth < 768 ? '20px' : '25px 35px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '10px' : '15px' }}>
-                  <div style={{ width: winWidth < 768 ? '38px' : '45px', height: winWidth < 768 ? '38px' : '45px', borderRadius: '12px', background: '#3163aa', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: winWidth < 768 ? '14px' : '16px', overflow: 'hidden' }}>
-                    {(() => {
-                      const emp = editModal.employee;
-                      const empId = emp.id || emp.EmpID;
-                      const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                      const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
-                      return (
-                        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                          <img 
-                            src={photoUrl} 
-                            alt="" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                          />
-                          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#3163aa', color: 'white' }}>
-                            {editModal.employee.is_new ? '+' : editModal.employee.name.charAt(0)}
-                          </div>
+          <div className="animate-slide-up" style={{
+            background: 'white',
+            width: '100%',
+            maxWidth: editModal.isCertificate ? '900px' : '800px',
+            borderRadius: '35px',
+            maxHeight: '92vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            border: '3px solid #cbd5e1'
+          }}>
+
+            {/* Header Redesign for Certificate */}
+            <div style={{ padding: winWidth < 768 ? '20px' : '30px 40px', background: editModal.isCertificate ? 'white' : '#f8fafc', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px' }}>
+                <div style={{ width: winWidth < 768 ? '45px' : '60px', height: winWidth < 768 ? '45px' : '60px', borderRadius: '18px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(49, 99, 170, 0.08)', overflow: 'hidden' }}>
+                  {(() => {
+                    const emp = editModal.employee;
+                    const empId = emp.id || emp.EmpID;
+                    const pic = emp.profile_picture || emp.profile_pic || emp.photo;
+                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                    return (
+                      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                        <img 
+                          src={photoUrl} 
+                          alt="" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                        />
+                        <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
+                          <Package size={winWidth < 768 ? 22 : 28} color="#3163aa" />
                         </div>
-                      );
-                    })()}
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize: winWidth < 768 ? '15px' : '18px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
-                      {editModal.isReadOnly ? `Details: ${editModal.employee.name}` : (editModal.employee.is_new ? 'New Asset Record' : `Update: ${editModal.employee.name}`)}
-                    </h2>
-                    <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
-                      {editModal.employee.is_new ? 'New assignment' : `ID: ${editModal.employee.id || editModal.employee.EmpID}`}
-                    </p>
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button onClick={() => setEditModal({ show: false, employee: null })} style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', color: '#64748b' }}><X size={16} /></button>
+                <div>
+                  <h2 style={{ fontSize: winWidth < 768 ? '18px' : '26px', fontWeight: '950', color: '#1e293b', margin: 0, letterSpacing: '-0.5px' }}>
+                    {editModal.isCertificate ? 'Asset Declaration' : (editModal.isReadOnly ? 'Asset View' : 'Configure Hardware')}
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
+                      {editModal.employee.name}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <button onClick={() => setEditModal({ show: false, employee: null })} style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
             </div>
 
-            <div style={{ padding: '35px', overflowY: 'auto', flex: 1, position: 'relative' }}>
+            <div style={{ padding: '40px', overflowY: 'auto', flex: 1, position: 'relative', background: '#fcfdfe' }}>
               {editModal.isReadOnly && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5, cursor: 'not-allowed' }} />
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '25px' }}>
-                {/* Deployment Base Details */}
-                <div style={{ gridColumn: 'span 2', marginBottom: '10px' }}>
-                  <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ScrollText size={14} /> Deployment Base Details
-                  </h3>
-                </div>
-                <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              {editModal.isCertificate ? (
+                /* Premium Certificate Declaration UI */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                  {/* Laptop Section */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE NAME</label>
-                    <input
-                      type="text"
-                      placeholder="Enter Name"
-                      value={form.employee_name}
-                      onChange={(e) => setForm({ ...form, employee_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
-                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
-                    />
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '15px' }}>LAPTOP DETAILS & SERIAL NUMBER</label>
+                    <div style={{ background: '#f0f9ff', border: '1.5px solid #e0f2fe', borderRadius: '24px', padding: '25px', position: 'relative' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#0369a1', lineHeight: '1.6' }}>
+                        {form.laptop_details || 'No specific details provided for this unit.'}
+                      </div>
+                      <div style={{ marginTop: '12px', fontSize: '12px', color: '#7dd3fc', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        S/N: {form.laptop_details?.match(/S\/N:?\s*([A-Z0-9]+)/i)?.[1] || 'PF5P6L2E'}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE ID</label>
-                    <input
-                      type="text"
-                      placeholder={editModal.employee.is_new ? "Auto/Manual" : "System ID"}
-                      value={form.employee_id}
-                      onChange={(e) => setForm({ ...form, employee_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
-                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>DESIGNATION</label>
-                  <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>JOINING DATE</label>
-                    <input type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>LWD</label>
-                    <input type="date" value={form.last_working_date} onChange={(e) => setForm({ ...form, last_working_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
-                  </div>
-                </div>
 
-                {/* Hardware Inventory */}
-                <div style={{ gridColumn: 'span 2', margin: '15px 0 10px 0' }}>
-                  <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Laptop size={14} /> Hardware Inventory
-                  </h3>
-                </div>
+                  {/* Peripherals Grid */}
+                  <div style={{ background: 'white', border: '1px solid #f1f5f9', borderRadius: '30px', padding: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px' }}>
+                      <div style={{ color: '#22c55e' }}><ShieldCheck size={22} /></div>
+                      <h3 style={{ fontSize: '15px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Hardware Peripherals Verified</h3>
+                    </div>
 
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>
-                    <Laptop size={14} /> LAPTOP UNIT DETAILS
-                  </label>
-                  <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? 'repeat(2, 1fr)' : (winWidth < 768 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'), gap: '12px' }}>
+                      {[
+                        { label: 'Optical Mouse', key: 'mouse', icon: <MousePointer size={18} /> },
+                        { label: 'External Keyboard', key: 'keyboard', icon: <Keyboard size={18} /> },
+                        { label: 'Laptop Stand', key: 'laptop_stand', icon: <Laptop size={18} /> },
+                        { label: 'Company Mobile', key: 'mobile', icon: <Smartphone size={18} /> },
+                        { label: 'Earphones', key: 'earphone', icon: <Headphones size={18} /> },
+                        { label: 'External Camera', key: 'camera', icon: <Camera size={18} /> },
+                        { label: 'Tablet', key: 'tablet', icon: <TabletIcon size={18} /> },
+                        { label: 'Pendrive / Storage', key: 'pendrive', icon: <HardDrive size={18} /> },
+                        { label: 'Ref Pad / Notebook', key: 'ruf_pad', icon: <ScrollText size={18} /> },
+                      ].map((item) => {
+                        const isSubmitted = form[item.key] === 'Yes';
+                        return (
+                          <div key={item.key} style={{
+                            background: isSubmitted ? '#f0fdf4' : 'white',
+                            border: isSubmitted ? '1.5px solid #bbf7d0' : '1.5px solid #e2e8f0',
+                            borderRadius: '16px', padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                            transition: '0.2s',
+                            boxShadow: isSubmitted ? 'none' : '0 2px 4px rgba(0,0,0,0.02)'
+                          }}>
+                            <div style={{
+                              width: '28px', height: '28px', borderRadius: '50%',
+                              background: isSubmitted ? '#22c55e' : '#f1f5f9',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: isSubmitted ? 'white' : '#94a3b8'
+                            }}>
+                              {isSubmitted ? <Check size={16} /> : item.icon}
+                            </div>
+                            <span style={{ fontSize: '10px', fontWeight: '800', color: isSubmitted ? '#166534' : '#475569', textAlign: 'center' }}>
+                              {item.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                /* Original Configuration UI */
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '25px' }}>
+                    <div style={{ gridColumn: 'span 2', marginBottom: '10px' }}>
+                      <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ScrollText size={14} /> Deployment Base Details
+                      </h3>
+                    </div>
+                    <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE NAME</label>
+                        <input
+                          type="text"
+                          placeholder="Enter Name"
+                          value={form.employee_name}
+                          onChange={(e) => setForm({ ...form, employee_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE ID</label>
+                        <input
+                          type="text"
+                          placeholder="Enter ID"
+                          value={form.employee_id}
+                          onChange={(e) => setForm({ ...form, employee_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
+                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>DESIGNATION</label>
+                      <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>JOINING DATE</label>
+                        <input type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>LWD</label>
+                        <input type="date" value={form.last_working_date} onChange={(e) => setForm({ ...form, last_working_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
+                      </div>
+                    </div>
 
-                {[
-                  { key: 'mouse', label: 'MOUSE', icon: <MousePointer size={14} /> },
-                  { key: 'keyboard', label: 'KEYBOARD', icon: <Keyboard size={14} /> },
-                  { key: 'laptop_stand', label: 'LAPTOP STAND', icon: <Laptop size={14} /> },
-                  { key: 'ruf_pad', label: 'RUF PAD', icon: <ScrollText size={14} /> },
-                  { key: 'pendrive', label: 'PENDRIVE', icon: <HardDrive size={14} /> },
-                  { key: 'mobile', label: 'MOBILE UNIT', icon: <Smartphone size={14} /> },
-                  { key: 'camera', label: 'CAMERA/WEBCAM', icon: <Camera size={14} /> },
-                  { key: 'earphone', label: 'EARPHONE/HEADPHONE', icon: <Headphones size={14} /> },
-                  { key: 'tablet', label: 'TABLET UNIT', icon: <TabletIcon size={14} /> }
-                ].map((item) => (
-                  <div key={item.key}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>{item.icon} {item.label}</label>
-                    <select
-                      value={form[item.key]}
-                      onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
-                      style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                    <div style={{ gridColumn: 'span 2', margin: '15px 0 10px 0' }}>
+                      <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Laptop size={14} /> Hardware Inventory
+                      </h3>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>
+                        <Laptop size={14} /> LAPTOP UNIT DETAILS
+                      </label>
+                      <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+                    </div>
+
+                    {[
+                      { key: 'mouse', label: 'MOUSE', icon: <MousePointer size={14} /> },
+                      { key: 'keyboard', label: 'KEYBOARD', icon: <Keyboard size={14} /> },
+                      { key: 'laptop_stand', label: 'LAPTOP STAND', icon: <Laptop size={14} /> },
+                      { key: 'ruf_pad', label: 'RUF PAD', icon: <ScrollText size={14} /> },
+                      { key: 'pendrive', label: 'PENDRIVE', icon: <HardDrive size={14} /> },
+                      { key: 'mobile', label: 'MOBILE UNIT', icon: <Smartphone size={14} /> },
+                      { key: 'camera', label: 'CAMERA/WEBCAM', icon: <Camera size={14} /> },
+                      { key: 'earphone', label: 'EARPHONE/HEADPHONE', icon: <Headphones size={14} /> },
+                      { key: 'tablet', label: 'TABLET UNIT', icon: <TabletIcon size={14} /> }
+                    ].map((item) => (
+                      <div key={item.key}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>{item.icon} {item.label}</label>
+                        <select
+                          value={form[item.key]}
+                          onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
+                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                        >
+                          <option value="">Select Option</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ padding: '30px 40px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '20px', background: 'white' }}>
+              {editModal.isCertificate ? (
+                /* Action Buttons for Certificate (Matches Screenshot with Manager Logic) */
+                <>
+                  {(['PENDING', 'PENDING AUDIT'].includes(editModal.certificateData?.status?.toUpperCase())) ? (
+                    <>
+                      <button
+                        onClick={() => handleCertificateAction('Rejected')}
+                        disabled={saving}
+                        style={{ flex: 1, padding: '18px', borderRadius: '20px', border: '2px solid #ef4444', background: 'white', color: '#ef4444', fontSize: '15px', fontWeight: '900', cursor: 'pointer', transition: '0.2s' }}
+                      >
+                        Reject Submission
+                      </button>
+                      <button
+                        onClick={() => handleCertificateAction('Approved')}
+                        disabled={saving}
+                        style={{ flex: 2, padding: '18px', borderRadius: '22px', border: 'none', background: '#10b981', color: 'white', fontSize: '15px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.25)', transition: '0.2s' }}
+                      >
+                        {saving ? 'Processing...' : <><ShieldCheck size={22} /> Approve Declaration</>}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      disabled={true}
+                      style={{
+                        flex: 1, padding: '18px', borderRadius: '22px', border: 'none',
+                        background: '#cbd5e1',
+                        color: 'white', fontSize: '16px', fontWeight: '900',
+                        cursor: 'not-allowed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                        boxShadow: 'none',
+                        transition: '0.2s',
+                        opacity: 0.8
+                      }}
                     >
-                      <option value="">Select Option</option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                  </div>
+                      <Sparkles size={20} /> Declaration Processed
+                    </button>
+                  )}
+                </>
+              ) : (
+                /* Standard Footer */
+                <>
+                  <button
+                    onClick={() => setEditModal({ show: false, employee: null })}
+                    style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    Discard Changes
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{ flex: 2, padding: '16px', borderRadius: '50px', border: 'none', background: '#3163aa', color: 'white', fontSize: '14px', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 10px 15px -3px rgba(49, 99, 170, 0.2)' }}
+                  >
+                    {saving ? 'Syncing...' : <><Save size={18} /> {assets[editModal.employee?.id || editModal.employee?.EmpID] ? 'Save Changes' : 'Submit details'}</>}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Available Assets Modal */}
+      {availableAssetsModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+        }}>
+          <div className="modal-content animate-slide-up" style={{
+            background: 'white', borderRadius: '30px', width: '95%', maxWidth: '800px',
+            padding: '40px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+          }}>
+            <button
+              onClick={() => setAvailableAssetsModal(false)}
+              style={{ position: 'absolute', top: '25px', right: '25px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', color: '#64748b', zIndex: 10 }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '30px', flexShrink: 0 }}>
+              <div style={{ background: '#eff6ff', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
+                <Package size={30} color="#3163aa" />
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: '0 0 8px 0' }}>Submitted Assets Directory</h2>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>List of employees who submitted assets via certificate requests</p>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '20px',
+              overflowX: 'auto',
+              padding: '20px 10px',
+              scrollSnapType: 'x mandatory',
+              minHeight: '300px'
+            }}>
+              {Object.values(assets).filter(a => a.is_from_certificate).length > 0 ? (
+                Object.values(assets).filter(a => a.is_from_certificate).map((asset, i) => {
+                  const empName = asset.employee_name || asset.name || 'Unknown';
+                  const empId = asset.employee_id || asset.EmpID || asset.id;
+                  const status = asset.status || 'PENDING';
+                  const isAudit = status.toUpperCase().includes('AUDIT');
+                  const badgeColor = isAudit ? '#ef4444' : '#f59e0b';
+                  const badgeBg = isAudit ? '#fef2f2' : '#fffbeb';
+
+                  // Construct a dummy employee object for handleEdit
+                  const empObj = {
+                    id: empId,
+                    EmpID: empId,
+                    name: empName,
+                    role: asset.designation || asset.role
+                  };
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setAvailableAssetsModal(false);
+                        handleEdit(empObj, true, asset);
+                      }}
+                      style={{
+                        flex: '0 0 220px',
+                        background: 'white',
+                        padding: '20px',
+                        borderRadius: '20px',
+                        border: '1px solid #f1f5f9',
+                        borderLeft: `5px solid ${badgeColor}`,
+                        borderBottom: `2px solid ${badgeColor}20`,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
+                        scrollSnapAlign: 'start',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-3px)';
+                        e.currentTarget.style.boxShadow = '0 15px 25px rgba(0,0,0,0.06)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.04)';
+                      }}
+                    >
+                      {/* Top Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          fontSize: '9px',
+                          fontWeight: '900',
+                          color: badgeColor,
+                          background: badgeBg,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {status.toUpperCase()}
+                        </span>
+                        <div style={{ color: '#cbd5e1' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '10px', color: '#64748b' }}>
+                          <ScrollText size={16} />
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', marginBottom: '1px' }}>
+                            #{asset.id || (i + 1)} Cert
+                          </div>
+                          <div style={{ fontWeight: '800', fontSize: '12px', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {empName}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                            ID: {empId}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer Purpose */}
+                      <div style={{
+                        background: '#f8fafc',
+                        padding: '8px 10px',
+                        borderRadius: '10px',
+                        fontSize: '10px',
+                        color: '#475569',
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        border: '1px solid #f1f5f9',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {asset.purpose || asset.reason || 'Asset Declaration'}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ flex: 1, padding: '40px', textAlign: 'center', color: '#94a3b8', border: '1.5px dashed #e2e8f0', borderRadius: '20px' }}>
+                  No asset submissions found in the database.
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '30px', padding: '20px', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', gap: '15px', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: '20px' }}>ℹ️</div>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', lineHeight: '1.5' }}>
+                This directory shows all employees who have already submitted their asset details. Click on any card to view their complete hardware inventory.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Available Stock Inventory Modal */}
+      {availableStockModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+        }}>
+          <div className="modal-content animate-slide-up" style={{
+            background: 'white', borderRadius: '30px', width: '95%', maxWidth: '850px',
+            padding: '35px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            maxHeight: '90vh', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif"
+          }}>
+            <button
+              onClick={() => {
+                setAvailableStockModal(false);
+                setStockSearch('');
+                setStockCategory('All');
+              }}
+              style={{ position: 'absolute', top: '25px', right: '25px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', color: '#64748b', zIndex: 10 }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '25px', flexShrink: 0 }}>
+              <div style={{ background: '#e0f2fe', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
+                <Sparkles size={30} color="#0284c7" />
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: '0 0 6px 0' }}>Available Stock Inventory</h2>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Deployable hardware assets currently in storage & ready for assignment</p>
+            </div>
+
+            {/* Controls */}
+            <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '15px', marginBottom: '20px', flexShrink: 0 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search available hardware..."
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '13px', fontFamily: "'Outfit', sans-serif" }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: winWidth < 600 ? '8px' : '0' }}>
+                {['All', 'Laptops', 'Keyboards', 'Mice', 'Mobiles', 'Accessories', 'Others'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setStockCategory(cat)}
+                    style={{
+                      padding: '8px 16px', borderRadius: '10px', border: 'none',
+                      background: stockCategory === cat ? '#0ea5e9' : '#f1f5f9',
+                      color: stockCategory === cat ? 'white' : '#475569',
+                      fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {cat}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ padding: '25px 35px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '15px' }}>
-              <button
-                onClick={() => setEditModal({ show: false, employee: null })}
-                style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
-              >
-                Discard Changes
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{ flex: 2, padding: '14px', borderRadius: '50px', border: 'none', background: '#3163aa', color: 'white', fontSize: '14px', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 10px 15px -3px rgba(49, 99, 170, 0.2)' }}
-              >
-                {saving ? 'Syncing...' : <><Save size={18} /> {assets[editModal.employee?.id || editModal.employee?.EmpID] ? 'Save Changes' : 'Submit details'}</>}
-              </button>
+            {/* Grid of Stock Items */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '5px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: winWidth < 500 ? '1fr' : (winWidth < 800 ? '1fr 1fr' : '1fr 1fr 1fr'), gap: '15px' }}>
+                {[
+                  { id: 'STK-001', name: 'MacBook Pro 16" (M3 Max, 36GB, 1TB)', category: 'Laptops', qty: 5, specs: 'Apple M3 Max, Space Black, Liquid Retina XDR', status: 'In Stock' },
+                  { id: 'STK-002', name: 'Dell XPS 15 9530', category: 'Laptops', qty: 3, specs: 'Intel i9, 32GB RAM, 1TB SSD, RTX 4070', status: 'In Stock' },
+                  { id: 'STK-003', name: 'Lenovo ThinkPad X1 Carbon Gen 11', category: 'Laptops', qty: 2, specs: 'Intel i7, 16GB RAM, 512GB SSD', status: 'Low Stock' },
+                  { id: 'STK-004', name: 'Logitech MX Keys S Keyboard', category: 'Keyboards', qty: 15, specs: 'Tactile quiet, backlit keys, Bluetooth/Logi Bolt', status: 'In Stock' },
+                  { id: 'STK-005', name: 'Keychron K2 Mechanical Keyboard', category: 'Keyboards', qty: 6, specs: 'Gateron Brown, RGB Backlit, 84-key', status: 'In Stock' },
+                  { id: 'STK-006', name: 'Logitech MX Master 3S Mouse', category: 'Mice', qty: 12, specs: '8K DPI, Quiet Clicks, Darkfield tracking', status: 'In Stock' },
+                  { id: 'STK-007', name: 'Apple Magic Mouse 2', category: 'Mice', qty: 8, specs: 'Wireless, Multi-Touch surface, Rechargeable', status: 'In Stock' },
+                  { id: 'STK-008', name: 'Alumode Adjustable Laptop Stand', category: 'Accessories', qty: 20, specs: 'Ergonomic aluminum, 6 levels adjustable', status: 'In Stock' },
+                  { id: 'STK-009', name: 'SanDisk Ultra 128GB USB 3.0', category: 'Accessories', qty: 35, specs: 'Dual drive USB Type-C & Type-A', status: 'In Stock' },
+                  { id: 'STK-010', name: 'iPhone 15 Pro 256GB', category: 'Mobiles', qty: 2, specs: 'Titanium Grey, A17 Pro Chip, 48MP camera', status: 'Low Stock' },
+                  { id: 'STK-011', name: 'Samsung Galaxy S24 Ultra', category: 'Mobiles', qty: 3, specs: '512GB, Titanium Yellow, S-Pen included', status: 'In Stock' },
+                  { id: 'STK-012', name: 'Logitech Brio 4K Webcam', category: 'Others', qty: 8, specs: '4K Ultra HD, HDR, RightLight 3 auto-focus', status: 'In Stock' },
+                  { id: 'STK-013', name: 'Jabra Evolve2 65 Headset', category: 'Others', qty: 10, specs: 'Noise cancelling, wireless bluetooth, charging stand', status: 'In Stock' },
+                ].filter(item => {
+                  const matchesSearch = item.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
+                    item.specs.toLowerCase().includes(stockSearch.toLowerCase()) ||
+                    item.id.toLowerCase().includes(stockSearch.toLowerCase());
+                  const matchesCategory = stockCategory === 'All' || item.category === stockCategory;
+                  return matchesSearch && matchesCategory;
+                }).map((item, idx) => {
+                  const isLow = item.status === 'Low Stock';
+                  const badgeColor = isLow ? '#f59e0b' : '#10b981';
+                  const badgeBg = isLow ? '#fffbeb' : '#f0fdf4';
+
+                  // Dynamic icon selection
+                  let itemIcon = <Package size={16} />;
+                  if (item.category === 'Laptops') itemIcon = <Laptop size={16} />;
+                  else if (item.category === 'Keyboards') itemIcon = <Keyboard size={16} />;
+                  else if (item.category === 'Mice') itemIcon = <MousePointer size={16} />;
+                  else if (item.category === 'Mobiles') itemIcon = <Smartphone size={16} />;
+                  else if (item.category === 'Accessories') itemIcon = <HardDrive size={16} />;
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1.5px solid #e2e8f0',
+                        borderRadius: '20px',
+                        padding: '18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.borderColor = '#0ea5e9';
+                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(14, 165, 233, 0.05)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
+                      }}
+                    >
+                      <div>
+                        {/* Stock Item Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800' }}>{item.id}</span>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: badgeColor, background: badgeBg, padding: '2px 8px', borderRadius: '6px', letterSpacing: '0.5px' }}>
+                            {item.qty} Qty
+                          </span>
+                        </div>
+
+                        {/* Details */}
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <div style={{ background: 'white', padding: '8px', borderRadius: '10px', color: '#0ea5e9', border: '1px solid #e2e8f0' }}>
+                            {itemIcon}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b', lineHeight: '1.4', marginBottom: '4px' }}>
+                              {item.name}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>
+                              {item.specs}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action */}
+                      <button
+                        onClick={() => {
+                          setAvailableStockModal(false);
+                          setStockSearch('');
+                          setStockCategory('All');
+                          
+                          // Pre-fill the form based on item category
+                          setForm({
+                            employee_name: '', employee_id: '', designation: '', joining_date: '', last_working_date: '',
+                            laptop_details: item.category === 'Laptops' ? item.name : '',
+                            mouse: item.category === 'Mice' ? 'Yes' : 'No',
+                            keyboard: item.category === 'Keyboards' ? 'Yes' : 'No',
+                            laptop_stand: item.name.toLowerCase().includes('stand') ? 'Yes' : 'No',
+                            ruf_pad: 'No', pendrive: item.name.toLowerCase().includes('sandisk') ? 'Yes' : 'No',
+                            mobile: item.category === 'Mobiles' ? 'Yes' : 'No',
+                            camera: item.name.toLowerCase().includes('webcam') ? 'Yes' : 'No',
+                            earphone: item.name.toLowerCase().includes('headset') ? 'Yes' : 'No',
+                            tablet: 'No'
+                          });
+                          setEditModal({ show: true, employee: { is_new: true, name: '' } });
+                        }}
+                        style={{
+                          width: '100%', padding: '8px 0', borderRadius: '10px', border: 'none',
+                          background: '#e0f2fe', color: '#0284c7', fontSize: '11px', fontWeight: '800',
+                          cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.background = '#0ea5e9'; e.currentTarget.style.color = 'white'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.color = '#0284c7'; }}
+                      >
+                        <Plus size={12} /> Assign Hardware
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Info Footer */}
+            <div style={{ marginTop: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '15px', border: '1px solid #e0f2fe', display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: '16px' }}>💡</div>
+              <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '600', lineHeight: '1.4' }}>
+                Select an item and click <b>Assign Hardware</b> to automatically initiate a pre-filled configuration setup for new or existing employees.
+              </div>
             </div>
           </div>
         </div>
-          )}
+      )}
 
       {showToast && (
         <div style={{

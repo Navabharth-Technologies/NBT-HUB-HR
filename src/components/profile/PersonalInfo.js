@@ -1,6 +1,6 @@
 import React, { useState, useEffect, cloneElement, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Save, Building2,
   AlertCircle, CheckCircle2, User, Landmark, RefreshCw,
@@ -143,6 +143,9 @@ const SECTIONS = [
 
 export default function PersonalInfo({ onBack }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isSelfMode = searchParams.get('self') === 'true';
   const { user } = useAuth();
   const [form, setForm] = useState({
     emp_name: '', gender: 'Male', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: 'General',
@@ -179,12 +182,21 @@ export default function PersonalInfo({ onBack }) {
     const savedId = localStorage.getItem('last_selected_emp_id');
     const currentUserId = user?.employee_id || user?.id || user?.email || user?.EmpID;
 
-    if (savedId && employees.some(e => String(e.employee_id || e.id) === String(savedId))) {
-      setSelectedEmpId(savedId);
+    if (isSelfMode && currentUserId) {
+      setSelectedEmpId(currentUserId);
+    } else if (!isSelfMode) {
+      if (savedId && employees.some(e => String(e.employee_id || e.id) === String(savedId) && String(e.employee_id || e.id) !== String(currentUserId))) {
+        setSelectedEmpId(savedId);
+      } else {
+        const otherEmployees = employees.filter(e => String(e.employee_id || e.id) !== String(currentUserId));
+        if (otherEmployees.length > 0) {
+          setSelectedEmpId(otherEmployees[0].employee_id || otherEmployees[0].id);
+        }
+      }
     } else if (currentUserId) {
       setSelectedEmpId(currentUserId);
     }
-  }, [user, employees]);
+  }, [user, employees, isSelfMode]);
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -441,6 +453,231 @@ export default function PersonalInfo({ onBack }) {
   const handleChange = (key, value) => {
     let sanitizedValue = value;
 
+    if (key === 'dob') {
+      const prevValue = form.dob || '';
+      const isDeleting = prevValue.length > value.length;
+      let clean = value.replace(/\D/g, '');
+
+      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
+        if (clean.length > 0) {
+          clean = clean.slice(0, -1);
+        }
+      }
+
+      // Max 8 digits
+      if (clean.length > 8) {
+        clean = clean.slice(0, 8);
+      }
+
+      // Restrict day (dd)
+      if (clean.length >= 1) {
+        const d1 = parseInt(clean.charAt(0), 10);
+        if (d1 > 3) {
+          clean = '0' + clean;
+        }
+      }
+      if (clean.length >= 2) {
+        let dd = clean.slice(0, 2);
+        const ddVal = parseInt(dd, 10);
+        if (ddVal > 31) {
+          dd = '31';
+        } else if (ddVal === 0) {
+          dd = '01';
+        }
+        clean = dd + clean.slice(2);
+      }
+
+      // Restrict month (mm)
+      if (clean.length >= 3) {
+        const m1 = parseInt(clean.charAt(2), 10);
+        if (m1 > 1) {
+          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+        }
+      }
+      if (clean.length >= 4) {
+        let mm = clean.slice(2, 4);
+        const mmVal = parseInt(mm, 10);
+        if (mmVal > 12) {
+          mm = '12';
+        } else if (mmVal === 0) {
+          mm = '01';
+        }
+        clean = clean.slice(0, 2) + mm + clean.slice(4);
+      }
+
+      // Restrict year (yyyy)
+      if (clean.length >= 8) {
+        let yyyy = clean.slice(4, 8);
+        const yyyyVal = parseInt(yyyy, 10);
+        if (yyyyVal > 2090) {
+          yyyy = '2090';
+        }
+        clean = clean.slice(0, 4) + yyyy;
+      }
+
+      // Reconstruct with slashes
+      let formatted = '';
+      if (clean.length > 4) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+      } else if (clean.length > 2) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      } else {
+        formatted = clean;
+      }
+      
+      sanitizedValue = formatted;
+    }
+
+    if (key === 'separation') {
+      const prevValue = form.separation || '';
+      const isDeleting = prevValue.length > value.length;
+      let clean = value.replace(/\D/g, '');
+
+      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
+        if (clean.length > 0) {
+          clean = clean.slice(0, -1);
+        }
+      }
+
+      // Max 8 digits
+      if (clean.length > 8) {
+        clean = clean.slice(0, 8);
+      }
+
+      // Restrict day (dd)
+      if (clean.length >= 1) {
+        const d1 = parseInt(clean.charAt(0), 10);
+        if (d1 > 3) {
+          clean = '0' + clean;
+        }
+      }
+      if (clean.length >= 2) {
+        let dd = clean.slice(0, 2);
+        const ddVal = parseInt(dd, 10);
+        if (ddVal > 31) {
+          dd = '31';
+        } else if (ddVal === 0) {
+          dd = '01';
+        }
+        clean = dd + clean.slice(2);
+      }
+
+      // Restrict month (mm)
+      if (clean.length >= 3) {
+        const m1 = parseInt(clean.charAt(2), 10);
+        if (m1 > 1) {
+          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+        }
+      }
+      if (clean.length >= 4) {
+        let mm = clean.slice(2, 4);
+        const mmVal = parseInt(mm, 10);
+        if (mmVal > 12) {
+          mm = '12';
+        } else if (mmVal === 0) {
+          mm = '01';
+        }
+        clean = clean.slice(0, 2) + mm + clean.slice(4);
+      }
+
+      // Restrict year (yyyy) max 4 digits, ≤ 2090
+      if (clean.length >= 8) {
+        let yyyy = clean.slice(4, 8);
+        const yyyyVal = parseInt(yyyy, 10);
+        if (yyyyVal > 2090) {
+          yyyy = '2090';
+        }
+        clean = clean.slice(0, 4) + yyyy;
+      }
+
+      // Reconstruct with slashes dd/mm/yyyy
+      let formatted = '';
+      if (clean.length > 4) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+      } else if (clean.length > 2) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      } else {
+        formatted = clean;
+      }
+
+      sanitizedValue = formatted;
+    }
+
+    if (key === 'doj') {
+      const prevValue = form.doj || '';
+      const isDeleting = prevValue.length > value.length;
+      let clean = value.replace(/\D/g, '');
+
+      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
+        if (clean.length > 0) {
+          clean = clean.slice(0, -1);
+        }
+      }
+
+      // Max 8 digits
+      if (clean.length > 8) {
+        clean = clean.slice(0, 8);
+      }
+
+      // Restrict day (dd)
+      if (clean.length >= 1) {
+        const d1 = parseInt(clean.charAt(0), 10);
+        if (d1 > 3) {
+          clean = '0' + clean;
+        }
+      }
+      if (clean.length >= 2) {
+        let dd = clean.slice(0, 2);
+        const ddVal = parseInt(dd, 10);
+        if (ddVal > 31) {
+          dd = '31';
+        } else if (ddVal === 0) {
+          dd = '01';
+        }
+        clean = dd + clean.slice(2);
+      }
+
+      // Restrict month (mm)
+      if (clean.length >= 3) {
+        const m1 = parseInt(clean.charAt(2), 10);
+        if (m1 > 1) {
+          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+        }
+      }
+      if (clean.length >= 4) {
+        let mm = clean.slice(2, 4);
+        const mmVal = parseInt(mm, 10);
+        if (mmVal > 12) {
+          mm = '12';
+        } else if (mmVal === 0) {
+          mm = '01';
+        }
+        clean = clean.slice(0, 2) + mm + clean.slice(4);
+      }
+
+      // Restrict year (yyyy) max 4 digits, <= 2090
+      if (clean.length >= 8) {
+        let yyyy = clean.slice(4, 8);
+        const yyyyVal = parseInt(yyyy, 10);
+        if (yyyyVal > 2090) {
+          yyyy = '2090';
+        }
+        clean = clean.slice(0, 4) + yyyy;
+      }
+
+      // Reconstruct with slashes dd/mm/yyyy
+      let formatted = '';
+      if (clean.length > 4) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+      } else if (clean.length > 2) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      } else {
+        formatted = clean;
+      }
+
+      sanitizedValue = formatted;
+    }
+
     if (key === 'personal_email' || key === 'official_email') {
       const atIndex = value.indexOf('@');
       if (atIndex !== -1) {
@@ -487,6 +724,9 @@ export default function PersonalInfo({ onBack }) {
       }
       if (key === 'aadhar_number' && sanitizedValue.length > 12) {
         sanitizedValue = sanitizedValue.substring(0, 12);
+      }
+      if (key === 'edu_completion_year' && sanitizedValue.length > 4) {
+        sanitizedValue = sanitizedValue.substring(0, 4);
       }
       if (key === 'bank_account_no' && sanitizedValue.length > 18) {
         sanitizedValue = sanitizedValue.substring(0, 18);
@@ -726,6 +966,16 @@ export default function PersonalInfo({ onBack }) {
     }
   };
 
+  const handlePrevious = () => {
+    const currentIndex = SECTIONS.findIndex(s => s.id === activeSection);
+    const prevSection = SECTIONS[currentIndex - 1];
+    if (prevSection) {
+      setActiveSection(prevSection.id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const currentSectionIndex = SECTIONS.findIndex(s => s.id === activeSection);
   const currentSection = SECTIONS.find(s => s.id === activeSection);
   const userRole = user?.role?.toLowerCase() || 'employee';
   const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
@@ -870,21 +1120,25 @@ export default function PersonalInfo({ onBack }) {
                   localStorage.setItem('last_selected_emp_id', newId);
                   setIsEditing(false);
                 }}
+                disabled={isSelfMode}
                 style={{
                   width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
-                  backgroundColor: 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none'
+                  backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none',
+                  cursor: isSelfMode ? 'default' : 'pointer'
                 }}
               >
-                <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
-                  My Profile ({user?.name || 'Self'})
-                </option>
-                {employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                {isSelfMode && (
+                  <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
+                    My Profile ({user?.name || 'Self'})
+                  </option>
+                )}
+                {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
                   <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
                     {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
                   </option>
                 ))}
               </select>
-              <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
             </div>
 
             <motion.button
@@ -1124,7 +1378,30 @@ export default function PersonalInfo({ onBack }) {
               paddingTop: '24px',
               borderTop: '1.5px solid #f1f5f9'
             }}>
-              {SECTIONS.findIndex(s => s.id === activeSection) < SECTIONS.length - 1 ? (
+              {currentSectionIndex > 0 && (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handlePrevious}
+                  type="button"
+                  style={{
+                    padding: '14px 28px',
+                    backgroundColor: 'white',
+                    color: '#315A9E',
+                    border: '3px solid #cbd5e1',
+                    borderRadius: '16px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '15px'
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </motion.button>
+              )}
+              {currentSectionIndex < SECTIONS.length - 1 ? (
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => handleSave(true)}
