@@ -420,17 +420,20 @@ export default function LeaveRequestDetail() {
                 {(() => {
                   const cleanId = (val) => String(val || '').replace(/[^0-9]/g, '').trim();
                   const empId = cleanId(request.user_id || request.emp_id || request.employee_id || request.id);
-                  const photoUrl = request.profile_pic ? (request.profile_pic.startsWith('http') || request.profile_pic.startsWith('data:') ? request.profile_pic : `${BASE_URL}${request.profile_pic.startsWith('/') ? '' : '/'}${request.profile_pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                  const rawPic = request.profile_pic;
+                  const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
 
                   return (
                     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                      <img
-                        src={photoUrl}
-                        alt={request.employeeName}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '20px' }}
-                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                      />
-                      <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white', fontSize: '32px', fontWeight: '900', borderRadius: '20px' }}>
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={request.employeeName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '20px' }}
+                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                        />
+                      ) : null}
+                      <div style={{ display: photoUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white', fontSize: '32px', fontWeight: '900', borderRadius: '20px' }}>
                         {request.employeeName ? request.employeeName.charAt(0).toUpperCase() : 'A'}
                       </div>
                     </div>

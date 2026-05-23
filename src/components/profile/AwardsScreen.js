@@ -896,16 +896,18 @@ export default function AwardsScreen() {
                                                             const cleanId = (val) => String(val || '').replace(/[^0-9]/g, '').trim();
                                                             const empId = cleanId(topContributor.id || topContributor.employee_id);
                                                             const rawPic = topContributor.profile_picture;
-                                                            const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                                                            const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
                                                             return (
                                                                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                                                    <img
-                                                                        src={photoUrl}
-                                                                        alt=""
-                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '18px' }}
-                                                                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                                                                    />
-                                                                    <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#facc15', color: '#0f172a', fontSize: '22px', fontWeight: '1000' }}>
+                                                                    {photoUrl ? (
+                                                                        <img
+                                                                            src={photoUrl}
+                                                                            alt=""
+                                                                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '18px' }}
+                                                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                                                        />
+                                                                    ) : null}
+                                                                    <div style={{ display: photoUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#facc15', color: '#0f172a', fontSize: '22px', fontWeight: '1000' }}>
                                                                         {topContributor.name.charAt(0)}
                                                                     </div>
                                                                 </div>

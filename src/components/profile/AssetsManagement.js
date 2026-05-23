@@ -5,7 +5,7 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
-  Package, Search, Edit3, Save, X, Plus,
+  Package, Search, Edit3, Save, X, Plus, ChevronRight,
   Laptop, MousePointer, Keyboard, Smartphone,
   Camera, Headphones, Tablet as TabletIcon, HardDrive, ScrollText, ArrowLeft,
   ShieldCheck, Sparkles, Check
@@ -16,6 +16,7 @@ export default function AssetsManagement() {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [assets, setAssets] = useState({});
+  const [stockList, setStockList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
@@ -23,12 +24,23 @@ export default function AssetsManagement() {
   const [availableAssetsModal, setAvailableAssetsModal] = useState(false);
   const [availableStockModal, setAvailableStockModal] = useState(false);
   const [stockSearch, setStockSearch] = useState('');
-  const [stockCategory, setStockCategory] = useState('All');
+  const [stockCategory, setStockCategory] = useState(null);
+  const [stockSummary, setStockSummary] = useState({
+    all: 0,
+    laptops: 0,
+    keyboards: 0,
+    mice: 0,
+    mobiles: 0,
+    accessories: 0,
+    others: 0
+  });
   const [saving, setSaving] = useState(false);
+  const [usersMap, setUsersMap] = useState({});
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
+  const stockRef = React.useRef(null);
 
   // Asset Form State
   const [form, setForm] = useState({
@@ -70,6 +82,26 @@ export default function AssetsManagement() {
           setEmployees(Array.isArray(empData) ? empData : (empData.recordset || empData.data || []));
         }
       } catch (e) { console.error('Emp fetch failed:', e); }
+
+      // 1b. Fetch Users and build id → {employee_id, name} lookup map
+      try {
+        const usersRes = await fetch(API_ENDPOINTS.USERS, { headers });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const usersList = Array.isArray(usersData) ? usersData : (usersData.recordset || usersData.data || usersData.users || []);
+          const map = {};
+          usersList.forEach(u => {
+            const dbId = u.id || u.user_id || u.userid;
+            if (dbId !== undefined && dbId !== null) {
+              map[String(dbId)] = {
+                employee_id: u.employee_id || u.emp_id || u.empid || u.EmpID || String(dbId),
+                name: u.employee_name || u.name || u.full_name || u.username || ''
+              };
+            }
+          });
+          setUsersMap(map);
+        }
+      } catch (e) { console.error('Users fetch failed:', e); }
 
       // 2. Fetch Assets
       try {
@@ -133,6 +165,96 @@ export default function AssetsManagement() {
           };
         });
       } catch (e) { console.error('Cert merge error:', e); }
+
+      // 4. Fetch Stock Inventory
+      try {
+        const stockRes = await fetch(API_ENDPOINTS.ASSETS_STOCK || `${BASE_URL}/api/assets-stock`, { headers });
+        if (stockRes.ok) {
+          const stockData = await stockRes.json();
+          const list = Array.isArray(stockData) ? stockData : (stockData.recordset || stockData.data || []);
+          if (list.length > 0) {
+            const mappedList = list.map((originalItem, idx) => {
+              // Convert all keys of originalItem to lowercase for robust mapping
+              const item = {};
+              Object.keys(originalItem).forEach(k => {
+                if (originalItem[k] !== null && originalItem[k] !== undefined) {
+                  item[k.toLowerCase()] = originalItem[k];
+                }
+              });
+
+              const id = item.id || item.stock_id || item.stockid || item.item_id || item.itemid || `STK-${String(idx + 1).padStart(3, '0')}`;
+
+              // Resolve name from laptop details or fallbacks
+              let name = 'Hardware Package';
+              if (item.laptop_details) {
+                if (item.laptop_details.includes('Serial No')) {
+                  name = item.laptop_details.split('Serial No')[0].replace(/[,;:]\s*$/, '').trim();
+                } else if (item.laptop_details.includes('S/N')) {
+                  name = item.laptop_details.split('S/N')[0].replace(/[,;:]\s*$/, '').trim();
+                } else {
+                  name = item.laptop_details;
+                }
+              } else if (item.name || item.item_name || item.itemname) {
+                name = item.name || item.item_name || item.itemname;
+              }
+
+              // Resolve specs by listing all verified peripherals
+              const peripherals = [];
+              if (item.mouse === 'Yes' || item.mouse === 1 || item.mouse === '1' || item.mouse === true) peripherals.push('Mouse');
+              if (item.keyboard === 'Yes' || item.keyboard === 1 || item.keyboard === '1' || item.keyboard === true) peripherals.push('Keyboard');
+              if (item.laptop_stand === 'Yes' || item.laptop_stand === 1 || item.laptop_stand === '1' || item.laptop_stand === true) peripherals.push('Stand');
+              if (item.ruf_pad === 'Yes' || item.ruf_pad === 1 || item.ruf_pad === '1' || item.ruf_pad === true || item.ref_pad === 'Yes' || item.ref_pad === 1) peripherals.push('Ruf Pad');
+              if (item.pendrive === 'Yes' || item.pendrive === 1 || item.pendrive === '1' || item.pendrive === true) peripherals.push('Pendrive');
+              if (item.mobile === 'Yes' || item.mobile === 1 || item.mobile === '1' || item.mobile === true || item.company_mobile === 'Yes') peripherals.push('Mobile');
+              if (item.camera === 'Yes' || item.camera === 1 || item.camera === '1' || item.camera === true || item.external_camera === 'Yes') peripherals.push('Camera');
+              if (item.earphone_headphone === 'Yes' || item.earphone_headphone === 1 || item.earphone === 'Yes' || item.earphone === 1) peripherals.push('Earphone');
+              if (item.tablet === 'Yes' || item.tablet === 1 || item.tablet === '1' || item.tablet === true) peripherals.push('Tablet');
+
+              let specs = item.laptop_details || 'No specs provided';
+              if (peripherals.length > 0) {
+                specs += ' | Includes: ' + peripherals.join(', ');
+              }
+
+              const category = item.category || (item.laptop_details ? 'Laptops' : 'Others');
+
+              // Handle qty (default to 1 since each row is a returned item pack)
+              let qty = 1;
+              const qtyKey = ['qty', 'quantity', 'stock_qty', 'stockqty', 'units', 'unit'].find(k => item[k] !== undefined);
+              if (qtyKey !== undefined) {
+                qty = Number(item[qtyKey]);
+              }
+              if (isNaN(qty) || qty <= 0) qty = 1;
+
+              const status = item.status || (qty <= 2 ? 'Low Stock' : 'In Stock');
+
+              return {
+                id: String(id),
+                name: String(name),
+                category: String(category),
+                qty: qty,
+                specs: String(specs),
+                status: String(status),
+                employee_id: item.employee_id || item.emp_id || item.empid || item.employeeid || item.submitted_by || '',
+                employee_name: item.returned_by_name || item.employee_name || item.emp_name || item.name || '',
+                raw: item
+              };
+            });
+            setStockList(mappedList);
+
+            try {
+              const summaryRes = await fetch(API_ENDPOINTS.ASSETS_STOCK_SUMMARY || `${BASE_URL}/api/assets-stock/summary`, { headers });
+              if (summaryRes.ok) {
+                const summaryData = await summaryRes.json();
+                setStockSummary(summaryData);
+              }
+            } catch (err) {
+              console.error('Summary fetch failed:', err);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Stock fetch failed:', e);
+      }
 
       console.log('Final Asset Map keys:', Object.keys(assetMap));
       setAssets(assetMap);
@@ -395,7 +517,7 @@ export default function AssetsManagement() {
         setToastType('success');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        
+
         setEditModal({ show: false, employee: null, isReadOnly: false });
         // Force a brief delay before re-fetching to allow DB indexing
         setTimeout(() => fetchData(), 500);
@@ -441,6 +563,31 @@ export default function AssetsManagement() {
     });
   }, [employees, assets, searchTerm, selectedDept]);
 
+
+
+
+
+  // Helper: check if a DB column value counts as 'Yes'
+  const isYes = (val) => val === 'Yes' || val === 1 || val === '1' || val === true;
+
+  // Compute component counts directly from stockList using exact DB column names and all common alternate keys
+  const componentCounts = {
+    mouse:              stockList.filter(i => isYes(i.raw?.mouse) || isYes(i.raw?.mouse_unit) || isYes(i.raw?.mouse_status)).length,
+    keyboard:           stockList.filter(i => isYes(i.raw?.keyboard) || isYes(i.raw?.keyboard_unit) || isYes(i.raw?.keyboard_status)).length,
+    laptop_stand:       stockList.filter(i => isYes(i.raw?.laptop_stand) || isYes(i.raw?.stand) || isYes(i.raw?.stand_unit)).length,
+    ruf_pad:            stockList.filter(i => isYes(i.raw?.ruf_pad) || isYes(i.raw?.rufpad) || isYes(i.raw?.ruf_pad_unit) || isYes(i.raw?.ref_pad)).length,
+    pendrive:           stockList.filter(i => isYes(i.raw?.pendrive) || isYes(i.raw?.pendrive_unit)).length,
+    mobile:             stockList.filter(i => isYes(i.raw?.mobile) || isYes(i.raw?.mobile_unit) || isYes(i.raw?.company_mobile) || isYes(i.raw?.mobile_handset)).length,
+    camera:             stockList.filter(i => isYes(i.raw?.camera) || isYes(i.raw?.camera_unit) || isYes(i.raw?.webcam) || isYes(i.raw?.external_camera)).length,
+    earphone_headphone: stockList.filter(i => isYes(i.raw?.earphone_headphone) || isYes(i.raw?.earphone) || isYes(i.raw?.headphone) || isYes(i.raw?.earphones) || isYes(i.raw?.headphones) || isYes(i.raw?.earphone_unit) || isYes(i.raw?.headphone_unit)).length,
+    tablet:             stockList.filter(i => isYes(i.raw?.tablet) || isYes(i.raw?.tablet_unit)).length,
+  };
+
+  const categories = [
+    { key: 'all', name: 'All Assets', count: stockList.length, icon: <Package size={24} />, desc: 'Complete inventory of hardware stock', bg: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#0369a1', isClickable: true },
+    { key: 'laptops', name: 'Laptops', count: stockList.filter(i => !!i.raw?.laptop_details).length, icon: <Laptop size={24} />, desc: 'Workstations and developer notebooks', bg: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', color: '#4338ca', isClickable: true },
+  ];
+
   return (
     <div className="assets-management-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', fontFamily: "'Outfit', sans-serif" }}>
       <AppHeader />
@@ -470,13 +617,6 @@ export default function AssetsManagement() {
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
             <button
-              onClick={() => setAvailableStockModal(true)}
-              style={{ flex: 1, background: 'white', color: '#0ea5e9', border: '2px solid #0ea5e9', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.3s' }}
-            >
-              <Sparkles size={16} />
-              Available Assets
-            </button>
-            <button
               onClick={() => {
                 setForm({
                   employee_name: '', employee_id: '',
@@ -494,161 +634,499 @@ export default function AssetsManagement() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', gap: '15px', marginBottom: '25px' }} className="animate-fade-in">
-          <div style={{ flex: 1, position: 'relative' }}>
-            <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input
-              type="text"
-              placeholder="Search member name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', background: 'white' }}
-            />
-          </div>
-        </div>
-
-        {/* Table/Card View */}
-        {winWidth < 1024 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '24px' }}>Loading...</div>
-            ) : filteredEmployees.map((emp, i) => {
-              const empId = emp.id || emp.EmpID;
-              const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
-              const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
-              return (
-                <div key={i} style={{ background: 'white', borderRadius: '24px', padding: '26px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '16px', overflow: 'hidden' }}>
-                      {(() => {
-                        const empId = emp.id || emp.EmpID;
-                        const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                        const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
-                        return (
-                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <img 
-                              src={photoUrl} 
-                              alt="" 
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                            />
-                            <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
-                              {emp.name.charAt(0)}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '900', fontSize: '15px', color: '#1e293b' }}>{emp.name}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ID: {emp.id || emp.EmpID}</div>
-                    </div>
-                    <div style={{ padding: '4px 12px', borderRadius: '100px', fontSize: '10px', fontWeight: '900', background: hasAsset ? '#f0fdf4' : '#eff6ff', color: hasAsset ? '#16a34a' : '#2563eb', border: `1px solid ${hasAsset ? '#bbf7d0' : '#dbeafe'}` }}>
-                      {hasAsset ? 'CONFIGURED' : 'PENDING'}
-                    </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: winWidth < 1024 ? 'column' : 'row',
+          gap: '24px',
+          alignItems: 'flex-start',
+          width: '100%'
+        }}>
+          {/* Left Side: Stock Inventory / Available Assets */}
+          <div ref={stockRef} style={{ flex: winWidth < 1024 ? '1' : '1', width: '100%', background: 'white', borderRadius: '24px', padding: '24px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box' }}>
+            {stockCategory === null ? (
+              <>
+                {/* Stock Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ background: '#f0fdf4', padding: '8px', borderRadius: '10px', color: '#15803d' }}>
+                    <Sparkles size={18} />
                   </div>
-
-                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Designation</div>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#334155' }}>{asset.designation || emp.role || 'Unspecified'}</div>
+                  <div>
+                    <h2 style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Available Stock Inventory</h2>
+                    <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0 0' }}>Deployable hardware assets currently in storage</p>
                   </div>
-
-                  <button
-                    onClick={() => handleEdit(emp, hasAsset)}
-                    style={{
-                      width: '100%', padding: '12px', borderRadius: '14px', border: 'none',
-                      background: hasAsset ? '#f1f5f9' : '#3163aa',
-                      color: hasAsset ? '#475569' : 'white',
-                      fontWeight: '800', fontSize: '13px', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                    }}
-                  >
-                    {hasAsset ? <Package size={16} /> : <Edit3 size={16} />}
-                    {hasAsset ? 'View Asset Details' : 'Configure Hardware'}
-                  </button>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', maxWidth: '1000px', margin: '0 auto' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '350px' }}>Member Details</th>
-                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', width: '300px' }}>Designation</th>
-                    <th style={{ padding: '15px 25px', color: '#64748b', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '250px' }}>Configuration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    Array(5).fill(0).map((_, i) => (
-                      <tr key={i}><td colSpan="5" style={{ padding: '25px', textAlign: 'center', color: '#94a3b8' }}>Establishing neural link...</td></tr>
-                    ))
-                  ) : filteredEmployees.map((emp, i) => {
-                    const empId = emp.id || emp.EmpID;
-                    const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
-                    const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
+
+                {/* Categories cards stacked or row depending on layout */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {categories.map((cat) => {
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: '0.2s', backgroundColor: i % 2 === 0 ? 'transparent' : '#fcfdfe' }}>
-                        <td style={{ padding: '15px 25px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '14px', overflow: 'hidden' }}>
-                              {(() => {
-                                const empId = emp.id || emp.EmpID;
-                                const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                                const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
-                                return (
-                                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                    <img 
-                                      src={photoUrl} 
-                                      alt="" 
-                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                                    />
-                                    <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
-                                      {emp.name.charAt(0)}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                            <div style={{ overflow: 'hidden' }}>
-                              <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
-                              <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {emp.id || emp.EmpID}</div>
-                            </div>
+                      <div
+                        key={cat.key}
+                        onClick={() => setStockCategory(cat.key)}
+                        style={{
+                          background: 'white',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '16px',
+                          padding: '16px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.borderColor = cat.color;
+                          e.currentTarget.style.boxShadow = `0 8px 16px -6px ${cat.color}20`;
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            background: cat.bg,
+                            color: cat.color,
+                            padding: '10px',
+                            borderRadius: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {cat.icon}
                           </div>
-                        </td>
-                        <td style={{ padding: '15px 25px' }}>
-                          <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{asset.designation || emp.role || 'Unspecified'}</span>
-                        </td>
-                        <td style={{ padding: '15px 25px', textAlign: 'center' }}>
-                          {hasAsset ? (
-                            <button
-                              onClick={() => handleEdit(emp, true)}
-                              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', color: '#64748b', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                            >
-                              <Package size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>View Details</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleEdit(emp, false)}
-                              style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '10px', padding: '8px 12px', color: '#2563eb', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                            >
-                              <Edit3 size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>Configure</span>
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                          <div>
+                            <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', margin: 0 }}>{cat.name}</h3>
+                            <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0 0', lineHeight: '1.3' }}>{cat.desc}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>{cat.count}</span>
+                          <ChevronRight size={16} color={cat.color} />
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </div>
+
+                {/* Quick component counts */}
+                <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '25px', marginBottom: '12px' }}>
+                  Component Stock (Counts Only)
+                </h3>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '10px'
+                }}>
+                  {[
+                    { key: 'mouse', label: 'Mouse', icon: <MousePointer size={18} />, bg: 'linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)', color: '#0f766e' },
+                    { key: 'keyboard', label: 'Keyboard', icon: <Keyboard size={18} />, bg: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', color: '#6b21a8' },
+                    { key: 'laptop_stand', label: 'Laptop Stand', icon: <HardDrive size={18} />, bg: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', color: '#4338ca' },
+                    { key: 'ruf_pad', label: 'Ruf Pad', icon: <Package size={18} />, bg: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', color: '#b45309' },
+                    { key: 'pendrive', label: 'Pendrive', icon: <HardDrive size={18} />, bg: 'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)', color: '#be123c' },
+                    { key: 'mobile', label: 'Mobile', icon: <Smartphone size={18} />, bg: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#0369a1' },
+                    { key: 'camera', label: 'Camera', icon: <Camera size={18} />, bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#15803d' },
+                    { key: 'earphone_headphone', label: 'Earphone / Headphone', icon: <Headphones size={18} />, bg: 'linear-gradient(135deg, #fdf4ff 0%, #f5d0fe 100%)', color: '#7e22ce' },
+                    { key: 'tablet', label: 'Tablet', icon: <TabletIcon size={18} />, bg: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)', color: '#c2410c' },
+                  ].map((item) => (
+                    <div
+                      key={item.key}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '14px 18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        minHeight: '64px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                        <div style={{
+                          background: item.bg,
+                          color: item.color,
+                          padding: '8px',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          {item.icon}
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                      </div>
+                      <div style={{
+                        fontSize: '18px',
+                        fontWeight: '900',
+                        color: '#0f172a',
+                        paddingLeft: '4px',
+                        flexShrink: 0
+                      }}>
+                        {componentCounts[item.key] ?? 0}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Back to Categories */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                  <button
+                    onClick={() => {
+                      setStockCategory(null);
+                      setStockSearch('');
+                    }}
+                    style={{ background: 'white', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <ArrowLeft size={14} color="#0ea5e9" />
+                  </button>
+                  <div>
+                    <h2 style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
+                      {stockCategory.charAt(0).toUpperCase() + stockCategory.slice(1)} Stock
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Stock Search */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      placeholder={`Search in ${stockCategory}...`}
+                      value={stockSearch}
+                      onChange={(e) => setStockSearch(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px 8px 32px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '12px', fontFamily: "'Outfit', sans-serif" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stock list grid */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {stockList.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
+                      item.specs.toLowerCase().includes(stockSearch.toLowerCase()) ||
+                      item.id.toLowerCase().includes(stockSearch.toLowerCase());
+
+                    if (!matchesSearch) return false;
+                    if (stockCategory === 'all') return true;
+
+                    const isLaptop = item.category === 'Laptops' || !!item.raw?.laptop_details;
+                    const isKeyboard = item.raw?.keyboard === 'Yes' || item.raw?.keyboard === 1 || item.raw?.keyboard === '1' || item.raw?.keyboard === true;
+                    const isMouse = item.raw?.mouse === 'Yes' || item.raw?.mouse === 1 || item.raw?.mouse === '1' || item.raw?.mouse === true;
+                    const isMobile = item.raw?.mobile === 'Yes' || item.raw?.mobile === 1 || item.raw?.mobile === '1' || item.raw?.mobile === true || item.raw?.company_mobile === 'Yes' || item.raw?.company_mobile === 1 || item.raw?.company_mobile === true;
+                    const isAccessory = item.raw?.laptop_stand === 'Yes' || item.raw?.laptop_stand === 1 || item.raw?.laptop_stand === true || item.raw?.ruf_pad === 'Yes' || item.raw?.ruf_pad === 1 || item.raw?.ruf_pad === true || item.raw?.ref_pad === 'Yes' || item.raw?.ref_pad === 1 || item.raw?.pendrive === 'Yes' || item.raw?.pendrive === 1 || item.raw?.pendrive === true || item.raw?.camera === 'Yes' || item.raw?.camera === 1 || item.raw?.camera === true || item.raw?.external_camera === 'Yes' || item.raw?.earphone_headphone === 'Yes' || item.raw?.earphone_headphone === 1 || item.raw?.earphone === 'Yes' || item.raw?.earphone === 1 || item.raw?.tablet === 'Yes' || item.raw?.tablet === 1 || item.raw?.tablet === true || item.category === 'Accessories';
+
+                    if (stockCategory === 'laptops') return isLaptop;
+                    if (stockCategory === 'keyboard') return isKeyboard;
+                    if (stockCategory === 'mice') return isMouse;
+                    if (stockCategory === 'mobiles') return isMobile;
+                    if (stockCategory === 'accessories') return isAccessory;
+                    if (stockCategory === 'others') return !isLaptop && !isKeyboard && !isMouse && !isMobile && !isAccessory;
+
+                    return true;
+                  }).map((item, idx) => {
+                    const isLow = item.status === 'Low Stock';
+                    const badgeColor = isLow ? '#f59e0b' : '#10b981';
+                    const badgeBg = isLow ? '#fffbeb' : '#f0fdf4';
+
+                    let itemIcon = <Package size={16} />;
+                    const catLower = item.category ? item.category.toLowerCase() : '';
+                    const isLaptopItem = catLower.includes('laptop') || !!item.raw?.laptop_details;
+                    if (isLaptopItem) itemIcon = <Laptop size={16} />;
+                    else if (catLower.includes('keyboard')) itemIcon = <Keyboard size={16} />;
+                    else if (catLower.includes('mouse') || catLower.includes('mice')) itemIcon = <MousePointer size={16} />;
+                    else if (catLower.includes('mobile')) itemIcon = <Smartphone size={16} />;
+                    else if (catLower.includes('accessory') || catLower.includes('accessories')) itemIcon = <HardDrive size={16} />;
+                    else if (catLower.includes('earphone') || catLower.includes('headphone')) itemIcon = <Headphones size={16} />;
+                    else if (catLower.includes('camera') || catLower.includes('webcam')) itemIcon = <Camera size={16} />;
+                    else if (catLower.includes('tablet')) itemIcon = <TabletIcon size={16} />;
+
+                    let modelName = item.name;
+                    let serialNo = '';
+                    let specsText = item.specs;
+
+                    if (item.raw?.laptop_details) {
+                      const rawSpecs = item.raw.laptop_details;
+                      if (rawSpecs.includes('Serial No')) {
+                        const parts = rawSpecs.split('Serial No');
+                        modelName = parts[0].replace(/[,;:]\s*$/, '').trim();
+                        serialNo = parts[1].replace(/^[:\s]+/, '').trim();
+                      } else if (rawSpecs.includes('S/N')) {
+                        const parts = rawSpecs.split('S/N');
+                        modelName = parts[0].replace(/[,;:]\s*$/, '').trim();
+                        serialNo = parts[1].replace(/^[:\s]+/, '').trim();
+                      }
+                    }
+
+                    const peripheralsList = [];
+                    const raw = item.raw || {};
+                    if (raw.mouse === 'Yes' || raw.mouse === 1 || raw.mouse === true) peripheralsList.push('Mouse');
+                    if (raw.keyboard === 'Yes' || raw.keyboard === 1 || raw.keyboard === true) peripheralsList.push('Keyboard');
+                    if (raw.laptop_stand === 'Yes' || raw.laptop_stand === 1 || raw.laptop_stand === true) peripheralsList.push('Stand');
+                    if (raw.ruf_pad === 'Yes' || raw.ruf_pad === 1 || raw.ruf_pad === true || raw.ref_pad === 'Yes' || raw.ref_pad === 1) peripheralsList.push('Ruf Pad');
+                    if (raw.pendrive === 'Yes' || raw.pendrive === 1 || raw.pendrive === true) peripheralsList.push('Pendrive');
+                    if (raw.mobile === 'Yes' || raw.mobile === 1 || raw.mobile === true || raw.company_mobile === 'Yes') peripheralsList.push('Mobile');
+                    if (raw.camera === 'Yes' || raw.camera === 1 || raw.camera === true || raw.external_camera === 'Yes') peripheralsList.push('Camera');
+                    if (raw.earphone_headphone === 'Yes' || raw.earphone_headphone === 1 || raw.earphone === 'Yes' || raw.earphone === 1) peripheralsList.push('Earphone');
+                    if (raw.tablet === 'Yes' || raw.tablet === 1 || raw.tablet === true) peripheralsList.push('Tablet');
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          background: 'white',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '16px',
+                          padding: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '800', fontFamily: 'monospace' }}>{item.id}</span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '900', color: badgeColor, background: badgeBg, padding: '2px 6px', borderRadius: '6px' }}>
+                                {item.qty} Qty
+                              </span>
+                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#4338ca', background: '#e0e7ff', padding: '2px 6px', borderRadius: '6px' }}>
+                                In Stock
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                            <div style={{ background: '#e0e7ff', padding: '6px', borderRadius: '10px', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {itemIcon}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '800', fontSize: '13px', color: '#0f172a', lineHeight: '1.3' }}>
+                                {modelName}
+                              </div>
+
+                              {serialNo && (
+                                <div style={{ fontSize: '9px', fontFamily: 'monospace', background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', color: '#475569', display: 'inline-block', marginTop: '4px', border: '1px solid #e2e8f0' }}>
+                                  S/N: {serialNo}
+                                </div>
+                              )}
+
+                              {isLaptopItem && (
+                                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', lineHeight: '1.4' }}>
+                                  {specsText}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {peripheralsList.length > 0 && (
+                            <div style={{ marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '6px' }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {peripheralsList.map((p) => (
+                                  <span key={p} style={{ fontSize: '8px', fontWeight: '800', background: '#ecfdf5', color: '#047857', padding: '1px 6px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                                    + {p}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setForm({
+                              employee_name: '',
+                              employee_id: '',
+                              designation: '',
+                              joining_date: '',
+                              last_working_date: '',
+                              laptop_details: item.raw?.laptop_details || '',
+                              mouse: item.raw?.mouse || 'No',
+                              keyboard: item.raw?.keyboard || 'No',
+                              laptop_stand: item.raw?.laptop_stand || 'No',
+                              ruf_pad: item.raw?.ruf_pad || item.raw?.ref_pad || 'No',
+                              pendrive: item.raw?.pendrive || 'No',
+                              mobile: item.raw?.mobile || item.raw?.company_mobile || 'No',
+                              camera: item.raw?.camera || item.raw?.external_camera || 'No',
+                              earphone: item.raw?.earphone_headphone || item.raw?.earphone || 'No',
+                              tablet: item.raw?.tablet || 'No'
+                            });
+                            setEditModal({ show: true, employee: { is_new: true, name: '' } });
+                          }}
+                          style={{
+                            width: '100%', padding: '8px 0', borderRadius: '10px', border: 'none',
+                            background: 'linear-gradient(135deg, #4338ca 0%, #3730a3 100%)', color: 'white', fontSize: '11px', fontWeight: '900',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                          }}
+                        >
+                          <Plus size={12} /> Assign Hardware
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
-        )}
+
+          {/* Right Side: Member Details Roster */}
+          <div style={{ flex: winWidth < 1024 ? '1' : '1.3', width: '100%' }}>
+            {/* Roster List / Cards / Table */}
+            {winWidth < 1024 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '24px' }}>Loading...</div>
+                ) : filteredEmployees.map((emp, i) => {
+                  const empId = emp.id || emp.EmpID;
+                  const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+                  const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
+                  return (
+                    <div key={i} style={{ background: 'white', borderRadius: '24px', padding: '26px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '16px', overflow: 'hidden' }}>
+                          {(() => {
+                            const empId = emp.id || emp.EmpID;
+                            const pic = emp.profile_picture || emp.profile_pic || emp.photo;
+                            const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                            return (
+                              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                <img 
+                                  src={photoUrl} 
+                                  alt="" 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                />
+                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
+                                  {emp.name.charAt(0)}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '900', fontSize: '15px', color: '#1e293b' }}>{emp.name}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ID: {emp.id || emp.EmpID}</div>
+                        </div>
+                        <div style={{ padding: '4px 12px', borderRadius: '100px', fontSize: '10px', fontWeight: '900', background: hasAsset ? '#f0fdf4' : '#eff6ff', color: hasAsset ? '#16a34a' : '#2563eb', border: `1px solid ${hasAsset ? '#bbf7d0' : '#dbeafe'}` }}>
+                          {hasAsset ? 'CONFIGURED' : 'PENDING'}
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Designation</div>
+                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#334155' }}>{asset.designation || emp.role || 'Unspecified'}</div>
+                      </div>
+
+                      <button
+                        onClick={() => handleEdit(emp, hasAsset)}
+                        style={{
+                          width: '100%', padding: '12px', borderRadius: '14px', border: 'none',
+                          background: hasAsset ? '#f1f5f9' : '#3163aa',
+                          color: hasAsset ? '#475569' : 'white',
+                          fontWeight: '800', fontSize: '13px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                        }}
+                      >
+                        {hasAsset ? <Package size={16} /> : <Edit3 size={16} />}
+                        {hasAsset ? 'View Asset Details' : 'Configure Hardware'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', width: '100%', margin: '0' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed', fontFamily: "'Outfit', sans-serif" }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
+                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '40%', letterSpacing: '0.5px' }}>Member Details</th>
+                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '35%', letterSpacing: '0.5px' }}>Designation</th>
+                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '25%', letterSpacing: '0.5px' }}>Configuration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        Array(5).fill(0).map((_, i) => (
+                          <tr key={i}><td colSpan="3" style={{ padding: '25px', textAlign: 'center', color: '#94a3b8' }}>Establishing neural link...</td></tr>
+                        ))
+                      ) : filteredEmployees.map((emp, i) => {
+                        const empId = emp.id || emp.EmpID;
+                        const asset = assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
+                        const hasAsset = !!(assets[empId] || assets[emp.id] || assets[emp.EmpID]);
+                        return (
+                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', transition: '0.2s', backgroundColor: i % 2 === 0 ? 'transparent' : '#fcfdfe' }}>
+                            <td style={{ padding: '15px 20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3163aa', fontWeight: '900', fontSize: '14px', overflow: 'hidden' }}>
+                                  {(() => {
+                                    const empId = emp.id || emp.EmpID;
+                                    const pic = emp.profile_picture || emp.profile_pic || emp.photo;
+                                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                                    return (
+                                      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                        <img 
+                                          src={photoUrl} 
+                                          alt="" 
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                        />
+                                        <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
+                                          {emp.name.charAt(0)}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                <div style={{ overflow: 'hidden' }}>
+                                  <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {emp.id || emp.EmpID}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '15px 20px' }}>
+                              <span style={{ fontSize: '13px', color: '#334155', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{asset.designation || emp.role || 'Unspecified'}</span>
+                            </td>
+                            <td style={{ padding: '15px 20px', textAlign: 'center' }}>
+                              {hasAsset ? (
+                                <button
+                                  onClick={() => handleEdit(emp, true)}
+                                  style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', color: '#64748b', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                >
+                                  <Package size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>View Details</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleEdit(emp, false)}
+                                  style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '10px', padding: '8px 12px', color: '#2563eb', cursor: 'pointer', transition: '0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                >
+                                  <Edit3 size={14} /> <span style={{ fontSize: '12px', fontWeight: '800' }}>Configure</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </main>      {/* Edit Modal */}
       {editModal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -673,16 +1151,18 @@ export default function AssetsManagement() {
                     const emp = editModal.employee;
                     const empId = emp.id || emp.EmpID;
                     const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : null;
                     return (
                       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                        <img 
-                          src={photoUrl} 
-                          alt="" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                        />
-                        <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
+                        {photoUrl ? (
+                          <img
+                            src={photoUrl}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                          />
+                        ) : null}
+                        <div style={{ display: photoUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#3163aa' }}>
                           <Package size={winWidth < 768 ? 22 : 28} color="#3163aa" />
                         </div>
                       </div>
@@ -1076,203 +1556,7 @@ export default function AssetsManagement() {
         </div>
       )}
 
-      {/* Available Stock Inventory Modal */}
-      {availableStockModal && (
-        <div className="modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
-        }}>
-          <div className="modal-content animate-slide-up" style={{
-            background: 'white', borderRadius: '30px', width: '95%', maxWidth: '850px',
-            padding: '35px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            maxHeight: '90vh', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif"
-          }}>
-            <button
-              onClick={() => {
-                setAvailableStockModal(false);
-                setStockSearch('');
-                setStockCategory('All');
-              }}
-              style={{ position: 'absolute', top: '25px', right: '25px', background: '#f1f5f9', border: 'none', borderRadius: '50%', padding: '8px', cursor: 'pointer', color: '#64748b', zIndex: 10 }}
-            >
-              <X size={20} />
-            </button>
 
-            <div style={{ textAlign: 'center', marginBottom: '25px', flexShrink: 0 }}>
-              <div style={{ background: '#e0f2fe', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
-                <Sparkles size={30} color="#0284c7" />
-              </div>
-              <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: '0 0 6px 0' }}>Available Stock Inventory</h2>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Deployable hardware assets currently in storage & ready for assignment</p>
-            </div>
-
-            {/* Controls */}
-            <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '15px', marginBottom: '20px', flexShrink: 0 }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  placeholder="Search available hardware..."
-                  value={stockSearch}
-                  onChange={(e) => setStockSearch(e.target.value)}
-                  style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '13px', fontFamily: "'Outfit', sans-serif" }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: winWidth < 600 ? '8px' : '0' }}>
-                {['All', 'Laptops', 'Keyboards', 'Mice', 'Mobiles', 'Accessories', 'Others'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setStockCategory(cat)}
-                    style={{
-                      padding: '8px 16px', borderRadius: '10px', border: 'none',
-                      background: stockCategory === cat ? '#0ea5e9' : '#f1f5f9',
-                      color: stockCategory === cat ? 'white' : '#475569',
-                      fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Grid of Stock Items */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '5px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: winWidth < 500 ? '1fr' : (winWidth < 800 ? '1fr 1fr' : '1fr 1fr 1fr'), gap: '15px' }}>
-                {[
-                  { id: 'STK-001', name: 'MacBook Pro 16" (M3 Max, 36GB, 1TB)', category: 'Laptops', qty: 5, specs: 'Apple M3 Max, Space Black, Liquid Retina XDR', status: 'In Stock' },
-                  { id: 'STK-002', name: 'Dell XPS 15 9530', category: 'Laptops', qty: 3, specs: 'Intel i9, 32GB RAM, 1TB SSD, RTX 4070', status: 'In Stock' },
-                  { id: 'STK-003', name: 'Lenovo ThinkPad X1 Carbon Gen 11', category: 'Laptops', qty: 2, specs: 'Intel i7, 16GB RAM, 512GB SSD', status: 'Low Stock' },
-                  { id: 'STK-004', name: 'Logitech MX Keys S Keyboard', category: 'Keyboards', qty: 15, specs: 'Tactile quiet, backlit keys, Bluetooth/Logi Bolt', status: 'In Stock' },
-                  { id: 'STK-005', name: 'Keychron K2 Mechanical Keyboard', category: 'Keyboards', qty: 6, specs: 'Gateron Brown, RGB Backlit, 84-key', status: 'In Stock' },
-                  { id: 'STK-006', name: 'Logitech MX Master 3S Mouse', category: 'Mice', qty: 12, specs: '8K DPI, Quiet Clicks, Darkfield tracking', status: 'In Stock' },
-                  { id: 'STK-007', name: 'Apple Magic Mouse 2', category: 'Mice', qty: 8, specs: 'Wireless, Multi-Touch surface, Rechargeable', status: 'In Stock' },
-                  { id: 'STK-008', name: 'Alumode Adjustable Laptop Stand', category: 'Accessories', qty: 20, specs: 'Ergonomic aluminum, 6 levels adjustable', status: 'In Stock' },
-                  { id: 'STK-009', name: 'SanDisk Ultra 128GB USB 3.0', category: 'Accessories', qty: 35, specs: 'Dual drive USB Type-C & Type-A', status: 'In Stock' },
-                  { id: 'STK-010', name: 'iPhone 15 Pro 256GB', category: 'Mobiles', qty: 2, specs: 'Titanium Grey, A17 Pro Chip, 48MP camera', status: 'Low Stock' },
-                  { id: 'STK-011', name: 'Samsung Galaxy S24 Ultra', category: 'Mobiles', qty: 3, specs: '512GB, Titanium Yellow, S-Pen included', status: 'In Stock' },
-                  { id: 'STK-012', name: 'Logitech Brio 4K Webcam', category: 'Others', qty: 8, specs: '4K Ultra HD, HDR, RightLight 3 auto-focus', status: 'In Stock' },
-                  { id: 'STK-013', name: 'Jabra Evolve2 65 Headset', category: 'Others', qty: 10, specs: 'Noise cancelling, wireless bluetooth, charging stand', status: 'In Stock' },
-                ].filter(item => {
-                  const matchesSearch = item.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
-                    item.specs.toLowerCase().includes(stockSearch.toLowerCase()) ||
-                    item.id.toLowerCase().includes(stockSearch.toLowerCase());
-                  const matchesCategory = stockCategory === 'All' || item.category === stockCategory;
-                  return matchesSearch && matchesCategory;
-                }).map((item, idx) => {
-                  const isLow = item.status === 'Low Stock';
-                  const badgeColor = isLow ? '#f59e0b' : '#10b981';
-                  const badgeBg = isLow ? '#fffbeb' : '#f0fdf4';
-
-                  // Dynamic icon selection
-                  let itemIcon = <Package size={16} />;
-                  if (item.category === 'Laptops') itemIcon = <Laptop size={16} />;
-                  else if (item.category === 'Keyboards') itemIcon = <Keyboard size={16} />;
-                  else if (item.category === 'Mice') itemIcon = <MousePointer size={16} />;
-                  else if (item.category === 'Mobiles') itemIcon = <Smartphone size={16} />;
-                  else if (item.category === 'Accessories') itemIcon = <HardDrive size={16} />;
-
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
-                        borderRadius: '20px',
-                        padding: '18px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.borderColor = '#0ea5e9';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(14, 165, 233, 0.05)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.borderColor = '#e2e8f0';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
-                      }}
-                    >
-                      <div>
-                        {/* Stock Item Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800' }}>{item.id}</span>
-                          <span style={{ fontSize: '9px', fontWeight: '900', color: badgeColor, background: badgeBg, padding: '2px 8px', borderRadius: '6px', letterSpacing: '0.5px' }}>
-                            {item.qty} Qty
-                          </span>
-                        </div>
-
-                        {/* Details */}
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <div style={{ background: 'white', padding: '8px', borderRadius: '10px', color: '#0ea5e9', border: '1px solid #e2e8f0' }}>
-                            {itemIcon}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b', lineHeight: '1.4', marginBottom: '4px' }}>
-                              {item.name}
-                            </div>
-                            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>
-                              {item.specs}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action */}
-                      <button
-                        onClick={() => {
-                          setAvailableStockModal(false);
-                          setStockSearch('');
-                          setStockCategory('All');
-                          
-                          // Pre-fill the form based on item category
-                          setForm({
-                            employee_name: '', employee_id: '', designation: '', joining_date: '', last_working_date: '',
-                            laptop_details: item.category === 'Laptops' ? item.name : '',
-                            mouse: item.category === 'Mice' ? 'Yes' : 'No',
-                            keyboard: item.category === 'Keyboards' ? 'Yes' : 'No',
-                            laptop_stand: item.name.toLowerCase().includes('stand') ? 'Yes' : 'No',
-                            ruf_pad: 'No', pendrive: item.name.toLowerCase().includes('sandisk') ? 'Yes' : 'No',
-                            mobile: item.category === 'Mobiles' ? 'Yes' : 'No',
-                            camera: item.name.toLowerCase().includes('webcam') ? 'Yes' : 'No',
-                            earphone: item.name.toLowerCase().includes('headset') ? 'Yes' : 'No',
-                            tablet: 'No'
-                          });
-                          setEditModal({ show: true, employee: { is_new: true, name: '' } });
-                        }}
-                        style={{
-                          width: '100%', padding: '8px 0', borderRadius: '10px', border: 'none',
-                          background: '#e0f2fe', color: '#0284c7', fontSize: '11px', fontWeight: '800',
-                          cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                        }}
-                        onMouseOver={(e) => { e.currentTarget.style.background = '#0ea5e9'; e.currentTarget.style.color = 'white'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.color = '#0284c7'; }}
-                      >
-                        <Plus size={12} /> Assign Hardware
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Info Footer */}
-            <div style={{ marginTop: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '15px', border: '1px solid #e0f2fe', display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: '16px' }}>💡</div>
-              <div style={{ fontSize: '11px', color: '#0369a1', fontWeight: '600', lineHeight: '1.4' }}>
-                Select an item and click <b>Assign Hardware</b> to automatically initiate a pre-filled configuration setup for new or existing employees.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showToast && (
         <div style={{

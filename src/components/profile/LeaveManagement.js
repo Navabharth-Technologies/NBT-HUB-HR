@@ -270,17 +270,19 @@ export default function LeaveManagement() {
                               <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '950', overflow: 'hidden' }}>
                                 {(() => {
                                   const pic = emp.profile_picture || emp.profile_pic || emp.photo || emp.ProfilePic || emp.Profile_Picture;
-                                  const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${emp.id}/photo`;
+                                  const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : null;
 
                                   return (
                                     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                      <img
-                                        src={photoUrl}
-                                        alt=""
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                                      />
-                                      <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eef2ff', color: '#4f46e5' }}>
+                                      {photoUrl ? (
+                                        <img
+                                          src={photoUrl}
+                                          alt=""
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                        />
+                                      ) : null}
+                                      <div style={{ display: photoUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#eef2ff', color: '#4f46e5' }}>
                                         {String(emp.name || emp.user_name || 'U').charAt(0).toUpperCase()}
                                       </div>
                                     </div>
@@ -343,17 +345,19 @@ export default function LeaveManagement() {
                               });
 
                               const rawPic = emp?.profile_picture || emp?.profile_pic || emp?.ProfilePic || emp?.Profile_Picture || emp?.photo || req.profile_pic || req.profilePic;
-                              const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                              const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
 
                               return (
                                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                  <img
-                                    src={photoUrl}
-                                    alt=""
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '14px' }}
-                                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                                  />
-                                  <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                  {photoUrl ? (
+                                    <img
+                                      src={photoUrl}
+                                      alt=""
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '14px' }}
+                                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                    />
+                                  ) : null}
+                                  <div style={{ display: photoUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                     <User size={20} />
                                   </div>
                                 </div>

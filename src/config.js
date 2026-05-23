@@ -87,6 +87,8 @@ export const API_ENDPOINTS = {
   LEADERBOARD_ALL: `${BASE_URL}/api/employees/leaderboard/all`,
   NOTIFICATIONS_BY_USER: (uid) => `${BASE_URL}/api/notifications/${uid}`,
   ASSETS: `${BASE_URL}/api/assets`,
+  ASSETS_STOCK: `${BASE_URL}/api/assets-stock`,
+  ASSETS_STOCK_SUMMARY: `${BASE_URL}/api/assets-stock/summary`,
   ASSET_UPDATE: (id) => `${BASE_URL}/api/assets/${id}`,
   JOB_APPLICATIONS: `${BASE_URL}/api/job-applications`,
   JOB_APPLICATION_UPDATE: (id) => `${BASE_URL}/api/job-applications/${id}`,
