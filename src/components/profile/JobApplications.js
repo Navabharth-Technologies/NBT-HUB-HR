@@ -30,16 +30,22 @@ const getGoogleDriveFileId = (url) => {
 
 const resolveResumeUrl = (link) => {
   if (!link) return '';
-  const base = BASE_URL || 'http://localhost:5000';
+  const base = (BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
   
-  if (link.startsWith('/')) {
-    return `${base}${link}`;
+  if (link.startsWith('http://') || link.startsWith('https://')) {
+    return link;
+  }
+  
+  if (link.includes('api/drive/stream/') || link.startsWith('/')) {
+    const cleanLink = link.startsWith('/') ? link : `/${link}`;
+    return `${base}${cleanLink}`;
   }
   
   const fileId = getGoogleDriveFileId(link);
   if (fileId) {
-    return `${base}/api/uploads/uploads/drive/${fileId}`;
+    return `${base}/api/drive/stream/${fileId}`;
   }
+  
   return link;
 };
 
