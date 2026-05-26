@@ -30,9 +30,14 @@ const getGoogleDriveFileId = (url) => {
 
 const resolveResumeUrl = (link) => {
   if (!link) return '';
+  const base = BASE_URL || 'http://localhost:5000';
+  
+  if (link.startsWith('/')) {
+    return `${base}${link}`;
+  }
+  
   const fileId = getGoogleDriveFileId(link);
   if (fileId) {
-    const base = BASE_URL || 'http://localhost:5000';
     return `${base}/api/uploads/uploads/drive/${fileId}`;
   }
   return link;
