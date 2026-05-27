@@ -46,10 +46,6 @@ const resolveResumeUrl = (link) => {
   if (fileId) {
     return `${base}/api/drive/stream/${fileId}`;
   }
-  if (link.startsWith('http://') || link.startsWith('https://')) {
-    return link;
-  }
-  const base = BASE_URL || 'http://localhost:5000';
   const cleanLink = link.startsWith('/') ? link : `/${link}`;
   return `${base}${cleanLink}`;
 };
