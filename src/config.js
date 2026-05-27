@@ -34,6 +34,7 @@ export const API_ENDPOINTS = {
   TASKS: `${BASE_URL}/api/tasks`,
   TASK_UPDATES: `${BASE_URL}/api/task-updates`,
   PASSWORD_CHANGE: `${BASE_URL}/api/password/change-password`,
+  PASSWORD_REQUEST_OTP: `${BASE_URL}/api/password/request-otp`,
   PASSWORD_RESET: `${BASE_URL}/api/password/reset-with-otp`,
   TEAMS: `${BASE_URL}/api/teams`,
   EMPLOYEES: `${BASE_URL}/api/employees`,

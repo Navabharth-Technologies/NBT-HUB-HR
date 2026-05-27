@@ -199,6 +199,10 @@ export default function PersonalInfo({ onBack }) {
   }, [user, employees, isSelfMode]);
 
   useEffect(() => {
+    const userRole = user?.role?.toLowerCase() || 'employee';
+    const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr', 'human resource'].includes(userRole);
+    if (!isAdmin) return;
+
     const fetchEmployees = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -978,7 +982,7 @@ export default function PersonalInfo({ onBack }) {
   const currentSectionIndex = SECTIONS.findIndex(s => s.id === activeSection);
   const currentSection = SECTIONS.find(s => s.id === activeSection);
   const userRole = user?.role?.toLowerCase() || 'employee';
-  const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
+  const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr', 'human resource'].includes(userRole);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f4f7fa', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
@@ -1118,7 +1122,7 @@ export default function PersonalInfo({ onBack }) {
                   const newId = e.target.value;
                   setSelectedEmpId(newId);
                   localStorage.setItem('last_selected_emp_id', newId);
-                  setIsEditing(false);
+                  setIsEditing(true);
                 }}
                 disabled={isSelfMode}
                 style={{

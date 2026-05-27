@@ -7,7 +7,8 @@ import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, User, Mail, Phone, FileText, Calendar,
-  MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft
+  MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft,
+  Upload
 } from 'lucide-react';
 
 const getGoogleDriveFileId = (url) => {
@@ -45,8 +46,12 @@ const resolveResumeUrl = (link) => {
   if (fileId) {
     return `${base}/api/drive/stream/${fileId}`;
   }
-  
-  return link;
+  if (link.startsWith('http://') || link.startsWith('https://')) {
+    return link;
+  }
+  const base = BASE_URL || 'http://localhost:5000';
+  const cleanLink = link.startsWith('/') ? link : `/${link}`;
+  return `${base}${cleanLink}`;
 };
 
 
@@ -174,6 +179,42 @@ export default function JobApplications() {
   const [statusNote, setStatusNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [previewResumeUrl, setPreviewResumeUrl] = useState(null);
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 4000);
+  };
+
+  const handleResumeUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      showNotification('Only PDF, DOC, or DOCX files are allowed.', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('File size must be less than 5MB.', 'error');
+      return;
+    }
+
+    setUploadingResume(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm(prev => ({ ...prev, resume_link: reader.result }));
+      showNotification(`Resume "${file.name}" uploaded successfully ✅`, 'success');
+      setUploadingResume(false);
+    };
+    reader.onerror = () => {
+      showNotification('Error reading file. Please try again.', 'error');
+      setUploadingResume(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -243,31 +284,106 @@ export default function JobApplications() {
 
   const handleFormChange = (name, value) => {
     let val = value;
-    if (name === 'email') {
+    if (name === 'applicant_name') {
+      val = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (name === 'email') {
       const atIndex = value.indexOf('@');
       if (atIndex !== -1) {
         const domainPart = value.substring(atIndex + 1);
-        const comIndex = domainPart.indexOf('.com');
+        const comIndex = domainPart.toLowerCase().indexOf('.com');
         if (comIndex !== -1) {
           val = value.substring(0, atIndex + 1 + comIndex + 4);
         }
       }
+    } else if (name === 'phone') {
+      let digits = value.replace(/\D/g, '');
+      if (digits.length > 0) {
+        if (!['9', '8', '7', '6'].includes(digits[0])) {
+          digits = '';
+        }
+      }
+      val = digits.substring(0, 10);
+    } else if (name === 'position') {
+      val = value.replace(/[^a-zA-Z0-9\s]/g, '');
+    } else if (name === 'experience') {
+      let digits = value.replace(/\D/g, '');
+      if (digits !== '') {
+        const num = parseInt(digits, 10);
+        if (num > 50) {
+          val = '50';
+        } else {
+          val = String(num);
+        }
+      } else {
+        val = '';
+      }
+    } else if (name === 'location') {
+      val = value.replace(/[^a-zA-Z\s]/g, '');
     }
     setForm(prev => ({ ...prev, [name]: val }));
   };
 
   const handleSubmit = async () => {
     if (!form.applicant_name || !form.position) {
-      alert('Please fill in Applicant Name and Position');
+      showNotification('Please fill in Applicant Name and Position', 'error');
       return;
     }
+    
+    if (!form.resume_link) {
+      showNotification('Please upload or enter a resume link (this field is mandatory)', 'error');
+      return;
+    }
+    
+    // Name validation: alphabets and spaces
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(form.applicant_name)) {
+      showNotification('Applicant Name must contain only alphabets and spaces', 'error');
+      return;
+    }
+
+    // Email validation
     if (form.email) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/;
       if (!emailRegex.test(form.email)) {
-        alert('Please enter a valid email address ending with .com (e.g. abc@gmail.com)');
+        showNotification('Please enter a valid email address ending with .com (e.g. abc@gmail.com)', 'error');
         return;
       }
     }
+
+    // Phone validation: 10 digits starting with 9, 8, 7, or 6
+    if (form.phone) {
+      const phoneRegex = /^[9876]\d{9}$/;
+      if (!phoneRegex.test(form.phone)) {
+        showNotification('Phone number must be exactly 10 digits and start with 9, 8, 7, or 6', 'error');
+        return;
+      }
+    }
+
+    // Position validation: alphanumeric and spaces
+    const positionRegex = /^[a-zA-Z0-9\s]+$/;
+    if (!positionRegex.test(form.position)) {
+      showNotification('Position must contain only letters, numbers, and spaces', 'error');
+      return;
+    }
+
+    // Experience validation: positive numbers, 0-50 years
+    if (form.experience !== '') {
+      const expVal = parseInt(form.experience, 10);
+      if (isNaN(expVal) || expVal < 0 || expVal > 50) {
+        showNotification('Experience must be a positive number between 0 and 50', 'error');
+        return;
+      }
+    }
+
+    // Location validation: alphabets and spaces
+    if (form.location) {
+      const locationRegex = /^[a-zA-Z\s]+$/;
+      if (!locationRegex.test(form.location)) {
+        showNotification('Location must contain only alphabets and spaces', 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -305,17 +421,17 @@ export default function JobApplications() {
       });
 
       if (res.ok) {
-        alert('Application added successfully ✅');
+        showNotification('Application added successfully ✅', 'success');
         setShowAddModal(false);
         resetForm();
         fetchApplications();
       } else {
         const result = await res.json().catch(() => ({}));
-        alert(`Failed to add: ${result.message || result.error || 'Server error'}`);
+        showNotification(`Failed to add: ${result.message || result.error || 'Server error'}`, 'error');
       }
     } catch (err) {
       console.error('Add application error:', err);
-      alert('Network error. Could not connect to server.');
+      showNotification('Network error. Could not connect to server.', 'error');
     } finally {
       setSaving(false);
     }
@@ -339,26 +455,37 @@ export default function JobApplications() {
       const result = await response.json();
 
       if (response.ok) {
-        alert('Candidate status updated and synced to portal! ✅');
+        showNotification('Candidate status updated and synced to portal! ✅', 'success');
         setShowDetailModal({ show: false, app: null });
         setStatusNote('');
         setTimeout(() => fetchApplications(), 300);
       } else {
-        alert(result.error || result.message || 'Failed to update status');
+        showNotification(result.error || result.message || 'Failed to update status', 'error');
       }
     } catch (error) {
       console.error('Update failed:', error);
-      alert('Network error while updating status');
+      showNotification('Network error while updating status', 'error');
     }
   };
 
-  const filteredApps = applications.filter(app => {
-    const name = (app.applicant_name || app.name || app.candidateName || app.candidate_name || app.full_name || '').toLowerCase();
-    const pos = (app.position || app.role || app.jobTitle || app.job_title || '').toLowerCase();
-    const matchesSearch = name.includes(searchTerm.toLowerCase()) || pos.includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All' || (app.status || 'Pending') === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredApps = applications
+    .filter(app => {
+      const name = (app.applicant_name || app.name || app.candidateName || app.candidate_name || app.full_name || '').toLowerCase();
+      const pos = (app.position || app.role || app.jobTitle || app.job_title || '').toLowerCase();
+      const dept = (app.department || app.team || '').toLowerCase();
+      const term = searchTerm.toLowerCase().trim();
+      // When searching: name must START WITH the term, or position/dept contains it
+      const matchesSearch = !term || name.startsWith(term) || pos.includes(term) || dept.includes(term);
+      const matchesStatus = filterStatus === 'All' || (app.status || 'Pending') === filterStatus;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (!searchTerm.trim()) return 0; // preserve original order when no search
+      const nameA = (a.applicant_name || a.name || a.candidateName || a.candidate_name || a.full_name || '').toLowerCase();
+      const nameB = (b.applicant_name || b.name || b.candidateName || b.candidate_name || b.full_name || '').toLowerCase();
+      // Sort alphabetically within filtered results
+      return nameA.localeCompare(nameB);
+    });
 
   const statusCounts = {
     All: applications.length,
@@ -618,16 +745,45 @@ export default function JobApplications() {
                       <Calendar size={13} />
                       {formatDate(app.applied_date || app.application_date || app.created_at || app.appliedAt)}
                     </div>
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: '#0d9488', 
-                      fontWeight: '900', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      View <ChevronDown size={12} style={{ transform: 'rotate(-90deg)' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {(app.resume_link || app.resume_url || app.resumeUrl) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = resolveResumeUrl(app.resume_link || app.resume_url || app.resumeUrl);
+                            setPreviewResumeUrl(url);
+                          }}
+                          style={{
+                            background: 'rgba(13, 148, 136, 0.1)',
+                            border: 'none',
+                            color: '#0d9488',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontWeight: '900',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(13, 148, 136, 0.2)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(13, 148, 136, 0.1)'}
+                        >
+                          <Eye size={12} /> Resume
+                        </button>
+                      )}
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#0d9488', 
+                        fontWeight: '900', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        View <ChevronDown size={12} style={{ transform: 'rotate(-90deg)' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -681,7 +837,78 @@ export default function JobApplications() {
                 <FormField label="Exp" icon={<FileText size={14} />} name="experience" placeholder="e.g. 3" value={form.experience} onChange={handleFormChange} />
                 <FormField label="Location" icon={<MapPin size={14} />} name="location" placeholder="e.g. Bangalore" value={form.location} onChange={handleFormChange} />
                 <FormField label="Date" icon={<Calendar size={14} />} type="date" name="applied_date" value={form.applied_date} onChange={handleFormChange} />
-                <FormField label="Resume" icon={<Download size={14} />} name="resume_link" placeholder="https://..." value={form.resume_link} onChange={handleFormChange} fullWidth />
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '10px', paddingLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  <span style={{ color: '#0d9488' }}><Download size={14} /></span> Resume <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="https://... or uploaded file path"
+                      value={form.resume_link}
+                      onChange={(e) => handleFormChange('resume_link', e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        padding: '16px 20px', 
+                        borderRadius: '18px', 
+                        border: '1.5px solid #e2e8f0', 
+                        background: '#ffffff', 
+                        fontWeight: '600', 
+                        fontSize: '15px', 
+                        outline: 'none', 
+                        boxSizing: 'border-box', 
+                        transition: 'all 0.3s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#0d9488'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+                    />
+                  </div>
+                  
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleResumeUpload}
+                      id="resume-upload-input"
+                      style={{ display: 'none' }}
+                    />
+                    <label
+                      htmlFor="resume-upload-input"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '16px 24px',
+                        borderRadius: '18px',
+                        background: uploadingResume ? '#e2e8f0' : '#0d9488',
+                        color: uploadingResume ? '#94a3b8' : 'white',
+                        fontWeight: '800',
+                        fontSize: '14px',
+                        cursor: uploadingResume ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        transition: 'all 0.2s',
+                        boxShadow: uploadingResume ? 'none' : '0 4px 10px rgba(13, 148, 136, 0.25)',
+                        whiteSpace: 'nowrap',
+                        boxSizing: 'border-box'
+                      }}
+                      onMouseEnter={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {uploadingResume ? (
+                        <span>Uploading...</span>
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          <span>Upload PDF</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
                 <FormField label="Notes" icon={<FileText size={14} />} type="textarea" name="notes" placeholder="Feedback..." value={form.notes} onChange={handleFormChange} fullWidth />
               </div>
             </div>
@@ -790,22 +1017,40 @@ export default function JobApplications() {
                   ))}
                 </div>
 
-                {(app.resume_link || app.resume_url || app.resumeUrl) && (
-                  <a 
-                    href={resolveResumeUrl(app.resume_link || app.resume_url || app.resumeUrl)} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '18px', borderRadius: '18px',
-                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', color: '#1d4ed8', textDecoration: 'none',
-                      fontWeight: '800', fontSize: '14px', marginBottom: '30px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.1)', transition: '0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <Download size={20} strokeWidth={2.5} /> Download / View Resume (CV)
-                  </a>
-                )}
+                {(app.resume_link || app.resume_url || app.resumeUrl) && (() => {
+                  const resolvedUrl = resolveResumeUrl(app.resume_link || app.resume_url || app.resumeUrl);
+                  return (
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
+                      <button
+                        onClick={() => setPreviewResumeUrl(resolvedUrl)}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '18px',
+                          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', color: '#1d4ed8',
+                          fontWeight: '800', fontSize: '14px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.05)', cursor: 'pointer', transition: '0.2s',
+                          outline: 'none'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                      >
+                        <Eye size={18} strokeWidth={2.5} /> Preview Resume PDF
+                      </button>
+                      <a 
+                        href={resolvedUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '18px',
+                          background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', textDecoration: 'none',
+                          fontWeight: '800', fontSize: '14px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)', transition: '0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                      >
+                        <Download size={18} strokeWidth={2.5} /> Download Resume
+                      </a>
+                    </div>
+                  );
+                })()}
 
 
                 <div style={{ padding: '25px', background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
@@ -864,6 +1109,178 @@ export default function JobApplications() {
           </div>
         );
       })()}
+
+      {previewResumeUrl && (
+        <div 
+          onClick={() => setPreviewResumeUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(12px)',
+            zIndex: 20000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '24px',
+              padding: '12px',
+              width: '100%',
+              maxWidth: '850px',
+              height: '90vh',
+              position: 'relative',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={18} color="#0d9488" />
+                <span style={{ fontWeight: '850', color: '#1e293b', fontSize: '15px' }}>Resume Document Viewer</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <a 
+                  href={previewResumeUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  style={{
+                    marginRight: '15px',
+                    fontSize: '13px',
+                    fontWeight: '800',
+                    color: '#0d9488',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Download size={14} /> Open in New Tab
+                </a>
+                <button
+                  onClick={() => setPreviewResumeUrl(null)}
+                  style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    transition: '0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                >
+                  <X size={16} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, backgroundColor: '#f8fafc', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}>
+              <iframe
+                src={previewResumeUrl}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Resume Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Centered Notification Modal ── */}
+      {notification.show && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            pointerEvents: 'auto',
+            background: notification.type === 'success'
+              ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
+              : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+            border: `2px solid ${notification.type === 'success' ? '#6ee7b7' : '#fca5a5'}`,
+            borderRadius: '24px',
+            padding: '28px 36px',
+            maxWidth: '420px',
+            width: '90%',
+            boxShadow: notification.type === 'success'
+              ? '0 20px 60px rgba(16, 185, 129, 0.25)'
+              : '0 20px 60px rgba(239, 68, 68, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '14px',
+            textAlign: 'center',
+            animation: 'notifPop 0.3s ease'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: notification.type === 'success'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: notification.type === 'success'
+                ? '0 8px 20px rgba(16,185,129,0.4)'
+                : '0 8px 20px rgba(239,68,68,0.4)'
+            }}>
+              <span style={{ color: 'white', fontSize: '24px', lineHeight: 1 }}>
+                {notification.type === 'success' ? '✓' : '✕'}
+              </span>
+            </div>
+            <p style={{
+              margin: 0,
+              fontSize: '15px',
+              fontWeight: '800',
+              color: notification.type === 'success' ? '#065f46' : '#991b1b',
+              lineHeight: '1.5'
+            }}>
+              {notification.message}
+            </p>
+            <button
+              onClick={() => setNotification({ show: false, message: '', type: 'success' })}
+              style={{
+                padding: '8px 28px',
+                borderRadius: '50px',
+                border: 'none',
+                background: notification.type === 'success'
+                  ? 'linear-gradient(135deg, #10b981, #059669)'
+                  : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                color: 'white',
+                fontWeight: '900',
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: notification.type === 'success'
+                  ? '0 4px 12px rgba(16,185,129,0.35)'
+                  : '0 4px 12px rgba(239,68,68,0.35)',
+                transition: 'transform 0.15s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       <AppFooter />
     </div>

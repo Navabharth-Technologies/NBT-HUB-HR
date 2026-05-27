@@ -715,14 +715,12 @@ export default function PaySlipScreen() {
         try {
             const idsToDelete = [];
 
-            // 1. If we are editing, we must delete the old version of the payslip
-            if (isEditMode && editingPayslipId) {
-                idsToDelete.push(editingPayslipId);
-            }
+            // 1. If we are editing, we do NOT delete the current payslip (it will be updated via PUT).
+            // We only need to check for other duplicate records.
 
-            // 2. In both Add and Edit modes, check if there are any existing payslips in payslipsList 
+            // 2. Check if there are any existing payslips in payslipsList 
             // that match the target employee_id, month, and year of the saved data.
-            // We must delete them to avoid duplicates.
+            // We must delete them to avoid duplicates, except for the one we are editing.
             const targetEmpId = String(formData.employee_id || '').trim();
             const targetMonth = String(formData.month || '').trim();
             const targetYear = String(formData.year || '').trim();
@@ -734,6 +732,10 @@ export default function PaySlipScreen() {
                 
                 if (itemEmpId === targetEmpId && itemMonth === targetMonth && itemYear === targetYear) {
                     const itemId = item._id || item.id;
+                    // If we are editing, exclude the currently editing payslip from deletion
+                    if (isEditMode && editingPayslipId && String(itemId) === String(editingPayslipId)) {
+                        return;
+                    }
                     if (itemId && !idsToDelete.includes(itemId)) {
                         idsToDelete.push(itemId);
                     }
@@ -1171,72 +1173,90 @@ export default function PaySlipScreen() {
         }, 300);
     };
 
-    const handleDownloadPDF = async () => {
+    const handleDownloadPDF = () => {
         setShowExportOptions(false);
         if (filteredPayslips.length === 0) {
             alert('No payslip records to export.');
             return;
         }
 
-        setIsExportingPDF(true);
+        try {
+            const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4 PDF
 
-        setTimeout(async () => {
-            try {
-                let pdf = null;
+            // Add title and company details
+            doc.setFontSize(20);
+            doc.setTextColor(15, 23, 42); // deep navy
+            doc.text('NAVABHARATH TECHNOLOGIES', 14, 15);
 
-                for (let i = 0; i < filteredPayslips.length; i++) {
-                    const elementId = `payslip-print-item-${i}`;
-                    const element = document.getElementById(elementId);
-                    if (!element) continue;
+            doc.setFontSize(10);
+            doc.setTextColor(100, 116, 139); // slate grey
+            doc.text('PAYSLIPS SUMMARY REPORT', 14, 21);
 
-                    const canvas = await html2canvas(element, {
-                        scale: 2,
-                        useCORS: true,
-                        logging: false,
-                        backgroundColor: '#ffffff'
-                    });
+            const todayStr = new Date().toLocaleDateString('en-GB');
+            doc.text(`Generated Date: ${todayStr}`, 14, 26);
 
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdfWidth = 210;
-                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            // Prepare table headers and rows
+            const headers = [
+                ['Employee ID', 'Employee Name', 'Month', 'Basic Salary', 'Present', 'LOP', 'Deductions', 'Net Payable']
+            ];
 
-                    if (!pdf) {
-                        pdf = new jsPDF({
-                            orientation: 'p',
-                            unit: 'mm',
-                            format: [pdfWidth, pdfHeight]
-                        });
-                    } else {
-                        pdf.addPage([pdfWidth, pdfHeight], 'p');
-                    }
+            const rows = filteredPayslips.map(item => {
+                const data = normalizePayslipData(item);
+                return [
+                    data.employee_id || '-',
+                    data.emp_name || '-',
+                    getMonthName(data.month) + ' ' + (data.year || ''),
+                    `Rs.${formatCurrency(data.basic_salary)}`,
+                    data.total_present || '0',
+                    data.lop || '0',
+                    `Rs.${formatCurrency(data.total_deductions)}`,
+                    `Rs.${formatCurrency(data.net_payable)}`
+                ];
+            });
 
-                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            // Use jspdf-autotable to draw the table beautifully
+            autoTable(doc, {
+                head: headers,
+                body: rows,
+                startY: 32,
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 65 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 20 },
+                    5: { cellWidth: 15 },
+                    6: { cellWidth: 30 },
+                    7: { cellWidth: 35 }
+                },
+                margin: { top: 32, left: 14, right: 14 },
+                didDrawPage: (data) => {
+                    // Footer
+                    const str = `Page ${doc.internal.getNumberOfPages()}`;
+                    doc.setFontSize(8);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(str, doc.internal.pageSize.width - 25, doc.internal.pageSize.height - 10);
                 }
+            });
 
-                let filename = 'Payslips';
-                if (selectedEmployeeFilter) {
-                    filename += `_${selectedEmployeeFilter}`;
-                }
-                if (selectedMonthFilter) {
-                    filename += `_${getMonthName(selectedMonthFilter)}`;
-                }
-                if (!selectedEmployeeFilter && !selectedMonthFilter) {
-                    filename += '_All';
-                }
-                filename += '.pdf';
-
-                if (pdf) {
-                    pdf.save(filename);
-                } else {
-                    alert('No printable payslips could be rendered.');
-                }
-            } catch (error) {
-                console.error('PDF Generation Error:', error);
-                alert('Failed to generate PDF statement.');
-            } finally {
-                setIsExportingPDF(false);
+            let filename = 'Payslips_Report';
+            if (selectedEmployeeFilter) {
+                filename += `_${selectedEmployeeFilter.replace(/\s+/g, '_')}`;
             }
-        }, 100);
+            if (selectedMonthFilter) {
+                filename += `_${getMonthName(selectedMonthFilter)}`;
+            }
+            filename += '.pdf';
+
+            doc.save(filename);
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            alert('Failed to generate PDF report.');
+        }
     };
 
     const handleDownloadExcel = () => {
@@ -2000,64 +2020,45 @@ export default function PaySlipScreen() {
                         background: #ffffff !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
-                        margin: 0 !important;
+                        margin: 10mm !important;
                         padding: 0 !important;
-                        height: auto !important;
-                        min-height: 0 !important;
                         overflow: visible !important;
                     }
-                    #root, #root > div, main {
-                        display: block !important;
-                        height: auto !important;
-                        min-height: 0 !important;
-                        overflow: visible !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                    }
-                    body * {
-                        visibility: hidden;
-                    }
-                    .no-print, main, footer, header {
+                    .no-print, header, footer, .app-header, .app-footer, button, .footer-item-container {
                         display: none !important;
+                        visibility: hidden !important;
                     }
-                    #payslips-print-container, #payslips-print-container * {
-                        visibility: visible !important;
-                    }
-                    #payslips-print-container {
+                    main {
                         display: block !important;
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        margin: 0 !important;
+                        margin-top: 0 !important;
                         padding: 0 !important;
-                        opacity: 1 !important;
-                        z-index: 99999 !important;
+                        overflow: visible !important;
                     }
-                    #payslips-print-container > .print-payslip-page {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        box-sizing: border-box !important;
+                    .payslip-row {
+                        background: #ffffff !important;
+                        border-bottom: 1.5px solid #cbd5e1 !important;
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        border: none !important;
                     }
-                    #payslips-print-container > .print-payslip-page:not(:last-child) {
-                        page-break-after: always !important;
-                        break-after: page !important;
+                    /* Ensure action/delete/download columns are hidden in print */
+                    .payslip-row button, 
+                    .payslip-row svg,
+                    .payslip-row > *:nth-child(9),
+                    .payslip-row > *:nth-child(10),
+                    .payslip-row > *:nth-child(11) {
+                        display: none !important;
+                        visibility: hidden !important;
                     }
-                    #payslips-print-container > .print-payslip-page:last-child {
-                        page-break-after: avoid !important;
-                        break-after: avoid !important;
+                    /* Hide header's last 3 labels */
+                    div[style*="gridTemplateColumns"] > span:nth-child(9),
+                    div[style*="gridTemplateColumns"] > span:nth-child(10),
+                    div[style*="gridTemplateColumns"] > span:nth-child(11) {
+                        display: none !important;
                     }
-                    #payslips-print-container > .print-payslip-page > div {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        box-sizing: border-box !important;
-                        border: none !important;
-                        padding: 20px !important;
+                    /* Adjust grid layout header/body column templates to span only the 8 visible columns */
+                    .payslip-row, 
+                    div[style*="gridTemplateColumns"] {
+                        grid-template-columns: 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr !important;
                     }
                 }
             `}</style>

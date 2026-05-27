@@ -6,13 +6,67 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN, BASE_URL } from '../../config';
 import {
-  Users, MessageSquare, Briefcase,
+  Users, Briefcase,
   ChevronRight, ArrowRight, User, CheckSquare, Hourglass, Sparkles,
   Clock, Calendar, CheckCircle, Trophy, PartyPopper, Star, Package, ClipboardList, Gift, Cake,
   FileText
 } from 'lucide-react';
 import './Dashboard.css';
 import TaskNotification from './TaskNotification';
+
+const parseLogDate = (log) => {
+  const rawDate = log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '';
+  if (!rawDate) return '';
+  const dateStr = String(rawDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    if (dateStr.includes('T') || dateStr.includes(' ')) {
+      try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+      } catch (e) { }
+    }
+    return dateStr.split('T')[0].split(' ')[0];
+  }
+  const dmyRegex = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/;
+  const match = dateStr.match(dmyRegex);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    return `${year}-${month}-${day}`;
+  }
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) { }
+  return '';
+};
+
+const parseTimeStr = (tStr) => {
+  if (!tStr || tStr === '----' || tStr === '--:--' || tStr.includes('00:00')) return -1;
+  let s = String(tStr).trim();
+  let isPM = s.toUpperCase().includes('PM');
+  let isAM = s.toUpperCase().includes('AM');
+  s = s.replace(/[^\d:]/g, '');
+  let parts = s.split(':');
+  if (parts.length < 2) return -1;
+  let h = parseInt(parts[0], 10);
+  let m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return -1;
+  if (isPM && h < 12) h += 12;
+  if (isAM && h === 12) h = 0;
+  return h * 60 + m;
+};
 
 export default function HRDashboard() {
   const navigate = useNavigate();
@@ -24,13 +78,15 @@ export default function HRDashboard() {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     onLeave: 0,
-    late: 0
+    late: 0,
+    halfDay: 0
   });
   const [rewardsCount, setRewardsCount] = useState(0);
   const [employeesCount, setEmployeesCount] = useState(0);
   const [teamsCount, setTeamsCount] = useState(0);
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  const [lateLogins, setLateLogins] = useState([]);
   const [challengeData, setChallengeData] = useState({
     title: 'Loading...',
     participants: 0,
@@ -112,14 +168,36 @@ export default function HRDashboard() {
         masterLogs = Array.isArray(rawLogs) ? rawLogs.filter(l => String(l?.user_id || l?.Empcode || l?.EmpID || '').trim() !== '20250') : [];
 
         if (Array.isArray(masterLogs)) {
-          const todayStr = new Date().toISOString().split('T')[0];
+          const today = new Date();
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
           const todayLogs = masterLogs.filter(l => {
-            const lDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+            const lDate = parseLogDate(l);
             return lDate === todayStr;
           });
           const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
-          const lateToday = todayLogs.filter(l => String(l?.status || '').toUpperCase().includes('LATE')).length;
-          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday, late: lateToday }));
+          const lateTodayLogs = todayLogs.filter(l => String(l?.status || '').toUpperCase().includes('LATE'));
+          const lateToday = lateTodayLogs.length;
+          const halfDayToday = todayLogs.filter(l => {
+            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
+            const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
+            if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
+            if (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60)) return true;
+            return false;
+          }).length;
+          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday, late: lateToday, halfDay: halfDayToday }));
+
+          const processedLate = lateTodayLogs.map(l => {
+            const uid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+            const name = l?.employee_name || l?.name || l?.EmpName || (uid && userLookup[uid]) || 'Employee';
+            const time = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time || 'N/A';
+            return {
+              id: uid,
+              name: name,
+              time: time,
+              status: l?.status || 'LATE'
+            };
+          });
+          setLateLogins(processedLate);
         }
       }
 
@@ -154,15 +232,12 @@ export default function HRDashboard() {
       }
 
       // Calculate daily absentees
-      const todayStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const presentIds = new Set();
       if (Array.isArray(masterLogs)) {
         const todayLogs = masterLogs.filter(l => {
-          let lDate = (l?.punch_date || l?.PunchDate || l?.date || l?.created_at || '').split('T')[0].split(' ')[0];
-          if (lDate.includes('-') && lDate.split('-')[0].length !== 4) {
-            const parts = lDate.split('-');
-            if (parts.length === 3) lDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-          }
+          const lDate = parseLogDate(l);
           return lDate === todayStr;
         });
         todayLogs.forEach(l => {
@@ -174,10 +249,9 @@ export default function HRDashboard() {
       const activeLeavesToday = (resolvedLeaves || []).filter(r => {
         const rStatus = String(r?.status || '').toUpperCase();
         if (!['PENDING', 'APPROVED'].includes(rStatus)) return false;
-        let rDate = (r?.date || r?.start_date || '').split('T')[0];
-        if (rDate.includes('-') && rDate.split('-')[0].length !== 4) {
-          const parts = rDate.split('-');
-          if (parts.length === 3) rDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        let rDate = r?.date || r?.start_date || '';
+        if (rDate) {
+          rDate = parseLogDate({ punch_date: rDate });
         }
         return rDate === todayStr;
       });
@@ -347,16 +421,17 @@ export default function HRDashboard() {
     fetchDashboardData();
   }, [user]);
 
-  const hrStats = [
+  const row1Stats = [
     { label: 'Total Teams', value: teamsCount || 'View', icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
     { label: 'Total Employees', value: employeesCount || 'View', icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
-    { label: 'Employee Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
-    { label: 'Awards and Recognition', value: rewardsCount || 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
-    { label: 'Assets Management', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
     { label: 'New Joinee', value: joineeCount || 'View', icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
     { label: 'New Hirings', value: jobAppCount || 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
-    { label: 'Post Vacancy', value: 'Create', icon: <ClipboardList size={20} color="#3b82f6" />, badge: 'Hiring', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/job-postings' },
-    { label: 'Add Employee Payslip', value: 'Manage', icon: <FileText size={20} color="#0284c7" />, badge: 'Pay', badgeClass: 'badge-blue', iconBg: '#e0f2fe', path: '/payslip', state: { openAddForm: true } },
+  ];
+
+  const row2Stats = [
+    { label: 'Awards and Recognition', value: rewardsCount || 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
+    { label: 'Asset Administration', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
+    { label: 'Employee Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
   ];
 
   return (
@@ -364,7 +439,7 @@ export default function HRDashboard() {
       <AppHeader />
       <main style={{
         flex: 1,
-        padding: winWidth < 768 ? '20px 16px 40px' : '40px 26px 40px',
+        padding: winWidth < 768 ? '20px 16px 120px' : '40px 26px 120px',
         maxWidth: '100%',
         margin: '0 auto',
         width: '100%',
@@ -381,20 +456,20 @@ export default function HRDashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>HR Dashboard</h1>
+              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>Ravikumar's Dashboard</h1>
               <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale • {teamsCount} Active Teams</p>
             </div>
           </div>
         </header>
 
-        {/* Stats Grid */}
-        <section style={{ marginBottom: winWidth < 768 ? '32px' : '40px' }}>
+        {/* Row 1 Stats Grid */}
+        <section style={{ marginBottom: winWidth < 768 ? '12px' : '20px' }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : winWidth < 1024 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
             gap: winWidth < 768 ? '12px' : '20px'
           }}>
-            {hrStats.map((stat, i) => (
+            {row1Stats.map((stat, i) => (
               <div
                 key={i}
                 className="stat-card animate-fade-in"
@@ -403,8 +478,8 @@ export default function HRDashboard() {
                   cursor: stat.path ? 'pointer' : 'default',
                   borderRadius: '24px',
                   background: 'white',
-                  border: '1.5px solid #f1f5f9',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
@@ -417,7 +492,62 @@ export default function HRDashboard() {
                 }}
                 onMouseOut={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.02)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{
+                    background: stat.iconBg, width: winWidth < 768 ? '36px' : '44px', height: winWidth < 768 ? '36px' : '44px', borderRadius: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {stat.icon}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: winWidth < 768 ? '11px' : '13px', color: '#64748b', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
+                  <div style={{
+                    fontSize: winWidth < 768 ? '20px' : '28px',
+                    fontWeight: '950',
+                    color: '#0f172a',
+                    lineHeight: 1
+                  }}>{stat.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Row 2 Stats Grid (Separate Container) */}
+        <section style={{ marginBottom: winWidth < 768 ? '32px' : '40px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: winWidth < 768 ? '12px' : '20px'
+          }}>
+            {row2Stats.map((stat, i) => (
+              <div
+                key={i}
+                className="stat-card animate-fade-in"
+                style={{
+                  padding: winWidth < 768 ? '16px' : '24px',
+                  cursor: stat.path ? 'pointer' : 'default',
+                  borderRadius: '24px',
+                  background: 'white',
+                  border: '1px solid #3863a8',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: '0.2s transform, 0.2s box-shadow'
+                }}
+                onClick={() => stat.path && navigate(stat.path, stat.state ? { state: stat.state } : undefined)}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)';
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -444,7 +574,11 @@ export default function HRDashboard() {
 
         <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Leave/Attendance Management */}
-          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <section 
+            className="dashboard-section animate-fade-in" 
+            style={{ animationDelay: '0.2s', cursor: 'pointer' }}
+            onClick={() => navigate('/attendance')}
+          >
             <div style={{
               display: 'flex',
               flexDirection: winWidth < 640 ? 'column' : 'row',
@@ -458,12 +592,11 @@ export default function HRDashboard() {
             </div>
 
             {/* Attendance Quick Stats */}
-            <div style={{ display: 'flex', marginBottom: '24px', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px', width: '100%', boxSizing: 'border-box' }}>
               <div
                 onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
                 style={{
                   padding: winWidth < 768 ? '16px 8px' : '24px',
-                  flex: 1,
                   background: '#f0fdf4',
                   borderRadius: winWidth < 768 ? '16px' : '24px',
                   border: '1px solid #dcfce7',
@@ -481,44 +614,92 @@ export default function HRDashboard() {
                 <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#15803d', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Present</div>
                 <div style={{ fontSize: winWidth < 768 ? '24px' : '36px', fontWeight: '950', color: '#166534', lineHeight: 1 }}>{attendanceStats.present || 0}</div>
               </div>
+
+              <div
+                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
+                style={{
+                  padding: winWidth < 768 ? '16px 8px' : '24px',
+                  background: '#fef2f2',
+                  borderRadius: winWidth < 768 ? '16px' : '24px',
+                  border: '1px solid #fee2e2',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
+                  minWidth: 0,
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#dc2626', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Absent</div>
+                <div style={{ fontSize: winWidth < 768 ? '24px' : '36px', fontWeight: '950', color: '#991b1b', lineHeight: 1 }}>{absentees.length || 0}</div>
+              </div>
+
+              <div
+                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
+                style={{
+                  padding: winWidth < 768 ? '16px 8px' : '24px',
+                  background: '#fff7ed',
+                  borderRadius: winWidth < 768 ? '16px' : '24px',
+                  border: '1px solid #ffedd5',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
+                  minWidth: 0,
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#ea580c', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Half Days</div>
+                <div style={{ fontSize: winWidth < 768 ? '24px' : '36px', fontWeight: '950', color: '#c2410c', lineHeight: 1 }}>{attendanceStats.halfDay || 0}</div>
+              </div>
             </div>
 
-            <div style={{ marginBottom: '20px', flex: 1 }}>
-              <div style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '15px' }}>Total Absents</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {absentees.length > 0 ? (
-                  absentees.map((abs, aid) => (
-                    <div key={aid} style={{
-                      display: 'flex', alignItems: 'center', padding: winWidth < 768 ? '10px' : '16px',
-                      borderRadius: winWidth < 768 ? '18px' : '24px', background: '#ffffff', border: '1px solid #cbd5e1',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)', width: '100%', boxSizing: 'border-box',
-                      gap: winWidth < 768 ? '8px' : '12px'
+            {/* Late Logins List */}
+            <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={16} color="#7e22ce" /> Late Logins ({lateLogins.length})
+                </h3>
+                {lateLogins.length > 0 && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }} 
+                    style={{ background: 'transparent', border: 'none', color: '#3863a8', fontSize: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                  >
+                    View All <ChevronRight size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {lateLogins.length > 0 ? (
+                  lateLogins.slice(0, 3).map((late, idx) => (
+                    <div key={idx} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                      borderRadius: '16px', background: '#faf5ff', border: '1px solid #e9d5ff',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
                     }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#fee2e2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>👤</div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                          <div style={{ fontSize: '15px', fontWeight: '950', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{abs.name || abs.employee_name}</div>
-                          <div style={{ 
-                            padding: '3px 10px', 
-                            background: abs.status === 'ON LEAVE' ? '#fffbeb' : '#fef2f2', 
-                            color: abs.status === 'ON LEAVE' ? '#d97706' : '#dc2626', 
-                            borderRadius: '50px', 
-                            fontSize: '10px', 
-                            fontWeight: '900', 
-                            textTransform: 'uppercase' 
-                          }}>
-                            {abs.status || 'Absent'}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {abs.role || abs.designation || 'Staff'} • {abs.empId || abs.id || 'N/A'}
-                        </div>
+                      <div style={{ background: '#f3e8ff', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User size={16} color="#7e22ce" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: '850', color: '#1e293b' }}>{late.name}</div>
+                        <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: '700' }}>ID: {late.id}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#7e22ce' }}>{late.time}</div>
+                        <div style={{ fontSize: '9px', color: '#a855f7', fontWeight: '850', textTransform: 'uppercase' }}>LATE</div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ padding: '30px 20px', textAlign: 'center', color: '#16a34a', fontSize: '13px', border: '2px dashed #bbf7d0', borderRadius: '24px', background: '#f0fdf4', fontWeight: '700' }}>
-                    Zero Absents Today 🎉
+                  <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px', border: '1px dashed #e2e8f0', borderRadius: '16px' }}>
+                    No late logins recorded today
                   </div>
                 )}
               </div>
@@ -526,20 +707,24 @@ export default function HRDashboard() {
           </section>
 
           {/* Fun & Engagement Hub */}
-          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <section 
+            className="dashboard-section animate-fade-in" 
+            style={{ animationDelay: '0.3s', cursor: 'pointer' }}
+            onClick={() => navigate('/fun-quiz')}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Sparkles size={20} color="#3863a8" /> Fun and Quiz</h2>
               <button
                 className="btn-ghost"
                 style={{ fontSize: '14px', padding: '8px 12px' }}
-                onClick={() => navigate('/fun-quiz')}
+                onClick={(e) => { e.stopPropagation(); navigate('/fun-quiz'); }}
               >
-                Join the Hub
+                Create Quiz
               </button>
             </div>
 
             <div
-              onClick={() => navigate('/fun-quiz')}
+              onClick={(e) => { e.stopPropagation(); navigate('/fun-quiz'); }}
               style={{
                 background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
                 borderRadius: '24px', padding: '30px', color: 'white', cursor: 'pointer',
@@ -592,11 +777,26 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer' }} onClick={() => navigate('/holidays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
-              <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
+              <button className="btn-ghost" style={{ 
+                fontSize: '12px', 
+                fontWeight: '800', 
+                color: '#0d9488', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                background: 'transparent',
+                border: '1.5px solid #0d9488',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                transition: 'all 0.2s'
+              }} onMouseOver={(e) => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0d9488'; }}>
+                View All <ArrowRight size={14} />
+              </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {holidays.length > 0 ? holidays.slice(0, 3).map((holiday, idx) => (
+              {holidays.length > 0 ? holidays.slice(0, 2).map((holiday, idx) => (
                 <div key={idx} style={{
                   display: 'flex', alignItems: 'center', gap: '15px', padding: '14px',
                   borderRadius: '16px', background: '#f0fdfa', border: '3px solid #cbd5e1',
@@ -626,11 +826,26 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer' }} onClick={() => navigate('/birthdays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
-              <button className="btn-ghost" style={{ fontSize: '12px' }}>View All</button>
+              <button className="btn-ghost" style={{ 
+                fontSize: '12px', 
+                fontWeight: '800', 
+                color: '#ec4899', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                background: 'transparent',
+                border: '1.5px solid #ec4899',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                transition: 'all 0.2s'
+              }} onMouseOver={(e) => { e.currentTarget.style.background = '#ec4899'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ec4899'; }}>
+                View All <ArrowRight size={14} />
+              </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {upcomingBirthdays.length > 0 ? upcomingBirthdays.slice(0, 3).map((bday, idx) => (
+              {upcomingBirthdays.length > 0 ? upcomingBirthdays.slice(0, 2).map((bday, idx) => (
                 <div key={idx} style={{
                   display: 'flex', alignItems: 'center', gap: '15px', padding: '14px',
                   borderRadius: '16px', background: '#ffffff', border: '3px solid #cbd5e1',
@@ -657,6 +872,47 @@ export default function HRDashboard() {
               )}
             </div>
           </section>
+
+          {/* Review Suggestion Button */}
+          <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+            <button
+              onClick={() => navigate('/suggestions')}
+              style={{
+                width: '100%',
+                padding: '18px 28px',
+                background: 'linear-gradient(135deg, #0B1E3F 0%, #1e3a6e 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '20px',
+                fontSize: '15px',
+                fontWeight: '900',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: '0 8px 24px rgba(11, 30, 63, 0.3)',
+                letterSpacing: '0.5px',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                textTransform: 'uppercase'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #1e3a6e 0%, #315A9E 100%)';
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(11, 30, 63, 0.45)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #0B1E3F 0%, #1e3a6e 100%)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(11, 30, 63, 0.3)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Review Suggestions
+            </button>
+          </div>
         </div>
       </main>
 

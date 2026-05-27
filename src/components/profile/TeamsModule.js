@@ -48,7 +48,7 @@ export default function TeamsModule() {
       
       <style>{`
         .team-card { transition: all 0.2s ease-in-out; }
-        .team-card:hover { border-color: #3b82f6 !important; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important; transform: translateY(-4px); }
+        .team-card:hover { box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important; transform: translateY(-4px); }
       `}</style>
       
       <main className="dashboard-content" style={{ padding: winWidth < 768 ? '100px 16px 120px' : '120px 26px 120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
@@ -95,14 +95,19 @@ export default function TeamsModule() {
               >
                 {/* Top Section */}
                 <div style={{ padding: '24px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0, maxWidth: '65%', lineHeight: '1.2' }}>{team.name}</h3>
-                  <span style={{
-                    background: '#e0f2fe', color: '#0284c7', padding: '6px 12px', 
-                    borderRadius: '20px', fontSize: '10px', fontWeight: '800', 
-                    textTransform: 'uppercase', letterSpacing: '0.5px'
+                  <h3 style={{ 
+                    fontSize: '24px', 
+                    fontWeight: '900', 
+                    color: '#1e293b', 
+                    margin: 0, 
+                    whiteSpace: 'nowrap', 
+                    overflow: 'hidden', 
+                    textOverflow: 'ellipsis', 
+                    lineHeight: '1.2',
+                    width: '100%' 
                   }}>
-                    {team.status || 'ON TRACK'}
-                  </span>
+                    {team.name}
+                  </h3>
                 </div>
 
                 {/* Lead Section */}
@@ -137,14 +142,6 @@ export default function TeamsModule() {
                       <p style={{ margin: 0, fontSize: '10px', fontWeight: '800', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>Leader</p>
                     </div>
                   </div>
-                  <span style={{
-                    background: 'white', color: '#3863a8', padding: '4px 10px', 
-                    borderRadius: '12px', fontSize: '10px', fontWeight: '800', 
-                    textTransform: 'uppercase', letterSpacing: '0.5px', border: '1px solid #bae6fd',
-                    flexShrink: 0
-                  }}>
-                    ACTIVE
-                  </span>
                 </div>
 
                 {/* Body Section */}

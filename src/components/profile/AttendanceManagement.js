@@ -11,6 +11,44 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import './HRDashboard.css';
 
+const parseLogDate = (log) => {
+  const rawDate = log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '';
+  if (!rawDate) return '';
+  const dateStr = String(rawDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    if (dateStr.includes('T') || dateStr.includes(' ')) {
+      try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+      } catch (e) {}
+    }
+    return dateStr.split('T')[0].split(' ')[0];
+  }
+  const dmyRegex = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/;
+  const match = dateStr.match(dmyRegex);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    return `${year}-${month}-${day}`;
+  }
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) {}
+  return '';
+};
+
 const parseTime = (timeStr, baseDate = new Date()) => {
   if (!timeStr || timeStr === '----' || timeStr === '--:--' || timeStr === '00:00' || timeStr === '00:00:00') return null;
   try {
@@ -41,12 +79,9 @@ const getWorkHrs = (inTime, outTime, recordDate) => {
   const isMissing = (t) => !t || t === '--:--' || t === '00:00' || t === 'null' || t === '----';
   if (isMissing(inTime)) return '00:00';
   
-  const todayStr = new Date().toISOString().split('T')[0];
-  let cleanRecordDate = String(recordDate || '').split('T')[0].split(' ')[0].trim();
-  if (cleanRecordDate.includes('-') && cleanRecordDate.split('-')[0].length !== 4) {
-    const p = cleanRecordDate.split('-');
-    if (p.length === 3) cleanRecordDate = `${p[2]}-${p[1]}-${p[0]}`;
-  }
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const cleanRecordDate = parseLogDate({ punch_date: recordDate });
   const isToday = cleanRecordDate === todayStr;
   
   const inDate = parseTime(inTime);
@@ -120,7 +155,10 @@ export default function AttendanceManagement() {
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getTodayStr = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
   const [fromDate, setFromDate] = useState(() => {
     const saved = localStorage.getItem('nbtAttendanceFromDate');
     const today = getTodayStr();
@@ -156,6 +194,8 @@ export default function AttendanceManagement() {
   const [halfDaySearch, setHalfDaySearch] = useState('');
   const [showPunchEditModal, setShowPunchEditModal] = useState(false);
   const [punchEditData, setPunchEditData] = useState({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
+  const [showPunchOutEditModal, setShowPunchOutEditModal] = useState(false);
+  const [punchOutEditData, setPunchOutEditData] = useState({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
 
   const [isPunchFetching, setIsPunchFetching] = useState(false);
 
@@ -183,9 +223,10 @@ export default function AttendanceManagement() {
       const actualTime = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || 'Not Punched Yet';
       setPunchEditData(prev => ({ ...prev, actualTime }));
     } catch (e) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const log = (attendanceLogs || []).find(l => {
-        const lDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+        const lDate = parseLogDate(l);
         return lDate === todayStr && String(l?.user_id || l?.Empcode || l?.EmpID || '') === String(empId);
       });
       const actualTime = log?.in_time || log?.INTime || log?.PunchIn || log?.punch_time || 'Not found';
@@ -225,14 +266,80 @@ export default function AttendanceManagement() {
         setPunchEditData({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
         fetchAttendance();
       } else {
-        alert(`Failed to update: ${data?.message || 'Server error'}`);
+        alert(`Failed: ${data.message || 'Unknown error'}`);
       }
     } catch (err) {
-      alert('Network error. Please try again.');
-      console.error('Punch-in update error:', err);
+      console.error(err);
+      alert("Network error updating punch-in.");
     }
   };
 
+  const handlePunchOutEditEmpChange = async (empId, dateOverride) => {
+    const targetDate = dateOverride || punchOutEditData.date;
+    const emp = allEmployees.find(e => String(e.id) === String(empId));
+    setPunchOutEditData(prev => ({ ...prev, empId, empName: emp?.name || emp?.user_name || '', actualTime: 'Loading...', date: targetDate }));
+
+    if (!empId) return;
+
+    setIsPunchFetching(true);
+    try {
+      const url = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${targetDate}&endDate=${targetDate}&user_id=${empId}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${user?.token}` }
+      });
+      const data = await res.json();
+      const logs = data?.data || data?.attendance || data?.logs || data || [];
+      const empLogs = Array.isArray(logs) ? logs.filter(l => {
+        const lid = String(l?.user_id || l?.Empcode || l?.EmpID || '');
+        return lid === String(empId);
+      }) : [];
+      const log = empLogs[0];
+      const actualTime = log?.out_time || log?.OUTTime || log?.PunchOut || log?.punch_time_out || log?.out_time_biometric || 'Not Punched Yet';
+      setPunchOutEditData(prev => ({ ...prev, actualTime: typeof actualTime === 'string' && actualTime.trim() === '' ? 'Not Punched Yet' : actualTime }));
+    } catch (err) {
+      console.error(err);
+      setPunchOutEditData(prev => ({ ...prev, actualTime: 'Error loading' }));
+    } finally {
+      setIsPunchFetching(false);
+    }
+  };
+
+  const submitPunchOutEdit = async () => {
+    if (!punchOutEditData.empId || !punchOutEditData.newTime) {
+      alert("Please select an employee and enter the new time.");
+      return;
+    }
+
+    try {
+      const res = await fetch(API_ENDPOINTS.ATTENDANCE_PUNCH_UPDATE, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: punchOutEditData.empId,
+          EmpID: punchOutEditData.empId,
+          out_time: punchOutEditData.newTime,
+          punch_out: punchOutEditData.newTime,
+          punch_date: punchOutEditData.date,
+          date: punchOutEditData.date
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Punch-out time updated to ${punchOutEditData.newTime} for ${punchOutEditData.empName}!`);
+        setShowPunchOutEditModal(false);
+        setPunchOutEditData({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
+        fetchAttendance();
+      } else {
+        alert(`Failed: ${data.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error updating punch-out.");
+    }
+  };
 
   const calculateElapsed = (startTimeStr) => {
     if (!startTimeStr || startTimeStr === '--:--' || startTimeStr === '----') return '00:00:00';
@@ -351,14 +458,10 @@ export default function AttendanceManagement() {
         const validLogs = masterLogs.filter(l => l !== null && String(l?.user_id || l?.Empcode || l?.EmpID || '').trim() !== '20250');
         setAttendanceLogs(validLogs);
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         const myTodayLogs = validLogs.filter(log => {
-          let logDate = (log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '').split('T')[0].split(' ')[0];
-          // Handle DD-MM-YYYY or other formats
-          if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
-            const parts = logDate.split('-');
-            if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-          }
+          const logDate = parseLogDate(log);
           const isToday = logDate === todayStr;
           const isMe = String(log?.user_id || log?.Empcode || log?.EmpID || '') === String(user?.id || '') || log?.email === user?.email;
           return isToday && isMe;
@@ -664,13 +767,10 @@ export default function AttendanceManagement() {
 
   const calculateMetrics = () => {
     const totalCount = allEmployees.length;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const todayLogs = (attendanceLogs || []).filter(l => {
-      let logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0].split(' ')[0];
-      if (logDate.includes('-') && logDate.split('-')[0].length !== 4) {
-        const parts = logDate.split('-');
-        if (parts.length === 3) logDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
+      const logDate = parseLogDate(l);
       return logDate === todayStr;
     });
     const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
@@ -696,7 +796,7 @@ export default function AttendanceManagement() {
       return pOut < (17 * 60);
     });
 
-    return { total: totalCount, present: presentCount, halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs };
+    return { total: totalCount, present: presentCount, absent: Math.max(0, totalCount - presentCount), halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs };
   };
 
   const metrics = calculateMetrics();
@@ -1028,27 +1128,29 @@ export default function AttendanceManagement() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? 'repeat(2, 1fr)' : (winWidth < 1200 ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)'), gap: winWidth < 768 ? '12px' : '20px', marginBottom: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(135px, 1fr))', gap: winWidth < 768 ? '12px' : '20px', marginBottom: '40px' }}>
             {[
               { label: 'PRESENT', value: metrics.present, icon: UserCheck, color: '#059669', bg: '#ecfdf5' },
-
+              { label: 'ABSENT', value: metrics.absent, icon: XCircle, color: '#ef4444', bg: '#fef2f2' },
               { label: 'HALF DAYS', value: metrics.halfDay, icon: Clock, color: '#f97316', bg: '#fff7ed' },
               { label: 'Early logout', value: metrics.earlyLogouts.length, icon: Coffee, color: '#3b82f6', bg: '#eff6ff', isEarlyAction: true },
               { label: 'Late Login', value: metrics.lateLogins.length, icon: Sparkles, color: '#7c3aed', bg: '#f5f3ff', isLateAction: true },
-              { label: 'Punch-in Edit', value: 'EDIT', icon: AlertTriangle, color: '#db2777', bg: '#fdf2f8', isAction: true }
+              { label: 'Punch-in Edit', value: 'EDIT', icon: AlertTriangle, color: '#db2777', bg: '#fdf2f8', isAction: true },
+              { label: 'Punch-out Edit', value: 'EDIT', icon: AlertTriangle, color: '#0ea5e9', bg: '#f0f9ff', isOutAction: true }
             ].map((m, i) => (
               <div
                 key={i}
                 onClick={() => {
                   if (m.isAction) setShowPunchEditModal(true);
+                  else if (m.isOutAction) setShowPunchOutEditModal(true);
                   else if (m.isLateAction) setShowLateLoginsModal(true);
                   else if (m.isEarlyAction) setShowEarlyLogoutsModal(true);
                   else if (m.label === 'HALF DAYS') setShowHalfDaysModal(true);
                   else if (m.isLeaveAction) navigate('/leaves');
                 }}
-                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? 'pointer' : 'default', transition: 'all 0.2s' }}
-                onMouseOver={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(-4px)', e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.05)') : null}
-                onMouseOut={e => (m.isAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)') : null}
+                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? 'pointer' : 'default', transition: 'all 0.2s' }}
+                onMouseOver={e => (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(-4px)', e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.05)') : null}
+                onMouseOut={e => (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)') : null}
               >
                 <div style={{ width: winWidth < 768 ? '38px' : '48px', height: winWidth < 768 ? '38px' : '48px', borderRadius: '12px', background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><m.icon size={winWidth < 768 ? 18 : 22} /></div>
                 <div>
@@ -1081,20 +1183,21 @@ export default function AttendanceManagement() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {displayedEmployees.length > 0 ? (
                   displayedEmployees.map((emp, idx) => {
-                    const todayStr = new Date().toISOString().split('T')[0];
+                    const today = new Date();
+                    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                     const logsForEmp = (attendanceLogs || [])
                       .filter(l => {
                         if (!l) return false;
                         const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
                         const empId = String(emp?.id || '').trim();
-                        const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+                        const logDate = parseLogDate(l);
                         return empId && logId && (logId === empId) && (logDate >= fromDate && logDate <= toDate);
                       })
                       .sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
 
                     // 1. Group logs by date to prevent cross-day data leaking
                     const groupedByDate = (logsForEmp || []).reduce((acc, log) => {
-                      const d = (log.punch_date || log.date || log.created_at || '').split('T')[0];
+                      const d = parseLogDate(log);
                       if (d) {
                         if (!acc[d]) acc[d] = [];
                         acc[d].push(log);
@@ -1307,20 +1410,21 @@ export default function AttendanceManagement() {
                 <tbody>
                   {displayedEmployees.length > 0 ? (
                     displayedEmployees.map((emp, idx) => {
-                      const todayStr = new Date().toISOString().split('T')[0];
+                      const today = new Date();
+                      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                       const logsForEmp = (attendanceLogs || [])
                         .filter(l => {
                           if (!l) return false;
                           const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
                           const empId = String(emp?.id || '').trim();
-                          const logDate = (l?.punch_date || l?.date || l?.created_at || '').split('T')[0];
+                          const logDate = parseLogDate(l);
                           return empId && logId && (logId === empId) && (logDate >= fromDate && logDate <= toDate);
                         })
                         .sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
 
                       // 1. Group logs by date to prevent cross-day data leaking
                       const groupedByDate = (logsForEmp || []).reduce((acc, log) => {
-                        const d = (log.punch_date || log.date || log.created_at || '').split('T')[0];
+                        const d = parseLogDate(log);
                         if (d) {
                           if (!acc[d]) acc[d] = [];
                           acc[d].push(log);
@@ -1798,6 +1902,46 @@ export default function AttendanceManagement() {
               <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
                 <button onClick={() => setShowPunchEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
                 <button onClick={submitPunchInEdit} style={{ flex: 2, padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #db2777 0%, #9d174d 100%)', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(219, 39, 119, 0.3)' }}>Update Time</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showPunchOutEditModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '420px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', position: 'relative' }}>
+              <button onClick={() => setShowPunchOutEditModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: '0.2s' }}>✕</button>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#f0f9ff', color: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><AlertTriangle size={24} /></div>
+                <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Edit Punch-Out Time</h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Modify the departure log for selected date.</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 1: Select Employee</label>
+                  <select value={punchOutEditData.empId} onChange={(e) => handlePunchOutEditEmpChange(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }}>
+                    <option value="">Choose an employee...</option>
+                    {allEmployees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name || emp.user_name} ({emp.role || 'Member'})</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Step 2: Select Date</label>
+                  <input type="date" value={punchOutEditData.date} onChange={(e) => handlePunchOutEditEmpChange(punchOutEditData.empId, e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Punch-Out</label>
+                  <input type="text" readOnly value={punchOutEditData.actualTime || '--:--'} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#f1f5f9', fontSize: '15px', fontWeight: '900', color: '#64748b', outline: 'none', opacity: 0.8 }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: '900', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: '0.5px' }}>New Punch-Out Time</label>
+                  <input type="time" value={punchOutEditData.newTime} onChange={(e) => setPunchOutEditData({ ...punchOutEditData, newTime: e.target.value })} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #bae6fd', background: '#f0f9ff', fontSize: '15px', fontWeight: '900', color: '#0369a1', outline: 'none', cursor: 'pointer' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button onClick={() => setShowPunchOutEditModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={submitPunchOutEdit} style={{ flex: 2, padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(14, 165, 233, 0.3)' }}>Update Time</button>
               </div>
             </div>
           </div>

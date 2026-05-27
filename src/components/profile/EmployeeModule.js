@@ -187,16 +187,16 @@ export default function EmployeeModule() {
             <div style={{
                display: 'grid', 
                gridTemplateColumns: winWidth > 1400 
-                ? 'repeat(4, 1fr)' 
-                : (winWidth > 1100 ? 'repeat(3, 1fr)' : `repeat(auto-fit, minmax(${winWidth < 480 ? '100%' : '300px'}, 1fr))`), 
-               gap: '24px', 
+                ? 'repeat(3, 1fr)' 
+                : (winWidth > 1100 ? 'repeat(2, 1fr)' : `repeat(auto-fit, minmax(${winWidth < 480 ? '100%' : '350px'}, 1fr))`), 
+               gap: '32px', 
                justifyContent: 'center',
                width: '100%',
                maxWidth: '100%',
                margin: '0 auto'
             }}>
                {filteredEmployees.map((emp, i) => (
-                <div key={i} className="team-card" style={{position: 'relative', overflow: 'hidden', padding: winWidth < 480 ? '20px' : '40px'}}>
+                <div key={i} className="team-card" style={{position: 'relative', overflow: 'hidden', padding: winWidth < 480 ? '20px' : '40px', border: '1px solid #1e3a8a'}}>
                    <div style={{display: 'flex', alignItems: 'center', gap: winWidth < 480 ? '12px' : '20px', marginBottom: winWidth < 480 ? '15px' : '30px'}}>
                       <div style={{
                         width: winWidth < 480 ? '42px' : '56px', 

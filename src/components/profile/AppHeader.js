@@ -24,8 +24,19 @@ export default function AppHeader() {
 
   React.useEffect(() => {
     const getRole = async () => {
+      const userRole = user?.role?.toLowerCase() || '';
+      const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
+      
+      const token = localStorage.getItem('token') || user?.token;
+      if (!token || !isAdmin) {
+        setFetchedRole(user?.role || user?.Role || '');
+        return;
+      }
+
       try {
-        const res = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`);
+        const res = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           const users = Array.isArray(data) ? data : (data.value || []);
@@ -94,7 +105,7 @@ export default function AppHeader() {
             src={logo}
             alt="Navabharatha"
             style={{
-              height: winWidth < 768 ? '55px' : '75px',
+              height: winWidth < 768 ? '80px' : '100px',
               width: 'auto',
               objectFit: 'contain'
             }}
@@ -129,38 +140,40 @@ export default function AppHeader() {
           <div style={styles.designation}>{fetchedRole || theme.label}</div>
         </div>
 
-        <div
-          onClick={() => navigate('/personal-info?self=true')}
-          style={{
-            width: winWidth < 768 ? '38px' : '48px',
-            height: winWidth < 768 ? '38px' : '48px',
-            borderRadius: '12px',
-            background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: '0.2s transform',
-            overflow: 'hidden', position: 'relative'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          {(() => {
-            const empId = user?.employee_id || user?.id || user?.empId;
-            const rawPic = user?.profile_pic;
-            const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
-            return (
-              <>
-                {photoUrl && (
-                  <img
-                    src={photoUrl}
-                    alt="Profile"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
-                    onError={(e) => e.target.style.display = 'none'}
-                  />
-                )}
-                <svg width={winWidth < 768 ? "18" : "22"} height={winWidth < 768 ? "18" : "22"} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'relative', zIndex: -1 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-              </>
-            );
-          })()}
+        <div style={{ position: 'relative', width: winWidth < 768 ? '48px' : '64px', height: winWidth < 768 ? '48px' : '64px' }}>
+          <div
+            onClick={() => navigate('/personal-info?self=true')}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: '0.2s transform',
+              overflow: 'hidden', position: 'relative'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            {(() => {
+              const empId = user?.employee_id || user?.id || user?.empId;
+              const rawPic = user?.profile_pic;
+              const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
+              return (
+                <>
+                  {photoUrl && (
+                    <img
+                      src={photoUrl}
+                      alt="Profile"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  )}
+                  <svg width={winWidth < 768 ? "18" : "22"} height={winWidth < 768 ? "18" : "22"} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'relative', zIndex: -1 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                </>
+              );
+            })()}
+          </div>
 
           <div
             onClick={(e) => {
@@ -169,22 +182,23 @@ export default function AppHeader() {
             }}
             style={{
               position: 'absolute',
-              bottom: '0',
-              right: '0',
+              bottom: '-2px',
+              right: '-2px',
               background: '#ef4444',
-              width: winWidth < 768 ? '18px' : '22px',
-              height: winWidth < 768 ? '18px' : '22px',
-              borderRadius: '5px 0 0 0',
+              width: winWidth < 768 ? '20px' : '24px',
+              height: winWidth < 768 ? '20px' : '24px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
               cursor: 'pointer',
-              zIndex: 10
+              zIndex: 10,
+              border: '2px solid white'
             }}
             title="Logout"
           >
-            <LogOut size={winWidth < 768 ? 10 : 12} color="white" strokeWidth={3} />
+            <LogOut size={winWidth < 768 ? 10 : 12} color="white" strokeWidth={3} style={{ marginLeft: '-1px' }} />
           </div>
         </div>
       </div>

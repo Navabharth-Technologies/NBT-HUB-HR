@@ -27,6 +27,7 @@
   gap: 6px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1.5px solid rgba(0, 0, 0, 0.05);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
 }
 
 .footer-item {
@@ -76,7 +77,7 @@
 
 .footer-label {
   font-size: 8.5px;
-  font-weight: 950;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #000000;
@@ -106,46 +107,65 @@
 /* Upward Menu Styles */
 .add-upward-menu {
   position: absolute;
-  bottom: 70px;
+  bottom: 75px;
   /* Centered relative to the button */
   left: 50%;
   transform: translateX(-50%);
   background: white;
-  border-radius: 16px;
-  padding: 8px;
-  box-shadow: var(--shadow-lg);
+  border-radius: 24px;
+  padding: 12px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 200px;
-  border: 1px solid var(--border-color);
+  flex-direction: row;
+  gap: 6px;
+  border: 1.5px solid #e2e8f0;
   z-index: 3001;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
 }
 
 .add-menu-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px;
   border: none;
   background: none;
-  width: 100%;
-  text-align: left;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-main);
+  width: 82px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 10.5px;
+  color: #334155;
   cursor: pointer;
-  border-radius: 12px;
-  transition: all 0.2s ease;
+  border-radius: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1.25;
 }
 
 .add-menu-item:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
   color: #3863a8;
+  transform: translateY(-2px);
 }
 
 .add-menu-icon {
-  font-size: 18px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.add-menu-item:hover .add-menu-icon {
+  background: #eff6ff;
+  transform: scale(1.1);
 }
 
 /* Animation */
@@ -188,7 +208,7 @@
   .footer-label {
     font-size: 10px;
     letter-spacing: 0;
-    font-weight: 950;
+    font-weight: 600;
   }
 
   .footer-item.active .footer-label,

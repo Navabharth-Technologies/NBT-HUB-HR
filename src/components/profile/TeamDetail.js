@@ -90,6 +90,12 @@ export default function TeamDetail() {
     <div className="hr-dashboard-container" style={{ backgroundColor: '#eaeff2', minHeight: '100vh' }}>
       <AppHeader />
 
+      <style>{`
+        .member-report-card { transition: all 0.2s ease-in-out; }
+        .member-report-card:hover { border-color: #3863a8 !important; transform: scale(1.04); box-shadow: 0 10px 25px -5px rgba(56, 99, 168, 0.15) !important; }
+        .dashboard-section:hover { border-color: #e2e8f0 !important; }
+      `}</style>
+
       <main className="dashboard-content" style={{ padding: winWidth < 768 ? '100px 16px 120px' : '120px 26px 120px', width: '100%', boxSizing: 'border-box', margin: '0' }}>
         <header className="section-header" style={{
           marginBottom: '30px',
@@ -129,20 +135,20 @@ export default function TeamDetail() {
                   const leader = team.members.find(m => /lead|manager|head/i.test(m.role));
                   return (
                     <div
-                      className="member-report-card"
+                      className="leader-report-card"
                       style={{
                         padding: winWidth < 480 ? '20px' : '24px',
-                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                        borderRadius: '24px', border: '2px solid #bae6fd',
+                        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                        borderRadius: '24px', border: '2px solid #334155',
                         display: 'flex',
                         flexDirection: winWidth < 480 ? 'column' : 'row',
                         alignItems: winWidth < 480 ? 'flex-start' : 'center',
-                        gap: '20px', cursor: 'pointer', transition: 'all 0.3s',
-                        boxShadow: '0 10px 25px -5px rgba(56,99,168,0.1)'
+                        gap: '20px',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)'
                       }}
                     >
                       <div style={{ position: 'relative' }}>
-                        <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#3863a8', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: '900', overflow: 'hidden' }}>
+                        <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#f1f5f9', color: '#3863a8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: '900', overflow: 'hidden' }}>
                           {leader.profile_pic || leader.profile_picture ? (
                             <img
                               src={leader.profile_pic.startsWith('http') || leader.profile_pic.startsWith('data:') ? leader.profile_pic : `${BASE_URL}${leader.profile_pic.startsWith('/') ? '' : '/'}${leader.profile_pic}`}
@@ -153,21 +159,21 @@ export default function TeamDetail() {
                             leader.name.charAt(0)
                           )}
                         </div>
-                        <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#f59e0b', color: 'white', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #f0f9ff', fontSize: '12px' }}>👑</div>
+                        <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#f59e0b', color: 'white', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1e293b', fontSize: '12px' }}>👑</div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
                         <div style={{
                           display: 'flex',
                           flexDirection: winWidth < 480 ? 'column' : 'row',
                           alignItems: winWidth < 480 ? 'flex-start' : 'center',
-                          gap: '8px',
+                          gap: '16px',
                           marginBottom: '6px',
                           flexWrap: 'wrap'
                         }}>
-                          <div style={{ fontWeight: '900', fontSize: winWidth < 480 ? '16px' : '18px', color: '#1e293b', wordBreak: 'break-word' }}>{leader.name}</div>
+                          <div style={{ fontWeight: '900', fontSize: winWidth < 480 ? '16px' : '18px', color: 'white', wordBreak: 'break-word' }}>{leader.name}</div>
                           <span style={{ padding: '3px 10px', background: '#3863a8', color: 'white', fontSize: '10px', fontWeight: '900', borderRadius: '50px', textTransform: 'uppercase' }}>TEAM LEADER</span>
                         </div>
-                        <div style={{ fontSize: '14px', color: '#475569', fontWeight: '700' }}>{leader.role}</div>
+                        <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '700' }}>{leader.role}</div>
                         <div style={{ fontSize: '12px', marginTop: '6px', color: '#10b981', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
                           OFFICIAL STATUS: ONLINE
@@ -199,7 +205,7 @@ export default function TeamDetail() {
                         padding: winWidth < 480 ? '12px' : '16px',
                         background: 'white',
                         borderRadius: winWidth < 480 ? '16px' : '20px',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #3863a8',
                         display: 'flex',
                         alignItems: 'center',
                         gap: winWidth < 480 ? '10px' : '12px',

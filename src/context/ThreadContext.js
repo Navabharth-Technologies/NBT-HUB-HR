@@ -62,7 +62,7 @@ export const ThreadProvider = ({ children }) => {
             '🎂': Number(t.cake_count || 0)
           };
 
-          const totalLikes = Object.values(displayReactions).reduce((a, b) => a + b, 0);
+          const totalLikes = displayReactions['❤️'];
 
           return {
             ...t,
@@ -169,22 +169,45 @@ export const ThreadProvider = ({ children }) => {
   const toggleReaction = async (threadId, userId, emoji = '❤️') => {
     if (!user?.token) return;
 
+    const emojiToNormalized = {
+      '❤️': 'heart', 'heart': 'heart', 'love': 'heart',
+      '👍': 'thumbsup', 'thumbsup': 'thumbsup', 'thumb': 'thumbsup',
+      '😮': 'shocked', 'shocked': 'shocked', 'wow': 'shocked',
+      '😂': 'laugh', 'laugh': 'laugh', 'haha': 'laugh',
+      '🔥': 'fire', 'fire': 'fire', 'lit': 'fire',
+      '👏': 'clap', 'clap': 'clap', 'clapping': 'clap',
+      '🎂': 'cake', 'cake': 'cake', 'birthday': 'cake'
+    };
+
+    const normalizedToEmoji = {
+      'heart': '❤️',
+      'thumbsup': '👍',
+      'shocked': '😮',
+      'laugh': '😂',
+      'fire': '🔥',
+      'clap': '👏',
+      'cake': '🎂'
+    };
+
+    const normalizedEmoji = emojiToNormalized[emoji] || emoji;
+
     const emojiFieldMap = {
-      '❤️': 'heart_count', 'heart': 'heart_count', 'like': 'likes_count',
-      '👍': 'thumbsup_count', 'thumbsup': 'thumbsup_count',
-      '😮': 'shocked_count', 'shocked': 'shocked_count',
-      '😂': 'laugh_count', 'laugh': 'laugh_count',
-      '🔥': 'fire_count', 'fire': 'fire_count',
-      '👏': 'clap_count', 'clap': 'clap_count',
-      '🎂': 'cake_count', 'cake': 'cake_count'
+      'heart': 'heart_count',
+      'thumbsup': 'thumbsup_count',
+      'shocked': 'shocked_count',
+      'laugh': 'laugh_count',
+      'fire': 'fire_count',
+      'clap': 'clap_count',
+      'cake': 'cake_count'
     };
 
     let updatedPending = {};
     setThreads(prev => prev.map(t => {
       if (t.id === threadId) {
         const currentUserLiked = !!(t.userLiked || t.userHasLiked || t.user_has_liked || t.user_liked);
-        const currentActiveEmoji = t.activeEmoji || 'like';
-        const isSameEmoji = currentActiveEmoji === emoji;
+        const currentActiveEmoji = t.activeEmoji || 'heart';
+        const normalizedActiveEmoji = emojiToNormalized[currentActiveEmoji] || currentActiveEmoji;
+        const isSameEmoji = normalizedActiveEmoji === normalizedEmoji;
 
         // Use the highest available count as the base
         const baseCount = Math.max(
@@ -194,25 +217,36 @@ export const ThreadProvider = ({ children }) => {
           Number(t.total_likes || 0)
         );
         
+        const isHeartReaction = (em) => em === 'heart';
+
         let newCount = baseCount;
         let newUserLiked = currentUserLiked;
         
-        const field = emojiFieldMap[emoji];
-        const oldField = emojiFieldMap[currentActiveEmoji];
+        const field = emojiFieldMap[normalizedEmoji];
+        const oldField = emojiFieldMap[normalizedActiveEmoji];
         
         let specificFields = {};
         if (field) {
             if (currentUserLiked && isSameEmoji) {
-                newCount = Math.max(0, newCount - 1);
+                if (isHeartReaction(normalizedActiveEmoji)) {
+                    newCount = Math.max(0, newCount - 1);
+                }
                 newUserLiked = false;
                 specificFields[field] = Math.max(0, (t[field] || 0) - 1);
             } else if (currentUserLiked && !isSameEmoji) {
                 // Switching emoji
+                if (isHeartReaction(normalizedActiveEmoji) && !isHeartReaction(normalizedEmoji)) {
+                    newCount = Math.max(0, newCount - 1);
+                } else if (!isHeartReaction(normalizedActiveEmoji) && isHeartReaction(normalizedEmoji)) {
+                    newCount = newCount + 1;
+                }
                 if (oldField) specificFields[oldField] = Math.max(0, (t[oldField] || 0) - 1);
                 specificFields[field] = (t[field] || 0) + 1;
                 newUserLiked = true;
             } else {
-                newCount = newCount + 1;
+                if (isHeartReaction(normalizedEmoji)) {
+                    newCount = newCount + 1;
+                }
                 newUserLiked = true;
                 specificFields[field] = (t[field] || 0) + 1;
             }
@@ -220,11 +254,11 @@ export const ThreadProvider = ({ children }) => {
 
         const newReactions = { ...(t.reactions || {}) };
         if (field) {
-            const displayEmoji = (emoji === 'like' || emoji === 'heart') ? '❤️' : emoji;
+            const displayEmoji = normalizedToEmoji[normalizedEmoji] || normalizedEmoji;
             if (currentUserLiked && isSameEmoji) {
                 newReactions[displayEmoji] = Math.max(0, (newReactions[displayEmoji] || 0) - 1);
             } else if (currentUserLiked && !isSameEmoji) {
-                const oldDisplayEmoji = (currentActiveEmoji === 'like' || currentActiveEmoji === 'heart') ? '❤️' : currentActiveEmoji;
+                const oldDisplayEmoji = normalizedToEmoji[normalizedActiveEmoji] || normalizedActiveEmoji;
                 newReactions[oldDisplayEmoji] = Math.max(0, (newReactions[oldDisplayEmoji] || 0) - 1);
                 newReactions[displayEmoji] = (newReactions[displayEmoji] || 0) + 1;
             } else {
@@ -235,7 +269,7 @@ export const ThreadProvider = ({ children }) => {
         updatedPending = { 
             likes: newCount, 
             userLiked: newUserLiked, 
-            activeEmoji: newUserLiked ? emoji : null, 
+            activeEmoji: newUserLiked ? normalizedEmoji : null, 
             ...specificFields,
             reactions: newReactions 
         };
@@ -266,11 +300,11 @@ export const ThreadProvider = ({ children }) => {
           employee_id: user?.employee_id || user?.id,
           EmpID: user?.employee_id || user?.id,
           userName: user?.name,
-          emoji, 
-          reactionType: emoji, 
-          reaction_type: emoji,
-          type: emoji,
-          emoji_icon: emoji === 'like' ? '❤️' : emoji
+          emoji: normalizedEmoji, 
+          reactionType: normalizedEmoji, 
+          reaction_type: normalizedEmoji,
+          type: normalizedEmoji,
+          emoji_icon: normalizedToEmoji[normalizedEmoji] || normalizedEmoji
         })
       });
       setTimeout(() => fetchThreads(true), 1000);

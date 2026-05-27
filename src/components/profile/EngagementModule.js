@@ -42,11 +42,16 @@ export default function EngagementModule() {
     const [winWidth, setWinWidth] = useState(window.innerWidth);
 
     useEffect(() => {
-        fetchProfiles();
         const handleResize = () => setWinWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (user?.token) {
+            fetchProfiles();
+        }
+    }, [user]);
 
     // AUTO-FETCH COMMENT COUNTS ON LOAD
     useEffect(() => {
@@ -69,18 +74,81 @@ export default function EngagementModule() {
     }, [threads, fetchComments]);
 
     const fetchProfiles = async () => {
+        if (!user?.token) return;
         try {
-            const resp = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`);
+            // 1. Fetch from Users API
+            const resp = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`, {
+                headers: { 'Authorization': `Bearer ${user.token}` }
+            });
+            const map = {};
             if (resp.ok) {
                 const data = await resp.json();
                 const userList = Array.isArray(data) ? data : (data.value || []);
-                const map = {};
                 userList.forEach(u => {
-                    const uid = String(u.id || u.empId || u.userId || u.employee_id);
-                    if (uid) map[uid] = u;
+                    const idKey = String(u.id || u.empId || u.userId || u.employee_id || '').toLowerCase();
+                    const emailKey = String(u.email || '').toLowerCase();
+                    const nameKey = String(u.name || '').toLowerCase();
+                    
+                    const cleanUser = {
+                        ...u,
+                        profile_pic: u.profile_pic || u.profile_picture || u.profileImage || u.profilePicture || u.profile_image || u.avatar
+                    };
+                    
+                    if (idKey) map[idKey] = cleanUser;
+                    if (emailKey) map[emailKey] = cleanUser;
+                    if (nameKey) map[nameKey] = cleanUser;
                 });
-                setUserProfiles(map);
             }
+
+            // 2. Fetch from Employees API to enrich pictures & designations
+            const userRole = user?.role?.toLowerCase() || 'employee';
+            const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
+            if (isAdmin) {
+                try {
+                    const empResp = await fetch(API_ENDPOINTS.EMPLOYEES || `${BASE_URL}/api/employees`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` }
+                    });
+                    if (empResp.ok) {
+                        const empData = await empResp.json();
+                        const empList = Array.isArray(empData) ? empData : [];
+                        empList.forEach(emp => {
+                            const empId = String(emp.id || emp.employee_id || emp.empId || '').toLowerCase();
+                            const empEmail = String(emp.email || emp.official_email || emp.personal_email || '').toLowerCase();
+                            const empName = String(emp.name || emp.emp_name || '').toLowerCase();
+                            
+                            const pic = emp.profile_pic || emp.profile_picture || emp.photo || emp.ProfilePic || emp.Profile_Picture || emp.ProfilePicture || emp.profileImage || emp.profile_image;
+                            const designation = emp.designation || emp.role || emp.designation_name;
+                            
+                            const keys = [empId, empEmail, empName].filter(Boolean);
+                            keys.forEach(k => {
+                                if (map[k]) {
+                                    map[k] = {
+                                        ...map[k],
+                                        profile_pic: pic || map[k].profile_pic,
+                                        profile_picture: pic || map[k].profile_picture,
+                                        designation: designation || map[k].designation || map[k].role,
+                                        name: map[k].name || emp.name || emp.emp_name,
+                                        email: map[k].email || emp.email || emp.official_email
+                                    };
+                                } else {
+                                    map[k] = {
+                                        ...emp,
+                                        profile_pic: pic,
+                                        profile_picture: pic,
+                                        designation: designation,
+                                        name: emp.name || emp.emp_name,
+                                        email: emp.email || emp.official_email
+                                    };
+                                }
+                            });
+                        });
+                    }
+                } catch (empErr) {
+                    console.error("Employees enrich error:", empErr);
+                }
+            }
+
+            setUserProfiles(map);
         } catch (err) { console.error("Profiles error:", err); }
     };
 
@@ -237,37 +305,6 @@ export default function EngagementModule() {
             <AppHeader />
             
             <main style={styles.container}>
-                {/* BACK NAVIGATION */}
-                <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-start', 
-                    width: '100%', 
-                    position: 'sticky', 
-                    top: isMobile ? '70px' : '85px', 
-                    zIndex: 1000, 
-                    backgroundColor: '#eaeff2', 
-                    paddingTop: '10px',
-                    marginTop: '-10px',
-                    paddingBottom: '5px' 
-                }}>
-                    <button
-                        onClick={() => navigate(-1)}
-                        style={{
-                            background: 'white',
-                            padding: '10px',
-                            borderRadius: '12px',
-                            border: '1px solid #e2e8f0',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                            marginBottom: '20px'
-                        }}
-                    >
-                        <ArrowLeft size={18} color="#64748b" />
-                    </button>
-                </div>
 
                 {/* CREATE THREAD */}
                 <div style={{ ...styles.card, borderTop: '5px solid #FDB913' }}>
@@ -337,6 +374,14 @@ export default function EngagementModule() {
                     const ts = post.createdAt || post.created_at;
                     const isEditing = editingPostId === post.id;
 
+                    const lookupKey = String(uid || '').toLowerCase();
+                    const profile = userProfiles[lookupKey] || 
+                                    userProfiles[String(post.user_name || '').toLowerCase()] || 
+                                    userProfiles[String(post.user_email || '').toLowerCase()] ||
+                                    userProfiles[String(post.user_id || '').toLowerCase()] ||
+                                    userProfiles[String(post.userId || '').toLowerCase()];
+                    const profilePic = profile?.profile_pic || profile?.profile_picture || profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.avatar;
+
                     return (
                         <div key={post.id} style={styles.threadCard}>
                             {post.tagline && <div style={styles.taglineBadge}>{post.tagline}</div>}
@@ -344,19 +389,19 @@ export default function EngagementModule() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', gap: '15px' }}>
                                     <div style={{ width: '50px', height: '50px', borderRadius: '15px', backgroundColor: '#f1f5f9', border: '1px solid #315A9E', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '18px', fontWeight: '900', color: '#315A9E' }}>
-                                        {userProfiles[uid]?.profile_pic || userProfiles[uid]?.profile_picture ? (
+                                        {profilePic ? (
                                             <img 
-                                                src={getFullUrl(userProfiles[uid]?.profile_pic || userProfiles[uid]?.profile_picture)} 
+                                                src={getFullUrl(profilePic)} 
                                                 alt="User" 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />
                                         ) : (
-                                            userProfiles[uid]?.name?.charAt(0) || post.user_name?.charAt(0) || 'U'
+                                            profile?.name?.charAt(0) || post.user_name?.charAt(0) || 'U'
                                         )}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '16px', fontWeight: '900', color: '#0B1E3F' }}>{userProfiles[uid]?.name || post.user_name || 'Member'}</div>
-                                        <div style={{ fontSize: '11px', color: '#315A9E', fontWeight: '800', textTransform: 'uppercase' }}>{userProfiles[uid]?.designation || userProfiles[uid]?.role || post.user_role || 'Member'} • {formatTime(ts)}</div>
+                                        <div style={{ fontSize: '16px', fontWeight: '900', color: '#0B1E3F' }}>{profile?.name || post.user_name || 'Member'}</div>
+                                        <div style={{ fontSize: '11px', color: '#315A9E', fontWeight: '800', textTransform: 'uppercase' }}>{profile?.designation || profile?.role || post.user_role || 'Member'} • {formatTime(ts)}</div>
                                     </div>
                                 </div>
 
@@ -457,6 +502,8 @@ export default function EngagementModule() {
                             <div style={styles.footer}>
                                 <div 
                                     style={{ position: 'relative' }}
+                                    onMouseEnter={() => setActiveEmojiPicker(post.id)}
+                                    onMouseLeave={() => setActiveEmojiPicker(null)}
                                 >
                                     <div 
                                         style={{
@@ -518,13 +565,6 @@ export default function EngagementModule() {
                                         <MessageSquare size={16} /> 
                                         <span>COMMENT ({Math.max(post.commentCount || 0, (postComments[post.id] || []).length)})</span>
                                     </div>
-
-                                    <Smile 
-                                        size={20} 
-                                        color="#64748b" 
-                                        style={{ cursor: 'pointer' }} 
-                                        onClick={() => setActiveEmojiPicker(activeEmojiPicker === post.id ? null : post.id)}
-                                    />
                                 </div>
                             </div>
 
@@ -566,7 +606,7 @@ export default function EngagementModule() {
                                                         <div key={c.id} style={{ display: 'flex', gap: '12px' }}>
                                                             <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)', overflow: 'hidden' }}>
                                                                 {(() => {
-                                                                    const pic = profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.profile_picture || profile?.avatar;
+                                                                    const pic = profile?.profile_pic || profile?.profile_picture || profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.avatar;
                                                                     if (pic) {
                                                                         const src = pic.startsWith('http') ? pic : `${BASE_URL}${pic.startsWith('/') ? pic : '/' + pic}`;
                                                                         return <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />;

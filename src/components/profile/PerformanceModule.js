@@ -10,10 +10,11 @@ import {
   Building2, Mail, User, Phone, Check, X,
   ChevronRight, Calendar, Shield, LogOut,
   History, Users, FileText, Briefcase, Heart, Edit3, Fingerprint, Camera,
-  MessageSquare, Trash2, Clock, MapPin, Info, LifeBuoy
+  MessageSquare, Trash2, Clock, MapPin, Info, LifeBuoy, RefreshCw
 } from 'lucide-react';
 import UpdatePasswordModal from './UpdatePasswordModal';
-
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../../utils/cropImage';
 export default function PerformanceModule() {
   const { user, logout, updateUser } = useAuth();
   const { fetchUserThreads, toggleReaction, deleteThread } = useThread();
@@ -35,7 +36,17 @@ export default function PerformanceModule() {
   const [tempPhone, setTempPhone] = useState('');
   const [tempDob, setTempDob] = useState('');
   const [profileData, setProfileData] = useState({ name: '', employee_id: '', designation: '' });
+  const [fetchedRole, setFetchedRole] = useState('');
   const [toast, setToast] = useState({ show: false, message: '' });
+  
+  // Crop States
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [cropUploading, setCropUploading] = useState(false);
+
   const fileInputRef = useRef(null);
   const dobInputRef = useRef(null);
 
@@ -70,26 +81,53 @@ export default function PerformanceModule() {
             employee_id: data.employee_id || user?.employee_id || '—',
             designation: data.role || data.designation || user?.role || user?.designation || 'Employee'
           });
-          setReportingManager({
-            name: data.reporting_manager || 'Anish V N',
-            id: data.reporting_manager_id || ''
-          });
+          const isHr = String(data.role || user?.role || '').toLowerCase().includes('hr') ||
+                       String(data.designation || user?.designation || '').toLowerCase().includes('human resource') ||
+                       String(data.designation || user?.designation || '').toLowerCase().includes('hr') ||
+                       String(data.name || user?.name || '').toLowerCase().includes('ravikumar');
 
-          // If we have an ID but no name, or just to ensure it's fresh, fetch manager details
-          if (data.reporting_manager_id) {
+          if (isHr) {
+            setReportingManager({
+              name: 'Dinesh',
+              id: '20250'
+            });
             try {
-              const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/${data.reporting_manager_id}`, {
+              const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/20250`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
               });
               if (mRes.ok) {
                 const mData = await mRes.json();
                 setReportingManager({
-                  name: mData.name || data.reporting_manager || 'Anish V N',
-                  id: data.reporting_manager_id,
+                  name: mData.name || 'Dinesh',
+                  id: '20250',
                   profile_pic: mData.profile_pic || mData.profile_picture
                 });
               }
-            } catch (err) { console.error('Manager details fetch error:', err); }
+            } catch (err) {
+              console.error('Manager details fetch error for Dinesh:', err);
+            }
+          } else {
+            setReportingManager({
+              name: data.reporting_manager || 'Anish V N',
+              id: data.reporting_manager_id || ''
+            });
+
+            // If we have an ID but no name, or just to ensure it's fresh, fetch manager details
+            if (data.reporting_manager_id) {
+              try {
+                const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/${data.reporting_manager_id}`, {
+                  headers: { 'Authorization': `Bearer ${user.token}` }
+                });
+                if (mRes.ok) {
+                  const mData = await mRes.json();
+                  setReportingManager({
+                    name: mData.name || data.reporting_manager || 'Anish V N',
+                    id: data.reporting_manager_id,
+                    profile_pic: mData.profile_pic || mData.profile_picture
+                  });
+                }
+              } catch (err) { console.error('Manager details fetch error:', err); }
+            }
           }
         }
       } catch (err) { console.error('Profile fetch error:', err); }
@@ -97,6 +135,36 @@ export default function PerformanceModule() {
 
     const loadManager = async () => {
       if (!user?.token || !user?.email) return;
+      const isHr = String(user?.role || '').toLowerCase().includes('hr') ||
+                   String(user?.designation || '').toLowerCase().includes('human resource') ||
+                   String(user?.designation || '').toLowerCase().includes('hr') ||
+                   String(user?.name || '').toLowerCase().includes('ravikumar');
+      if (isHr) {
+        try {
+          const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/20250`, {
+            headers: { 'Authorization': `Bearer ${user.token}` }
+          });
+          if (mRes.ok) {
+            const mData = await mRes.json();
+            setReportingManager({
+              name: mData.name || 'Dinesh',
+              id: '20250',
+              profile_pic: mData.profile_pic || mData.profile_picture
+            });
+          } else {
+            setReportingManager({
+              name: 'Dinesh',
+              id: '20250'
+            });
+          }
+        } catch (err) {
+          setReportingManager({
+            name: 'Dinesh',
+            id: '20250'
+          });
+        }
+        return;
+      }
       try {
         const res = await fetch(`${API_ENDPOINTS.PROFILE_MANAGER}?email=${user.email}`, {
           headers: { 'Authorization': `Bearer ${user.token}` }
@@ -114,25 +182,94 @@ export default function PerformanceModule() {
       } catch (err) { console.error('Manager fetch error:', err); }
     };
 
+    const loadUserRole = async () => {
+      if (!user?.token) return;
+      try {
+        const res = await fetch(`${BASE_URL}/api/users`, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        if (res.ok) {
+          const users = await res.json();
+          const currentId = user?.employee_id || user?.id || user?.empId;
+          const target = users.find(u => String(u.employee_id || u.id || u.empId) === String(currentId));
+          if (target) {
+            setFetchedRole(target.Role || target.role || '');
+          }
+        }
+      } catch (err) {
+        console.error("Fetch Role Error:", err);
+      }
+    };
+
     loadProfile();
     loadManager();
+    loadUserRole();
     return () => window.removeEventListener('resize', handleResize);
   }, [user?.email, user?.token]);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
+  // Calculate total tenurity from joining date
+  const calcTenure = () => {
+    const raw = user?.date_of_joining || user?.joining_date || user?.doj || '2026-01-16';
+    let joinDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      joinDate = new Date(raw);
+    } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+      const [d, m, y] = raw.split('/');
+      joinDate = new Date(`${y}-${m}-${d}`);
+    } else {
+      joinDate = new Date('2026-01-16');
+    }
+    const now = new Date();
+    let months = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
+    let days = now.getDate() - joinDate.getDate();
+    if (days < 0) { months -= 1; const prev = new Date(now.getFullYear(), now.getMonth(), 0); days += prev.getDate(); }
+    if (months < 0) months = 0;
+    if (months === 0 && days < 0) days = 0;
+    return { months, days };
+  };
+  const tenure = calcTenure();
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // 1. Local preview
     const reader = new FileReader();
-    reader.onloadend = () => setProfileImage(reader.result);
+    reader.onloadend = () => {
+      setSelectedImageSrc(reader.result);
+      setShowCropModal(true);
+      // Reset input so the same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
     reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropConfirm = async () => {
+    if (!selectedImageSrc || !croppedAreaPixels) return;
+    setCropUploading(true);
 
     try {
+      const croppedBlob = await getCroppedImg(selectedImageSrc, croppedAreaPixels);
+      if (!croppedBlob) throw new Error('Failed to crop image');
+
+      // 1. Local preview instantly
+      const previewUrl = URL.createObjectURL(croppedBlob);
+      setProfileImage(previewUrl);
+      
+      // Update global context immediately so header syncs instantly
+      const reader = new FileReader();
+      reader.readAsDataURL(croppedBlob);
+      reader.onloadend = () => {
+        updateUser({ profile_pic: reader.result, profile_picture: reader.result });
+      };
+
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', croppedBlob, 'profile_pic.jpg');
       formData.append('employee_id', user.employee_id || user.id);
 
       const res = await fetch(API_ENDPOINTS.PROFILE_UPLOAD_IMAGE, {
@@ -147,7 +284,7 @@ export default function PerformanceModule() {
         const data = await res.json();
         const url = data.url || data.filePath || data.path || data.record?.path;
         if (url) {
-          // 3. Persist in DB via PROFILE_UPDATE
+          // Persist in DB via PROFILE_UPDATE
           await fetch(API_ENDPOINTS.PROFILE_UPDATE, {
             method: 'POST',
             headers: {
@@ -163,16 +300,22 @@ export default function PerformanceModule() {
             })
           });
 
-          // 4. Update Global State
+          // Final update with the actual remote URL
           updateUser({ profile_pic: url, profile_picture: url });
           setToast({ show: true, message: 'profile pic updated successfully ✅', type: 'success' });
           setTimeout(() => setToast({ show: false, message: '' }), 3000);
         }
+      } else {
+        throw new Error('Upload failed');
       }
     } catch (err) {
       console.error('Upload error:', err);
       setToast({ show: true, message: 'Upload failed', type: 'error' });
       setTimeout(() => setToast({ show: false, message: '' }), 3000);
+    } finally {
+      setCropUploading(false);
+      setShowCropModal(false);
+      setSelectedImageSrc(null);
     }
   };
 
@@ -549,7 +692,7 @@ export default function PerformanceModule() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', alignItems: winWidth < 768 ? 'center' : 'flex-start', gap: winWidth < 768 ? '12px' : '40px', marginTop: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '950', textTransform: 'uppercase' }}>
-                      <Briefcase size={16} /> {profileData.designation}
+                      <Briefcase size={16} /> {fetchedRole || user?.role || user?.Role || profileData.designation || 'Employee'}
                     </div>
 
                     {/* Phone Editable */}
@@ -703,27 +846,52 @@ export default function PerformanceModule() {
 
         {/* Services Section */}
         <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px' }}>
-          <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>Services & Summary</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : '1fr 1fr', gap: '24px' }}>
-            {[
-              { title: 'Manage Leave', sub: 'Requested Leaves', color: '#fee2e2', text: '#0b0a0aff', icon: <Calendar color="#ef4444" size={20} />, path: '/leaves' },
-              { title: 'Attendance Logs', sub: 'Review check-in history', color: '#dcfce7', text: '#15803d', icon: <Clock color="#22c55e" size={20} />, path: '/attendance' },
-              { title: 'Security Settings', sub: 'Update security password', color: '#dbeafe', text: '#1e40af', icon: <Shield color="#3b82f6" size={20} />, onClick: () => setShowSecurityModal(true) },
-              { title: 'Support & Maintenance', sub: 'View Resource ticket', color: '#ffedd5', text: '#9a3412', icon: <LifeBuoy color="#f97316" size={20} />, path: '/tickets' }
-            ].map((svc, i) => (
-              <div key={i} onClick={svc.onClick || (() => navigate(svc.path))} style={{ ...dashboardStyles.serviceCard, background: svc.color }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {svc.icon}
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: svc.text, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{svc.title}</p>
-                    <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>{svc.sub}</p>
-                  </div>
+          <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>Services &amp; Summary</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : winWidth < 900 ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '24px' }}>
+
+            {/* Card 1 – Security Settings */}
+            <div onClick={() => setShowSecurityModal(true)} style={{ ...dashboardStyles.serviceCard, background: '#dbeafe' }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Shield color="#3b82f6" size={20} />
                 </div>
-                <ChevronRight size={winWidth < 768 ? 16 : 20} color={svc.text} />
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Security Settings</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Update Security Passkey</p>
+                </div>
               </div>
-            ))}
+              <ChevronRight size={winWidth < 768 ? 16 : 20} color="#1e40af" />
+            </div>
+
+            {/* Card 2 – Support & Maintenance */}
+            <div onClick={() => navigate('/tickets')} style={{ ...dashboardStyles.serviceCard, background: '#ffedd5' }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <LifeBuoy color="#f97316" size={20} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Support &amp; Maintenance</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Raise Technical Ticket</p>
+                </div>
+              </div>
+              <ChevronRight size={winWidth < 768 ? 16 : 20} color="#9a3412" />
+            </div>
+
+            {/* Card 3 – Total Tenurity */}
+            <div style={{ ...dashboardStyles.serviceCard, background: '#dcfce7', cursor: 'default' }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <RefreshCw color="#16a34a" size={20} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Tenurity</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>
+                    {tenure.months}M {tenure.days}D Experience
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -859,6 +1027,40 @@ export default function PerformanceModule() {
             {toast.type === 'success' ? <Check size={12} color="white" strokeWidth={4} /> : <X size={12} color="white" strokeWidth={4} />}
           </div>
           {toast.message}
+        </div>
+      )}
+      {showCropModal && selectedImageSrc && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: '90%', maxWidth: '500px', height: '400px', background: '#333', borderRadius: '16px', overflow: 'hidden' }}>
+            <Cropper
+              image={selectedImageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+          <div style={{ marginTop: '20px', display: 'flex', gap: '16px' }}>
+            <button
+              onClick={() => { setShowCropModal(false); setSelectedImageSrc(null); }}
+              disabled={cropUploading}
+              style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid white', background: 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCropConfirm}
+              disabled={cropUploading}
+              style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#3863a8', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {cropUploading ? <RefreshCw size={16} className="spin" /> : <Check size={16} />}
+              {cropUploading ? 'Uploading...' : 'Apply & Upload'}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -103,7 +103,7 @@ export default function TicketManagement() {
 
     doc.setFontSize(22);
     doc.setTextColor(30, 41, 59);
-    doc.text('TITAN SUPPORT HUB', 14, 20);
+    doc.text('TICKET MANAGEMENT', 14, 20);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
@@ -130,7 +130,7 @@ export default function TicketManagement() {
       alternateRowStyles: { fillColor: [248, 250, 252] }
     });
 
-    doc.save(`Titan_Ticket_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Ticket_Management_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const triggerToast = (msg, type = 'success') => {
@@ -247,18 +247,6 @@ export default function TicketManagement() {
 
         {/* Filters */}
         <div className="flex-responsive-stack" style={{ marginBottom: '32px', gap: '16px' }}>
-          <div style={{ flex: 1, position: 'relative', width: '100%' }}>
-            <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', outline: 'none', fontSize: '14px', boxSizing: 'border-box', transition: '0.2s', fontWeight: '600' }}
-              onFocus={(e) => e.target.style.borderColor = '#3863a8'}
-              onBlur={(e) => e.target.style.borderColor = '#eef2f6'}
-            />
-          </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto' }}>
             <select
               value={statusFilter}
@@ -267,9 +255,7 @@ export default function TicketManagement() {
             >
               <option>All Status</option>
               <option value="Open">Pending</option>
-              <option>In Progress</option>
               <option>Resolved</option>
-              <option>Closed</option>
             </select>
             <select
               value={priorityFilter}

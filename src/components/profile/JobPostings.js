@@ -111,6 +111,33 @@ export default function JobPostings() {
       alert('Please fill in Job Title and Department');
       return;
     }
+    if (form.experience !== '') {
+      const expVal = parseInt(form.experience, 10);
+      if (isNaN(expVal) || expVal < 0 || expVal > 99) {
+        alert('Experience must be a positive number between 0 and 99');
+        return;
+      }
+    }
+    if (form.location) {
+      const locationRegex = /^[a-zA-Z\s,]+$/;
+      if (!locationRegex.test(form.location)) {
+        alert('Location must contain only alphabets, spaces, and commas');
+        return;
+      }
+    }
+    
+    // Requirements: just check it's not empty
+    if (!form.requirements || form.requirements.trim() === '') {
+      alert('Please enter Requirements');
+      return;
+    }
+
+    // Job Description: just check it's not empty
+    if (!form.description || form.description.trim() === '') {
+      alert('Please enter Job Description');
+      return;
+    }
+
     setSaving(true);
     try {
       const url = editingPost 
@@ -198,13 +225,23 @@ export default function JobPostings() {
 
 
   const handleFormChange = (name, value) => {
+    let val = value;
     if (name === 'location') {
-      if (value !== '' && !/^[a-zA-Z\s,]+$/.test(value)) return;
+      val = value.replace(/[^a-zA-Z\s,]/g, '');
+    } else if (name === 'experience') {
+      let digits = value.replace(/\D/g, '');
+      if (digits !== '') {
+        const num = parseInt(digits, 10);
+        if (num > 99) {
+          val = '99';
+        } else {
+          val = String(num);
+        }
+      } else {
+        val = '';
+      }
     }
-    if (name === 'experience') {
-      if (value !== '' && !/^[0-9\-+]+$/.test(value)) return;
-    }
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => ({ ...prev, [name]: val }));
   };
 
   return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 import { jsPDF } from 'jspdf';
@@ -14,34 +14,70 @@ export default function SuggestionModule() {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  // Parse a date string like "22/5/2026" or "5/22/2026" or ISO safely
+  const parseDate = (dateStr) => {
+    if (!dateStr || dateStr === 'Today') return new Date();
+    // Try ISO first
+    const iso = new Date(dateStr);
+    if (!isNaN(iso)) return iso;
+    // Try dd/mm/yyyy or m/d/yyyy
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      // Try d/m/yyyy
+      const d = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+      if (!isNaN(d)) return d;
+      // Try m/d/yyyy
+      const d2 = new Date(`${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+      if (!isNaN(d2)) return d2;
+    }
+    return null;
+  };
+
+  const filteredSubmissions = submissions.filter((s) => {
+    if (!fromDate && !toDate) return true;
+    const d = parseDate(s.date);
+    if (!d) return true;
+    const from = fromDate ? new Date(fromDate) : null;
+    const to = toDate ? new Date(toDate) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
+  });
+
+  const clearFilter = () => {
+    setFromDate('');
+    setToDate('');
+  };
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
     const today = new Date().toLocaleDateString('en-GB');
 
-    // Title
     doc.setFontSize(22);
     doc.setTextColor(30, 41, 59);
     doc.text('NBT Suggestions Hub Report', 14, 22);
 
-    // Subtitle
     doc.setFontSize(11);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Total Submissions: ${submissions.length}`, 14, 30);
+    doc.text(`Total Submissions: ${filteredSubmissions.length}`, 14, 30);
     doc.text(`Report Type: Collaboration & Workflow Overview`, 14, 36);
     doc.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, 14, 42);
 
     const cleanText = (str) => {
       if (!str) return 'N/A';
       return String(str)
-        .replace(/[\u200B-\u200D\uFEFF]/g, '') // remove zero-width spaces
-        .replace(/[^\x20-\x7E\s]/g, '') // remove non-ASCII
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[^\x20-\x7E\s]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
     };
 
     const tableColumn = ["Submitted By", "Emp ID / Team", "Date", "Suggestion Content", "Engagement"];
-    const tableRows = submissions.map(s => [
+    const tableRows = filteredSubmissions.map(s => [
       cleanText(s.user),
       cleanText(s.team),
       cleanText(s.date),
@@ -53,18 +89,18 @@ export default function SuggestionModule() {
       head: [tableColumn],
       body: tableRows,
       startY: 50,
-      styles: { 
-        fontSize: 8.5, 
+      styles: {
+        fontSize: 8.5,
         cellPadding: { top: 5, bottom: 5, left: 3, right: 3 },
         valign: 'middle',
         overflow: 'linebreak'
       },
       columnStyles: {
-        0: { cellWidth: 32 },                  // Submitted By
-        1: { cellWidth: 24 },                  // Emp ID / Team
-        2: { cellWidth: 24, halign: 'center' }, // Date (Expanded to prevent wrapping)
-        3: { cellWidth: 78 },                  // Suggestion Content
-        4: { cellWidth: 28, halign: 'center' }  // Engagement (Expanded to prevent header wrapping)
+        0: { cellWidth: 32 },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 78 },
+        4: { cellWidth: 28, halign: 'center' }
       },
       headStyles: { fillColor: [49, 99, 170], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -77,10 +113,7 @@ export default function SuggestionModule() {
   useEffect(() => {
     const fetchSuggestions = async () => {
       const token = user?.token || localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+      if (!token) { setLoading(false); return; }
       try {
         setLoading(true);
         const res = await fetch(API_ENDPOINTS.SUGGESTIONS, {
@@ -109,24 +142,21 @@ export default function SuggestionModule() {
     };
     fetchSuggestions();
   }, [user]);
+
   return (
     <div className="hr-dashboard-container">
       <AppHeader />
 
       <main className="dashboard-content" style={{ paddingBottom: '100px' }}>
-        <header className="section-header">
+        {/* Page Header */}
+        <header className="section-header" style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button
               onClick={() => navigate(-1)}
               style={{
-                background: 'white',
-                padding: '10px',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                background: 'white', padding: '10px', borderRadius: '12px',
+                border: '1px solid #e2e8f0', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}
             >
@@ -134,27 +164,18 @@ export default function SuggestionModule() {
             </button>
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--secondary)' }}>Suggestions Hub</h1>
-              <p style={{ color: 'var(--text-muted)' }}>Collaborative space for internal suggestions & workflow improvements.</p>
+              <p style={{ color: 'var(--text-muted)' }}>Collaborative space for internal suggestions &amp; workflow improvements.</p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-            <button 
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
               onClick={handleExportPDF}
-              className="btn-outline" 
-              style={{ 
-                background: 'white', 
-                color: 'var(--primary)', 
-                border: '2px solid #cbd5e1', 
-                borderRadius: '12px', 
-                padding: '10px 18px', 
-                fontSize: '13px', 
-                fontWeight: '800', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              className="btn-outline"
+              style={{
+                background: 'white', color: 'var(--primary)', border: '2px solid #cbd5e1',
+                borderRadius: '12px', padding: '10px 18px', fontSize: '13px', fontWeight: '800',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}
             >
               <Download size={16} /> Export PDF
@@ -162,29 +183,111 @@ export default function SuggestionModule() {
           </div>
         </header>
 
-        <section className="dashboard-section animate-fade-in">
+        {/* Date Filter Bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+          background: '#ffffff', borderRadius: '16px', padding: '14px 20px',
+          border: '1.5px solid #e2e8f0', marginBottom: '20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#315A9E' }}>
+            <Calendar size={18} />
+            <span style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b' }}>Filter by Date</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>From</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              style={{
+                padding: '8px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1',
+                fontSize: '13px', fontWeight: '700', color: '#1e293b', cursor: 'pointer',
+                outline: 'none', background: '#f8fafc', transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#315A9E'}
+              onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>To</label>
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || ''}
+              onChange={(e) => setToDate(e.target.value)}
+              style={{
+                padding: '8px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1',
+                fontSize: '13px', fontWeight: '700', color: '#1e293b', cursor: 'pointer',
+                outline: 'none', background: '#f8fafc', transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#315A9E'}
+              onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+            />
+          </div>
+
+          {(fromDate || toDate) && (
+            <button
+              onClick={clearFilter}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: '#fef2f2', color: '#ef4444', border: '1.5px solid #fecaca',
+                borderRadius: '10px', padding: '7px 12px', fontSize: '12px', fontWeight: '800',
+                cursor: 'pointer', transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}
+            >
+              <X size={13} /> Clear
+            </button>
+          )}
+
+          {/* Result count */}
+          <span style={{
+            marginLeft: 'auto', fontSize: '12px', fontWeight: '800',
+            color: '#64748b', background: '#f1f5f9', padding: '6px 14px',
+            borderRadius: '20px'
+          }}>
+            {loading ? '...' : `${filteredSubmissions.length} result${filteredSubmissions.length !== 1 ? 's' : ''}`}
+          </span>
+        </div>
+
+        {/* Submissions Section */}
+        <section className="dashboard-section animate-fade-in" style={{ border: 'none', boxShadow: 'none', padding: '0 4px' }}>
           <h2 className="section-title">Recent Submissions</h2>
-          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {loading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--white)', borderRadius: '20px', border: '1px dashed var(--border)' }}>
                 <p style={{ fontWeight: '800' }}>Fetching latest suggestions...</p>
               </div>
-            ) : submissions.length === 0 ? (
+            ) : filteredSubmissions.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--white)', borderRadius: '20px', border: '1px dashed var(--border)' }}>
-                <p style={{ fontWeight: '800' }}>No submissions found.</p>
-                <p style={{ fontSize: '12px' }}>New suggestions will appear here once submitted.</p>
+                <Calendar size={32} style={{ marginBottom: '12px', opacity: 0.4 }} />
+                <p style={{ fontWeight: '800' }}>
+                  {submissions.length === 0 ? 'No submissions found.' : 'No submissions found for the selected date range.'}
+                </p>
+                {(fromDate || toDate) && (
+                  <button
+                    onClick={clearFilter}
+                    style={{ marginTop: '12px', background: '#315A9E', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    Clear Filter
+                  </button>
+                )}
               </div>
             ) : (
-              submissions.map((s, i) => (
+              filteredSubmissions.map((s, i) => (
                 <div key={i} className="team-card" style={{ padding: '24px', borderLeft: '4px solid var(--primary)', cursor: 'default' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '16px', fontWeight: '900', color: '#315A9E' }}>
+                      <div style={{ width: '45px', height: '45px', borderRadius: '8px', backgroundColor: '#fff', border: '2px solid #e2e8f0', padding: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '16px', fontWeight: '900', color: '#315A9E' }}>
                         {s.profile_pic ? (
                           <img
                             src={s.profile_pic.startsWith('http') || s.profile_pic.startsWith('data:') ? s.profile_pic : `${BASE_URL}${s.profile_pic.startsWith('/') ? '' : '/'}${s.profile_pic}`}
                             alt="User"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
                           />
                         ) : (
                           s.user.charAt(0)
@@ -195,19 +298,18 @@ export default function SuggestionModule() {
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>from <strong style={{ color: 'var(--primary)' }}>{s.team}</strong></span>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.date}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', fontWeight: '700' }}>{s.date}</span>
                   </div>
                   <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontStyle: 'italic' }}>
                     "{s.content}"
                   </p>
-                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Engagement:</span>
                       <span style={{ fontSize: '10px', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: '800' }}>
                         {s.participation}
                       </span>
                     </div>
-
                   </div>
                 </div>
               ))

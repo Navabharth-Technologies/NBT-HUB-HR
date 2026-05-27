@@ -21,6 +21,7 @@ export default function AssetsManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
   const [editModal, setEditModal] = useState({ show: false, employee: null, isReadOnly: false });
+  const [isAddAll, setIsAddAll] = useState(false);
   const [availableAssetsModal, setAvailableAssetsModal] = useState(false);
   const [availableStockModal, setAvailableStockModal] = useState(false);
   const [stockSearch, setStockSearch] = useState('');
@@ -40,6 +41,8 @@ export default function AssetsManagement() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
+  const [loadingCheck, setLoadingCheck] = useState(false);
+  const [modelInfo, setModelInfo] = useState(null);
   const stockRef = React.useRef(null);
 
   // Asset Form State
@@ -50,6 +53,7 @@ export default function AssetsManagement() {
     joining_date: '',
     last_working_date: '',
     laptop_details: '',
+    laptop_count: '',
     mouse: '',
     keyboard: '',
     laptop_stand: '',
@@ -66,6 +70,49 @@ export default function AssetsManagement() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!form.laptop_details) {
+      setModelInfo(null);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      const modelName = form.laptop_details.split('\n')[0].split(',')[0].trim();
+      if (!modelName || modelName.length < 3) {
+        setModelInfo(null);
+        return;
+      }
+
+      setLoadingCheck(true);
+      try {
+        const response = await fetch(`${API_ENDPOINTS.ASSETS_STOCK}?filter=laptops`, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+          const list = Array.isArray(data) ? data : (data.recordset || data.data || []);
+          const matchCount = list.filter(item => {
+            const details = item.laptop_details || item.laptop_unit_details || item.laptop || '';
+            return details.toLowerCase().includes(modelName.toLowerCase());
+          }).length;
+
+          setModelInfo({
+            name: modelName,
+            count: matchCount,
+            exists: matchCount > 0
+          });
+        }
+      } catch (err) {
+        console.error('Error checking laptop count:', err);
+      } finally {
+        setLoadingCheck(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [form.laptop_details, user?.token]);
 
   const fetchData = async () => {
     if (!user?.token) return;
@@ -302,6 +349,7 @@ export default function AssetsManagement() {
   };
 
   const handleEdit = (emp, isReadOnlyMode = false, assetOverride = null) => {
+    setIsAddAll(false);
     const empId = emp.id || emp.EmpID;
     const currentAsset = assetOverride || assets[empId] || assets[emp.id] || assets[emp.EmpID] || {};
 
@@ -338,6 +386,7 @@ export default function AssetsManagement() {
       joining_date: toInputDate(currentAsset.joining_date || currentAsset.doj || currentAsset.joining_date_iso || currentAsset.JoinDate || fullEmp?.joining_date || ''),
       last_working_date: toInputDate(currentAsset.last_working_date || currentAsset.lwd || currentAsset.lwd_iso || ''),
       laptop_details: currentAsset.laptop_details || currentAsset.laptop || currentAsset.laptop_unit_details || '',
+      laptop_count: currentAsset.laptop_count || currentAsset.laptop_qty || currentAsset.qty || currentAsset.quantity || currentAsset.laptop_unit || '',
       mouse: toYesNo(currentAsset.mouse, currentAsset.mouse_unit || currentAsset.mouse_status),
       keyboard: toYesNo(currentAsset.keyboard, currentAsset.keyboard_unit || currentAsset.keyboard_status),
       laptop_stand: toYesNo(currentAsset.laptop_stand, currentAsset.stand_unit),
@@ -400,11 +449,11 @@ export default function AssetsManagement() {
       // Use the DB record's primary key for PUT, fallback to employee ID
       const targetId = editModal.assetId || (existingAsset?.id) || empId;
 
-      // POST for brand-new records, PUT for updating existing ones
-      const endpoint = hasExistingRecord ? API_ENDPOINTS.ASSET_UPDATE(targetId) : API_ENDPOINTS.ASSETS;
-      const method = hasExistingRecord ? 'PUT' : 'POST';
+      // POST to ASSETS_STOCK if isAddAll is true, else decide between PUT/POST for employee assets
+      const endpoint = isAddAll ? API_ENDPOINTS.ASSETS_STOCK : (hasExistingRecord ? API_ENDPOINTS.ASSET_UPDATE(targetId) : API_ENDPOINTS.ASSETS);
+      const method = isAddAll ? 'POST' : (hasExistingRecord ? 'PUT' : 'POST');
 
-      console.log(`[ASSET DECISION] hasExistingRecord=${hasExistingRecord}, targetId=${targetId}, method=${method}`);
+      console.log(`[ASSET DECISION] isAddAll=${isAddAll}, hasExistingRecord=${hasExistingRecord}, targetId=${targetId}, method=${method}`);
 
       // Advanced Date Formatter (Handles both 16-01-2026 and 16/01/2026)
       const toISO = (d) => {
@@ -418,86 +467,177 @@ export default function AssetsManagement() {
         return d;
       };
 
+      const toUnit = (val) => {
+        if (val === 'Yes') return 1;
+        if (val === 'No' || val === '') return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      };
+
+      const toStatus = (val) => {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          return num > 0 ? 'Yes' : 'No';
+        }
+        return val || 'No';
+      };
+
       const isoDate = toISO(form.joining_date);
       const isoLwd = toISO(form.last_working_date);
 
-      const payload = {
-        // Essential Identities
-        employee_id: form.employee_id,
-        id: editModal.assetId || form.employee_id,
-        asset_id: editModal.assetId,
-        emp_id: form.employee_id,
-        name: form.employee_name,
-        employee_name: form.employee_name,
+      let payload;
+      if (isAddAll) {
+        // Redundant payload for assets_stock table
+        const categoryVal = form.laptop_details ? 'Laptops' : 'Accessories';
+        let nameVal = 'Hardware Package';
+        if (form.laptop_details) {
+          nameVal = form.laptop_details.split('Serial No')[0].split('S/N')[0].replace(/[,;:]\s*$/, '').trim();
+        }
 
-        // Core Status & Metadata
-        status: form.status || 'Active',
-        assigned_date: isoDate,
-        designation: form.designation,
-        role: form.designation,
+        payload = {
+          laptop_details: form.laptop_details,
+          laptop_unit_details: form.laptop_details,
+          laptop: form.laptop_details,
 
-        // Massive Redundancy for Joining Date (DOJ)
-        joining_date: isoDate,
-        doj: isoDate,
-        joining_date_iso: isoDate,
-        joining_date_raw: form.joining_date,
-        joined_date: isoDate,
-        joined_at: isoDate,
-        JoinDate: isoDate,
-        date_of_joining: isoDate,
-        joining_day: form.joining_date,
+          name: nameVal,
+          item_name: nameVal,
+          itemname: nameVal,
 
-        // LWD Super-Set
-        last_working_date: isoLwd,
-        lwd: isoLwd,
-        lwd_iso: isoLwd,
-        lwd_raw: form.last_working_date,
-        last_working_day: isoLwd,
-        exit_date: isoLwd,
+          category: categoryVal,
+          status: 'In Stock',
+          qty: toUnit(form.laptop_count),
+          quantity: toUnit(form.laptop_count),
+          units: toUnit(form.laptop_count),
+          unit: toUnit(form.laptop_count),
+          stock_qty: toUnit(form.laptop_count),
 
-        // Hardware (Full Inventory Map)
-        laptop_details: form.laptop_details,
-        laptop_unit_details: form.laptop_details,
-        laptop: form.laptop_details,
+          laptop_count: toStatus(form.laptop_count),
+          laptop_qty: toUnit(form.laptop_count),
+          laptop_unit: toUnit(form.laptop_count),
 
-        mouse: form.mouse,
-        mouse_unit: form.mouse === 'Yes' ? 1 : 0,
-        mouse_status: form.mouse,
+          mouse: toStatus(form.mouse),
+          mouse_unit: toUnit(form.mouse),
+          mouse_status: toStatus(form.mouse),
 
-        keyboard: form.keyboard,
-        keyboard_unit: form.keyboard === 'Yes' ? 1 : 0,
-        keyboard_status: form.keyboard,
+          keyboard: toStatus(form.keyboard),
+          keyboard_unit: toUnit(form.keyboard),
+          keyboard_status: toStatus(form.keyboard),
 
-        laptop_stand: form.laptop_stand,
-        stand: form.laptop_stand,
-        stand_unit: form.laptop_stand === 'Yes' ? 1 : 0,
+          laptop_stand: toStatus(form.laptop_stand),
+          stand: toStatus(form.laptop_stand),
+          stand_unit: toUnit(form.laptop_stand),
 
-        ruf_pad: form.ruf_pad,
-        rufpad: form.ruf_pad,
-        ruf_pad_unit: form.ruf_pad === 'Yes' ? 1 : 0,
+          ruf_pad: toStatus(form.ruf_pad),
+          rufpad: toStatus(form.ruf_pad),
+          ruf_pad_unit: toUnit(form.ruf_pad),
+          ref_pad: toStatus(form.ruf_pad),
 
-        pendrive: form.pendrive,
-        pendrive_unit: form.pendrive === 'Yes' ? 1 : 0,
+          pendrive: toStatus(form.pendrive),
+          pendrive_unit: toUnit(form.pendrive),
 
-        mobile: form.mobile,
-        mobile_unit: form.mobile === 'Yes' ? 1 : 0,
-        mobile_handset: form.mobile,
+          mobile: toStatus(form.mobile),
+          mobile_unit: toUnit(form.mobile),
+          mobile_handset: toStatus(form.mobile),
+          company_mobile: toStatus(form.mobile),
 
-        camera: form.camera,
-        webcam: form.camera,
-        camera_unit: form.camera === 'Yes' ? 1 : 0,
+          camera: toStatus(form.camera),
+          webcam: toStatus(form.camera),
+          camera_unit: toUnit(form.camera),
+          external_camera: toStatus(form.camera),
 
-        earphone: form.earphone,
-        headphone: form.earphone,
-        earphones: form.earphone,
-        headphones: form.earphone,
-        earphone_headphone: form.earphone,
-        earphone_unit: form.earphone === 'Yes' ? 1 : 0,
-        headphone_unit: form.earphone === 'Yes' ? 1 : 0,
+          earphone: toStatus(form.earphone),
+          headphone: toStatus(form.earphone),
+          earphones: toStatus(form.earphone),
+          headphones: toStatus(form.earphone),
+          earphone_headphone: toStatus(form.earphone),
+          earphone_unit: toUnit(form.earphone),
+          headphone_unit: toUnit(form.earphone),
 
-        tablet: form.tablet,
-        tablet_unit: form.tablet === 'Yes' ? 1 : 0
-      };
+          tablet: toStatus(form.tablet),
+          tablet_unit: toUnit(form.tablet)
+        };
+      } else {
+        payload = {
+          // Essential Identities
+          employee_id: form.employee_id,
+          id: editModal.assetId || form.employee_id,
+          asset_id: editModal.assetId,
+          emp_id: form.employee_id,
+          name: form.employee_name,
+          employee_name: form.employee_name,
+
+          // Core Status & Metadata
+          status: form.status || 'Active',
+          assigned_date: isoDate,
+          designation: form.designation,
+          role: form.designation,
+
+          // Massive Redundancy for Joining Date (DOJ)
+          joining_date: isoDate,
+          doj: isoDate,
+          joining_date_iso: isoDate,
+          joining_date_raw: form.joining_date,
+          joined_date: isoDate,
+          joined_at: isoDate,
+          JoinDate: isoDate,
+          date_of_joining: isoDate,
+          joining_day: form.joining_date,
+
+          // LWD Super-Set
+          last_working_date: isoLwd,
+          lwd: isoLwd,
+          lwd_iso: isoLwd,
+          lwd_raw: form.last_working_date,
+          last_working_day: isoLwd,
+          exit_date: isoLwd,
+
+          // Hardware (Full Inventory Map)
+          laptop_details: form.laptop_details,
+          laptop_unit_details: form.laptop_details,
+          laptop: form.laptop_details,
+          laptop_count: toStatus(form.laptop_count),
+          laptop_qty: toUnit(form.laptop_count),
+          laptop_unit: toUnit(form.laptop_count),
+
+          mouse: toStatus(form.mouse),
+          mouse_unit: toUnit(form.mouse),
+          mouse_status: toStatus(form.mouse),
+
+          keyboard: toStatus(form.keyboard),
+          keyboard_unit: toUnit(form.keyboard),
+          keyboard_status: toStatus(form.keyboard),
+
+          laptop_stand: toStatus(form.laptop_stand),
+          stand: toStatus(form.laptop_stand),
+          stand_unit: toUnit(form.laptop_stand),
+
+          ruf_pad: toStatus(form.ruf_pad),
+          rufpad: toStatus(form.ruf_pad),
+          ruf_pad_unit: toUnit(form.ruf_pad),
+
+          pendrive: toStatus(form.pendrive),
+          pendrive_unit: toUnit(form.pendrive),
+
+          mobile: toStatus(form.mobile),
+          mobile_unit: toUnit(form.mobile),
+          mobile_handset: toStatus(form.mobile),
+
+          camera: toStatus(form.camera),
+          webcam: toStatus(form.camera),
+          camera_unit: toUnit(form.camera),
+
+          earphone: toStatus(form.earphone),
+          headphone: toStatus(form.earphone),
+          earphones: toStatus(form.earphone),
+          headphones: toStatus(form.earphone),
+          earphone_headphone: toStatus(form.earphone),
+          earphone_unit: toUnit(form.earphone),
+          headphone_unit: toUnit(form.earphone),
+
+          tablet: toStatus(form.tablet),
+          tablet_unit: toUnit(form.tablet)
+        };
+      }
 
       console.log(`[ASSET SYNC] ${method} -> ${endpoint}`, payload);
 
@@ -572,15 +712,16 @@ export default function AssetsManagement() {
 
   // Compute component counts directly from stockList using exact DB column names and all common alternate keys
   const componentCounts = {
-    mouse:              stockList.filter(i => isYes(i.raw?.mouse) || isYes(i.raw?.mouse_unit) || isYes(i.raw?.mouse_status)).length,
-    keyboard:           stockList.filter(i => isYes(i.raw?.keyboard) || isYes(i.raw?.keyboard_unit) || isYes(i.raw?.keyboard_status)).length,
-    laptop_stand:       stockList.filter(i => isYes(i.raw?.laptop_stand) || isYes(i.raw?.stand) || isYes(i.raw?.stand_unit)).length,
-    ruf_pad:            stockList.filter(i => isYes(i.raw?.ruf_pad) || isYes(i.raw?.rufpad) || isYes(i.raw?.ruf_pad_unit) || isYes(i.raw?.ref_pad)).length,
-    pendrive:           stockList.filter(i => isYes(i.raw?.pendrive) || isYes(i.raw?.pendrive_unit)).length,
-    mobile:             stockList.filter(i => isYes(i.raw?.mobile) || isYes(i.raw?.mobile_unit) || isYes(i.raw?.company_mobile) || isYes(i.raw?.mobile_handset)).length,
-    camera:             stockList.filter(i => isYes(i.raw?.camera) || isYes(i.raw?.camera_unit) || isYes(i.raw?.webcam) || isYes(i.raw?.external_camera)).length,
+    laptops: stockList.filter(i => !!i.raw?.laptop_details).length,
+    mouse: stockList.filter(i => isYes(i.raw?.mouse) || isYes(i.raw?.mouse_unit) || isYes(i.raw?.mouse_status)).length,
+    keyboard: stockList.filter(i => isYes(i.raw?.keyboard) || isYes(i.raw?.keyboard_unit) || isYes(i.raw?.keyboard_status)).length,
+    laptop_stand: stockList.filter(i => isYes(i.raw?.laptop_stand) || isYes(i.raw?.stand) || isYes(i.raw?.stand_unit)).length,
+    ruf_pad: stockList.filter(i => isYes(i.raw?.ruf_pad) || isYes(i.raw?.rufpad) || isYes(i.raw?.ruf_pad_unit) || isYes(i.raw?.ref_pad)).length,
+    pendrive: stockList.filter(i => isYes(i.raw?.pendrive) || isYes(i.raw?.pendrive_unit)).length,
+    mobile: stockList.filter(i => isYes(i.raw?.mobile) || isYes(i.raw?.mobile_unit) || isYes(i.raw?.company_mobile) || isYes(i.raw?.mobile_handset)).length,
+    camera: stockList.filter(i => isYes(i.raw?.camera) || isYes(i.raw?.camera_unit) || isYes(i.raw?.webcam) || isYes(i.raw?.external_camera)).length,
     earphone_headphone: stockList.filter(i => isYes(i.raw?.earphone_headphone) || isYes(i.raw?.earphone) || isYes(i.raw?.headphone) || isYes(i.raw?.earphones) || isYes(i.raw?.headphones) || isYes(i.raw?.earphone_unit) || isYes(i.raw?.headphone_unit)).length,
-    tablet:             stockList.filter(i => isYes(i.raw?.tablet) || isYes(i.raw?.tablet_unit)).length,
+    tablet: stockList.filter(i => isYes(i.raw?.tablet) || isYes(i.raw?.tablet_unit)).length,
   };
 
   const categories = [
@@ -611,25 +752,46 @@ export default function AssetsManagement() {
               <Package size={24} color="#3163aa" />
             </div>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Management Hub</h1>
+              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Administration Hub</h1>
               <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Deploy and track workforce hardware inventory</p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row' }}>
+          <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', flexDirection: winWidth < 480 ? 'column' : 'row', alignItems: 'center' }}>
             <button
               onClick={() => {
                 setForm({
                   employee_name: '', employee_id: '',
                   designation: '', joining_date: '', last_working_date: '', laptop_details: '',
+                  laptop_count: '1',
+                  mouse: '1', keyboard: '1', laptop_stand: '1', ruf_pad: '1', pendrive: '1',
+                  mobile: '1', camera: '1', earphone: '1', tablet: '1'
+                });
+                setIsAddAll(true);
+                setEditModal({ show: true, employee: { is_new: true, name: '' } });
+              }}
+              style={{ flex: 1, background: 'white', color: '#3163aa', border: '2px solid #3163aa', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s' }}
+              onMouseOver={(e) => { e.currentTarget.style.background = '#f0f4fa'; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'white'; }}
+            >
+              <Plus size={16} />
+              Add All Assets
+            </button>
+            <button
+              onClick={() => {
+                setForm({
+                  employee_name: '', employee_id: '',
+                  designation: '', joining_date: '', last_working_date: '', laptop_details: '',
+                  laptop_count: '',
                   mouse: '', keyboard: '', laptop_stand: '', ruf_pad: '', pendrive: '',
                   mobile: '', camera: '', earphone: '', tablet: ''
                 });
+                setIsAddAll(false);
                 setEditModal({ show: true, employee: { is_new: true, name: '' } });
               }}
               style={{ flex: 1, background: '#3163aa', color: 'white', border: 'none', padding: '12px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 8px 15px rgba(49, 99, 170, 0.2)' }}
             >
               <Plus size={16} />
-              Add New Assets
+              Add New Assets(Employee)
             </button>
           </div>
         </div>
@@ -638,7 +800,7 @@ export default function AssetsManagement() {
           display: 'flex',
           flexDirection: winWidth < 1024 ? 'column' : 'row',
           gap: '24px',
-          alignItems: 'flex-start',
+          alignItems: winWidth < 1024 ? 'stretch' : 'stretch',
           width: '100%'
         }}>
           {/* Left Side: Stock Inventory / Available Assets */}
@@ -733,6 +895,7 @@ export default function AssetsManagement() {
                     { key: 'camera', label: 'Camera', icon: <Camera size={18} />, bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#15803d' },
                     { key: 'earphone_headphone', label: 'Earphone / Headphone', icon: <Headphones size={18} />, bg: 'linear-gradient(135deg, #fdf4ff 0%, #f5d0fe 100%)', color: '#7e22ce' },
                     { key: 'tablet', label: 'Tablet', icon: <TabletIcon size={18} />, bg: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)', color: '#c2410c' },
+                    { key: 'laptops', label: 'Total Laptops', icon: <Laptop size={18} />, bg: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', color: '#4338ca' }
                   ].map((item) => (
                     <div
                       key={item.key}
@@ -954,6 +1117,7 @@ export default function AssetsManagement() {
                               joining_date: '',
                               last_working_date: '',
                               laptop_details: item.raw?.laptop_details || '',
+                              laptop_count: String(item.qty || item.raw?.qty || item.raw?.quantity || ''),
                               mouse: item.raw?.mouse || 'No',
                               keyboard: item.raw?.keyboard || 'No',
                               laptop_stand: item.raw?.laptop_stand || 'No',
@@ -964,6 +1128,7 @@ export default function AssetsManagement() {
                               earphone: item.raw?.earphone_headphone || item.raw?.earphone || 'No',
                               tablet: item.raw?.tablet || 'No'
                             });
+                            setIsAddAll(false);
                             setEditModal({ show: true, employee: { is_new: true, name: '' } });
                           }}
                           style={{
@@ -983,7 +1148,7 @@ export default function AssetsManagement() {
           </div>
 
           {/* Right Side: Member Details Roster */}
-          <div style={{ flex: winWidth < 1024 ? '1' : '1.3', width: '100%' }}>
+          <div style={{ flex: winWidth < 1024 ? '1' : '1.3', width: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* Roster List / Cards / Table */}
             {winWidth < 1024 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1003,9 +1168,9 @@ export default function AssetsManagement() {
                             const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
                             return (
                               <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                <img 
-                                  src={photoUrl} 
-                                  alt="" 
+                                <img
+                                  src={photoUrl}
+                                  alt=""
                                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                                 />
@@ -1048,14 +1213,14 @@ export default function AssetsManagement() {
                 })}
               </div>
             ) : (
-              <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', width: '100%', margin: '0' }}>
-                <div style={{ overflowX: 'auto' }}>
+              <div className="dashboard-section animate-fade-in" style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', background: 'white', width: '100%', margin: '0', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ overflowX: 'auto', maxHeight: '670px', overflowY: 'auto', flex: 1 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed', fontFamily: "'Outfit', sans-serif" }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '40%', letterSpacing: '0.5px' }}>Member Details</th>
-                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '35%', letterSpacing: '0.5px' }}>Designation</th>
-                        <th style={{ padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '25%', letterSpacing: '0.5px' }}>Configuration</th>
+                        <th style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '40%', letterSpacing: '0.5px' }}>Member Details</th>
+                        <th style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', width: '35%', letterSpacing: '0.5px' }}>Designation</th>
+                        <th style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, padding: '15px 20px', color: '#1e293b', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '25%', letterSpacing: '0.5px' }}>Configuration</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1078,9 +1243,9 @@ export default function AssetsManagement() {
                                     const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
                                     return (
                                       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                        <img 
-                                          src={photoUrl} 
-                                          alt="" 
+                                        <img
+                                          src={photoUrl}
+                                          alt=""
                                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                                         />
@@ -1170,8 +1335,8 @@ export default function AssetsManagement() {
                   })()}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: winWidth < 768 ? '18px' : '26px', fontWeight: '950', color: '#1e293b', margin: 0, letterSpacing: '-0.5px' }}>
-                    {editModal.isCertificate ? 'Asset Declaration' : (editModal.isReadOnly ? 'Asset View' : 'Configure Hardware')}
+                  <h2 style={{ fontSize: winWidth < 768 ? '18px' : '26px', fontWeight: '950', color: '#000000', margin: 0, letterSpacing: '-0.5px' }}>
+                    {editModal.isCertificate ? 'Asset Declaration' : (editModal.isReadOnly ? 'Asset View' : (isAddAll ? 'Add All Assets' : 'Configure Hardware'))}
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
@@ -1251,62 +1416,146 @@ export default function AssetsManagement() {
                 /* Original Configuration UI */
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '25px' }}>
-                    <div style={{ gridColumn: 'span 2', marginBottom: '10px' }}>
-                      <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ScrollText size={14} /> Deployment Base Details
-                      </h3>
-                    </div>
-                    <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE NAME</label>
-                        <input
-                          type="text"
-                          placeholder="Enter Name"
-                          value={form.employee_name}
-                          onChange={(e) => setForm({ ...form, employee_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
-                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE ID</label>
-                        <input
-                          type="text"
-                          placeholder="Enter ID"
-                          value={form.employee_id}
-                          onChange={(e) => setForm({ ...form, employee_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
-                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>DESIGNATION</label>
-                      <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>JOINING DATE</label>
-                        <input type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>LWD</label>
-                        <input type="date" value={form.last_working_date} onChange={(e) => setForm({ ...form, last_working_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
-                      </div>
-                    </div>
+                    {!isAddAll && (
+                      <>
+                        <div style={{ gridColumn: 'span 2', marginBottom: '10px' }}>
+                          <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ScrollText size={14} /> Deployment Base Details
+                          </h3>
+                        </div>
+                        <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE NAME</label>
+                            <input
+                              type="text"
+                              placeholder="Enter Name"
+                              value={form.employee_name}
+                              onChange={(e) => setForm({ ...form, employee_name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
+                              style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>EMPLOYEE ID</label>
+                            <input
+                              type="text"
+                              placeholder="Enter ID"
+                              value={form.employee_id}
+                              onChange={(e) => setForm({ ...form, employee_id: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
+                              style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>DESIGNATION</label>
+                          <input type="text" placeholder="e.g. Lead Software Engineer" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value.replace(/[^a-zA-Z\s]/g, '') })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>JOINING DATE</label>
+                            <input type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>LWD</label>
+                            <input type="date" value={form.last_working_date} onChange={(e) => setForm({ ...form, last_working_date: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', fontFamily: "'Outfit', sans-serif" }} />
+                          </div>
+                        </div>
+                      </>
+                    )}
 
-                    <div style={{ gridColumn: 'span 2', margin: '15px 0 10px 0' }}>
-                      <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ gridColumn: 'span 2', margin: '15px 0 10px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px' }}>
+                      <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#3163aa', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                         <Laptop size={14} /> Hardware Inventory
                       </h3>
+                      {!editModal.isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isAddAll) {
+                              const allOne = ['laptop_count', 'mouse', 'keyboard', 'laptop_stand', 'ruf_pad', 'pendrive', 'mobile', 'camera', 'earphone', 'tablet'].every(k => Number(form[k]) === 1);
+                              const newVal = allOne ? '0' : '1';
+                              setForm(prev => ({
+                                ...prev,
+                                laptop_count: newVal,
+                                mouse: newVal,
+                                keyboard: newVal,
+                                laptop_stand: newVal,
+                                ruf_pad: newVal,
+                                pendrive: newVal,
+                                mobile: newVal,
+                                camera: newVal,
+                                earphone: newVal,
+                                tablet: newVal
+                              }));
+                            } else {
+                              const allYes = ['laptop_count', 'mouse', 'keyboard', 'laptop_stand', 'ruf_pad', 'pendrive', 'mobile', 'camera', 'earphone', 'tablet'].every(k => form[k] === 'Yes');
+                              const newVal = allYes ? '' : 'Yes';
+                              setForm(prev => ({
+                                ...prev,
+                                laptop_count: newVal,
+                                mouse: newVal,
+                                keyboard: newVal,
+                                laptop_stand: newVal,
+                                ruf_pad: newVal,
+                                pendrive: newVal,
+                                mobile: newVal,
+                                camera: newVal,
+                                earphone: newVal,
+                                tablet: newVal
+                              }));
+                            }
+                          }}
+                          style={{
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #dbeafe',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {isAddAll ? (
+                            ['laptop_count', 'mouse', 'keyboard', 'laptop_stand', 'ruf_pad', 'pendrive', 'mobile', 'camera', 'earphone', 'tablet'].every(k => Number(form[k]) === 1) ? 'Deselect All' : 'Select All'
+                          ) : (
+                            ['laptop_count', 'mouse', 'keyboard', 'laptop_stand', 'ruf_pad', 'pendrive', 'mobile', 'camera', 'earphone', 'tablet'].every(k => form[k] === 'Yes') ? 'Deselect All' : 'Select All'
+                          )}
+                        </button>
+                      )}
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>
                         <Laptop size={14} /> LAPTOP UNIT DETAILS
                       </label>
-                      <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+                      <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+                      
+                      {/* Real-Time Database Indicator */}
+                      {loadingCheck && <p style={{ fontSize: '11px', color: '#64748b', margin: '8px 0 0 4px', fontWeight: '750' }}>🔍 Checking existing catalog...</p>}
+                      {!loadingCheck && modelInfo && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          lineHeight: '1.4',
+                          background: modelInfo.exists ? '#f0fdf4' : '#eff6ff',
+                          border: `1.5px solid ${modelInfo.exists ? '#bbf7d0' : '#bfdbfe'}`,
+                          color: modelInfo.exists ? '#15803d' : '#1d4ed8',
+                          fontWeight: '600'
+                        }}>
+                          {modelInfo.exists ? (
+                            <span>💡 Count Found: We have <strong>{modelInfo.count}</strong> existing entries for <em>"{modelInfo.name}"</em> in stock. This will be added to it.</span>
+                          ) : (
+                            <span>✨ Fresh model entry: <em>"{modelInfo.name}"</em> doesn't exist in stock. Adding fresh!</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {[
+                      { key: 'laptop_count', label: 'LAPTOP COUNT', icon: <Laptop size={14} /> },
                       { key: 'mouse', label: 'MOUSE', icon: <MousePointer size={14} /> },
                       { key: 'keyboard', label: 'KEYBOARD', icon: <Keyboard size={14} /> },
                       { key: 'laptop_stand', label: 'LAPTOP STAND', icon: <Laptop size={14} /> },
@@ -1318,16 +1567,27 @@ export default function AssetsManagement() {
                       { key: 'tablet', label: 'TABLET UNIT', icon: <TabletIcon size={14} /> }
                     ].map((item) => (
                       <div key={item.key}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', paddingLeft: '4px' }}>{item.icon} {item.label}</label>
-                        <select
-                          value={form[item.key]}
-                          onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
-                          style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
-                        >
-                          <option value="">Select Option</option>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800', color: '#000000', marginBottom: '8px', paddingLeft: '4px' }}>{item.icon} {item.label}</label>
+                        {isAddAll ? (
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Enter quantity"
+                            value={form[item.key]}
+                            onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
+                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                          />
+                        ) : (
+                          <select
+                            value={form[item.key]}
+                            onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
+                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="">Select Option</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1379,7 +1639,7 @@ export default function AssetsManagement() {
                 <>
                   <button
                     onClick={() => setEditModal({ show: false, employee: null })}
-                    style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
+                    style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1.5px solid #1e3a8a', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
                   >
                     Discard Changes
                   </button>

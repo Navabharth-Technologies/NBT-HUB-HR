@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Home, Ticket, PlusCircle,
+  Home, Ticket, PlusCircle, X,
   ClipboardList, MessageSquare, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -29,11 +29,24 @@ export default function AppFooter({ onCreateTeam }) {
     try {
       const uid = user?.id || user?.userId || user?.employee_id;
 
-      const [leaveRes, ticketRes, notifRes] = await Promise.all([
-        fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.SUPPORT_TICKETS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
+      const userRole = user?.role?.toLowerCase() || 'employee';
+      const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
+
+      const fetchPromises = [
         fetch(API_ENDPOINTS.NOTIFICATIONS_BY_USER(uid), { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
-      ]);
+      ];
+
+      if (isAdmin) {
+        fetchPromises.push(
+          fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
+          fetch(API_ENDPOINTS.SUPPORT_TICKETS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
+        );
+      }
+
+      const results = await Promise.all(fetchPromises);
+      const notifRes = results[0];
+      const leaveRes = isAdmin ? results[1] : null;
+      const ticketRes = isAdmin ? results[2] : null;
 
       const updates = { leaves: 0, tickets: 0, threads: 0 };
 
@@ -149,7 +162,7 @@ export default function AppFooter({ onCreateTeam }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <Home size={22} /> },
     { name: 'View tickets', path: '/tickets', icon: <Ticket size={22} /> },
-    { name: 'Create', path: '/dashboard', icon: <PlusCircle size={24} />, isAction: true },
+    { name: 'Create', path: '/dashboard', icon: showAddMenu ? <X size={24} /> : <PlusCircle size={24} />, isAction: true },
     { name: 'Leaves', path: '/leaves', icon: <ClipboardList size={22} /> },
     { name: 'Thread', path: '/engagement', icon: <MessageSquare size={22} /> },
     { name: 'Profile', path: '/profile', icon: <UserCheck size={22} /> },
@@ -164,44 +177,113 @@ export default function AppFooter({ onCreateTeam }) {
     }
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (item) => {
+    if (item.isAction) return false;
+    if (item.name === 'Profile') {
+      return location.pathname === '/profile' || location.pathname === '/performance' || location.pathname === '/personal-info';
+    }
+    return location.pathname === item.path;
+  };
 
   return (
-    <div
-      className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
-      onMouseEnter={() => setIsVisible(true)}
-    >
-      <nav className="app-footer">
-        {navItems.map((item) => (
-          <div key={item.name} className="footer-item-container" style={{ position: 'relative' }}>
-            {item.isAction && showAddMenu && (
-              <div className="add-upward-menu animate-slide-up">
-                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); navigate('/courses'); setShowAddMenu(false); }}>
-                  <span className="add-menu-icon">📚</span>
-                  <span>Add Course</span>
-                </button>
-                <button className="add-menu-item" onClick={(e) => { e.stopPropagation(); navigate('/suggestions'); setShowAddMenu(false); }}>
-                  <span className="add-menu-icon">💡</span>
-                  <span>Review Suggestions</span>
-                </button>
-              </div>
-            )}
-            <button
-              key={item.name}
-              className={`footer-item ${isActive(item.path) ? 'active' : ''} ${item.isAction && showAddMenu ? 'action-active' : ''}`}
-              onClick={() => handleNavClick(item)}
+    <>
+      {showAddMenu && (
+        <div
+          className="footer-overlay animate-fade-in"
+          onClick={() => setShowAddMenu(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            zIndex: 2999,
+          }}
+        />
+      )}
+      <div
+        className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
+        onMouseEnter={() => setIsVisible(true)}
+      >
+        {showAddMenu && (
+          <div 
+            className="footer-animate-slide-up"
+            style={{
+              position: 'absolute',
+              bottom: '90px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '4px',
+              zIndex: 3001,
+              width: 'max-content',
+              maxWidth: 'calc(100vw - 24px)',
+              overflowX: 'auto',
+              boxSizing: 'border-box',
+              marginBottom: '16px'
+            }}
+          >
+            <button 
+              onClick={(e) => { e.stopPropagation(); navigate('/courses'); setShowAddMenu(false); }}
+              style={{ background: 'white', borderRadius: '24px', padding: '12px 16px', boxShadow: '0 12px 28px rgba(15,23,42,0.12)', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '12px', border: '1.5px solid #e2e8f0', width: '270px', height: '80px', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)' }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(15,23,42,0.18)'; e.currentTarget.style.borderColor = '#3863a8'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#eff6ff'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'scale(1.1)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(15,23,42,0.12)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#f1f5f9'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'none'; }}
             >
-              <div className="footer-icon">
-                {item.icon}
-                {item.name === 'Leaves' && unreadCounts.leaves >= 0 && (unreadCounts.leaves - seenCounts.leaves) > 0 && !location.pathname.includes('/leaves') && <span className="footer-dot">{unreadCounts.leaves - seenCounts.leaves}</span>}
-                {item.name === 'View tickets' && unreadCounts.tickets >= 0 && (unreadCounts.tickets - seenCounts.tickets) > 0 && !location.pathname.includes('/tickets') && <span className="footer-dot">{unreadCounts.tickets - seenCounts.tickets}</span>}
-                {item.name === 'Thread' && unreadCounts.threads >= 0 && (unreadCounts.threads - seenCounts.threads) > 0 && !location.pathname.includes('/engagement') && <span className="footer-dot">{unreadCounts.threads - seenCounts.threads}</span>}
-              </div>
-              <span className="footer-label">{item.name}</span>
+              <span className="add-menu-icon" style={{ fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', width: '44px', height: '44px', borderRadius: '50%', transition: 'all 0.2s ease', flexShrink: 0 }}>📚</span>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', textAlign: 'left', lineHeight: '1.2', flex: 1, whiteSpace: 'nowrap' }}>Add Course</span>
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); navigate('/job-postings'); setShowAddMenu(false); }}
+              style={{ background: 'white', borderRadius: '24px', padding: '12px 16px', boxShadow: '0 12px 28px rgba(15,23,42,0.12)', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '12px', border: '1.5px solid #e2e8f0', width: '270px', height: '80px', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)' }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(15,23,42,0.18)'; e.currentTarget.style.borderColor = '#3863a8'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#eff6ff'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'scale(1.1)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(15,23,42,0.12)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#f1f5f9'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'none'; }}
+            >
+              <span className="add-menu-icon" style={{ fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', width: '44px', height: '44px', borderRadius: '50%', transition: 'all 0.2s ease', flexShrink: 0 }}>📋</span>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', textAlign: 'left', lineHeight: '1.2', flex: 1, whiteSpace: 'nowrap' }}>Post Vacancy</span>
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); navigate('/payslip', { state: { openAddForm: true } }); setShowAddMenu(false); }}
+              style={{ background: 'white', borderRadius: '24px', padding: '12px 16px', boxShadow: '0 12px 28px rgba(15,23,42,0.12)', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '12px', border: '1.5px solid #e2e8f0', width: '270px', height: '80px', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)' }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(15,23,42,0.18)'; e.currentTarget.style.borderColor = '#3863a8'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#eff6ff'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'scale(1.1)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(15,23,42,0.12)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#f1f5f9'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'none'; }}
+            >
+              <span className="add-menu-icon" style={{ fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', width: '44px', height: '44px', borderRadius: '50%', transition: 'all 0.2s ease', flexShrink: 0 }}>📄</span>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', textAlign: 'left', lineHeight: '1.2', flex: 1, whiteSpace: 'nowrap' }}>Add Employee Payslip</span>
             </button>
           </div>
-        ))}
-      </nav>
-    </div>
+        )}
+
+        <nav className="app-footer">
+          {navItems.map((item) => (
+            <div key={item.name} className="footer-item-container" style={{ position: 'relative' }}>
+              <button
+                className={`footer-item ${isActive(item) ? 'active' : ''} ${item.isAction && showAddMenu ? 'action-active' : ''}`}
+                onClick={() => handleNavClick(item)}
+                style={showAddMenu && !item.isAction ? {
+                  filter: 'blur(3px)',
+                  opacity: 0.35,
+                  pointerEvents: 'none',
+                  transition: 'filter 0.3s ease, opacity 0.3s ease'
+                } : {
+                  transition: 'filter 0.3s ease, opacity 0.3s ease'
+                }}
+              >
+                <div className="footer-icon">
+                  {item.icon}
+                  {item.name === 'Leaves' && unreadCounts.leaves >= 0 && (unreadCounts.leaves - seenCounts.leaves) > 0 && !location.pathname.includes('/leaves') && <span className="footer-dot">{unreadCounts.leaves - seenCounts.leaves}</span>}
+                  {item.name === 'View tickets' && unreadCounts.tickets >= 0 && (unreadCounts.tickets - seenCounts.tickets) > 0 && !location.pathname.includes('/tickets') && <span className="footer-dot">{unreadCounts.tickets - seenCounts.tickets}</span>}
+                  {item.name === 'Thread' && unreadCounts.threads >= 0 && (unreadCounts.threads - seenCounts.threads) > 0 && !location.pathname.includes('/engagement') && <span className="footer-dot">{unreadCounts.threads - seenCounts.threads}</span>}
+                </div>
+                <span className="footer-label">{item.name}</span>
+              </button>
+            </div>
+          ))}
+        </nav>
+      </div>
+    </>
   );
 }
