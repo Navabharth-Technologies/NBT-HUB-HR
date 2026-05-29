@@ -7,6 +7,8 @@ import {
   MapPin, GraduationCap, History,
   FileCheck, Users, Pencil, Upload, ChevronDown, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../../utils/cropImage';
 import { useAuth } from '../../context/AuthContext';
 import { BASE_URL, API_ENDPOINTS } from '../../config';
 import AppHeader from './AppHeader';
@@ -146,7 +148,7 @@ export default function PersonalInfo({ onBack }) {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isSelfMode = searchParams.get('self') === 'true';
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
     emp_name: '', gender: 'Male', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: 'General',
     pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
@@ -165,6 +167,12 @@ export default function PersonalInfo({ onBack }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [selectedProfilePicFile, setSelectedProfilePicFile] = useState(null);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const isMobile = winWidth < 768;
   const [activeSection, setActiveSection] = useState(() => {
@@ -337,9 +345,72 @@ export default function PersonalInfo({ onBack }) {
     loadDocs();
   }, [selectedEmpId]);
 
+  const handleCropComplete = (croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropSubmit = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+    setUploadingFiles(prev => ({ ...prev, profile_pic: true }));
+    setCropModalOpen(false);
+
+    try {
+      const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      const croppedFile = new File([croppedImageBlob], selectedProfilePicFile?.name || 'profile_pic.jpg', { type: 'image/jpeg' });
+      
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('image', croppedFile);
+      formData.append('file', croppedFile);
+      formData.append('userId', selectedEmpId);
+
+      const res = await fetch(API_ENDPOINTS.MANAGER_UPLOAD_IMAGE, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const url = data.url || data.filePath || data.path || data.record?.path || data.profile_pic || data.profile_picture || data.data?.url || data.data?.path;
+        if (url) {
+          setForm(prev => ({ ...prev, profile_pic: url }));
+          await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ employee_id: selectedEmpId, id: selectedEmpId, profile_pic: url, profile_picture: url })
+          });
+          if (String(selectedEmpId) === String(user?.id) || String(selectedEmpId) === String(user?.employee_id)) {
+            if (updateUser) updateUser({ profile_pic: url });
+          }
+          setToast({ type: 'success', msg: `Profile picture updated successfully` });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      setToast({ type: 'error', msg: `Upload failed` });
+    } finally {
+      setUploadingFiles(prev => ({ ...prev, profile_pic: false }));
+      setImageToCrop(null);
+      setSelectedProfilePicFile(null);
+    }
+  };
+
   const handleFileSelect = async (key, file) => {
     if (!file) return;
     setIsEditing(true);
+
+    if (key === 'profile_pic') {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToCrop(reader.result);
+        setSelectedProfilePicFile(file);
+        setCropModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     setUploadingFiles(prev => ({ ...prev, [key]: true }));
 
     // Instant local preview for better UX
@@ -351,31 +422,7 @@ export default function PersonalInfo({ onBack }) {
 
     try {
       const token = localStorage.getItem('token');
-      if (key === 'profile_pic') {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('file', file);
-        formData.append('userId', selectedEmpId);
-
-        const res = await fetch(API_ENDPOINTS.MANAGER_UPLOAD_IMAGE, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const url = data.url || data.filePath || data.path || data.record?.path || data.profile_pic || data.profile_picture || data.data?.url || data.data?.path;
-          if (url) {
-            setForm(prev => ({ ...prev, [key]: url }));
-            await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ employee_id: selectedEmpId, id: selectedEmpId, profile_pic: url, profile_picture: url })
-            });
-            setToast({ type: 'success', msg: `Profile picture updated successfully` });
-          }
-        }
+      if (false) {
       } else {
         const formData = new FormData();
         formData.append('fileData', file);
@@ -1095,6 +1142,77 @@ export default function PersonalInfo({ onBack }) {
                   </a>
                 </div>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {cropModalOpen && imageToCrop && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed', inset: 0, backgroundColor: 'rgba(11, 30, 63, 0.8)',
+                backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', padding: isMobile ? '10px' : '20px'
+              }}
+            >
+              <div style={{
+                background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '500px',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', position: 'relative'
+              }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '900', fontSize: '18px' }}>Crop Profile Picture</h3>
+                  <button
+                    onClick={() => { setCropModalOpen(false); setImageToCrop(null); setSelectedProfilePicFile(null); }}
+                    style={{ background: '#f8fafc', border: 'none', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div style={{ position: 'relative', width: '100%', height: '300px', background: '#333' }}>
+                  <Cropper
+                    image={imageToCrop}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={1}
+                    cropShape="round"
+                    showGrid={false}
+                    onCropChange={setCrop}
+                    onCropComplete={handleCropComplete}
+                    onZoomChange={setZoom}
+                  />
+                </div>
+                <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748b' }}>Zoom</span>
+                  <input
+                    type="range"
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    aria-labelledby="Zoom"
+                    onChange={(e) => { setZoom(Number(e.target.value)) }}
+                    style={{ flex: 1, accentColor: '#315A9E' }}
+                  />
+                </div>
+                <div style={{ padding: '20px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => { setCropModalOpen(false); setImageToCrop(null); setSelectedProfilePicFile(null); }}
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCropSubmit}
+                    disabled={uploadingFiles.profile_pic}
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#315A9E', border: 'none', color: '#fff', fontWeight: '800', cursor: 'pointer', opacity: uploadingFiles.profile_pic ? 0.7 : 1 }}
+                  >
+                    {uploadingFiles.profile_pic ? 'Uploading...' : 'Crop & Upload'}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
