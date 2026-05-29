@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Play } from 'lucide-react';
+import { Bell, X, Play, Clock, Zap, Award } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 
@@ -16,8 +16,26 @@ const TaskNotification = ({ onOpenTask }) => {
     const saved = localStorage.getItem('nbt_dismissed_notifs');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      const uid = user?.employee_id || user?.id || user?.EmpID || 'hr';
+      return new Set(JSON.parse(localStorage.getItem(`read_hr_notifs_${uid}`)) || []);
+    } catch {
+      return new Set();
+    }
+  });
   
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+
+  const markAsRead = (id) => {
+    setReadIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      const uid = user?.employee_id || user?.id || user?.EmpID || 'hr';
+      localStorage.setItem(`read_hr_notifs_${uid}`, JSON.stringify([...next].slice(-100)));
+      return next;
+    });
+  };
 
   // Auto-dismiss visited notifications (only if not "new" to prevent vanishing)
   useEffect(() => {
@@ -76,13 +94,16 @@ const TaskNotification = ({ onOpenTask }) => {
         return isNaN(r.getTime()) ? new Date() : r;
       };
 
+      const savedRead = JSON.parse(localStorage.getItem(`read_hr_notifs_${uid}`) || '[]');
+      const readSet = new Set(savedRead);
+
       list.forEach(n => {
         const notif = {
           id: n.id || `notif-${Math.random()}`,
           title: (n.title || n.type || 'NOTIFICATION').toUpperCase(),
           description: n.message || n.description || '',
           rawDate: parseDate(n.created_at || n.timestamp),
-          isNew: n.is_read === 0 || n.is_read === false || !n.is_read,
+          isNew: (n.is_read === 0 || n.is_read === false || !n.is_read) && !readSet.has(n.id),
           type: n.type || 'system',
           isBlockedAlert: n.isBlockedAlert || false
         };
@@ -116,7 +137,7 @@ const TaskNotification = ({ onOpenTask }) => {
     syncNotifications();
     const poll = setInterval(syncNotifications, 15000);
     return () => clearInterval(poll);
-  }, [user, dismissedIds]);
+  }, [user, dismissedIds, readIds]);
 
   const isMobile = winWidth < 768;
 
@@ -155,127 +176,142 @@ const TaskNotification = ({ onOpenTask }) => {
                 <Bell size={20} fill="white" />
                 <span style={{ fontWeight: '1000', fontSize: '14px', letterSpacing: '0.5px' }}>NOTIFICATIONS</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  onClick={() => {
-                    const allIds = notifications.map(n => n.id);
-                    setDismissedIds(prev => new Set([...prev, ...allIds]));
-                  }}
-                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '10px', padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: '1000' }}
-                >
-                  CLEAR ALL
-                </button>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <button 
+                onClick={() => setIsOpen(false)}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px', backgroundColor: '#f8fafc' }}>
-              {notifications.length > 0 ? notifications.map((notif, idx) => {
-                const isLeave = (notif.description || '').toLowerCase().includes('leave request');
-                let leaveInfo = null;
-                if (isLeave) {
-                   const match = notif.description.match(/Leave Request from (.*?) \((.*?)\): (.*)/);
-                   if (match) {
-                     leaveInfo = { name: match[1], type: match[2], dates: match[3] };
-                   }
-                }
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px', backgroundColor: '#f8fafc' }}>
+              {notifications.length > 0 ? notifications.map((notif, idx) => (
+                <div key={notif.id} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '1000', color: '#94a3b8', marginLeft: '5px', marginBottom: '2px' }}>
+                    {notif.date} at {notif.time}
+                  </div>
+                  <div 
+                    onClick={() => {
+                      const desc = (notif.description || '').toLowerCase();
+                      const title = (notif.title || '').toLowerCase();
 
-                return (
-                <div key={notif.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0, marginBottom: '8px' }}>
-                  <div style={{ fontSize: '9px', fontWeight: '1000', color: '#94a3b8', marginLeft: '5px', marginBottom: '1px' }}>{notif.time.toUpperCase()} - {notif.date}</div>
-                  <div style={{
-                    background: notif.isNew ? '#ffffff' : '#f8fafc',
-                    padding: '12px',
-                    borderRadius: '16px 16px 16px 4px',
-                    boxShadow: notif.isNew ? '0 4px 15px rgba(59, 89, 152, 0.12)' : 'none',
-                    border: notif.isNew ? '1.5px solid #3B5998' : '1px solid #eef2f6',
-                    position: 'relative',
-                    marginTop: notif.isNew ? '12px' : '4px',
-                    boxSizing: 'border-box'
-                  }}>
-                    {notif.isNew && (
-                      <div style={{ position: 'absolute', top: '-8px', right: '10px', background: '#3B5998', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '8px', fontWeight: '1000' }}>URGENT</div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: isLeave ? '8px' : '4px' }}>
-                      <Bell size={12} color="#3B5998" />
-                      <span style={{ fontWeight: '1000', fontSize: '12px', color: '#0B1E3F' }}>{notif.title}</span>
+                      let path = '/';
+                      if (notif.isBlockedAlert) {
+                        path = '/new-joinees#blocked';
+                      } else if (desc.includes('leave') || title.includes('leave')) {
+                        path = '/leaves';
+                      } else if (desc.includes('resignation') || title.includes('resignation')) {
+                        path = '/admin/resignations';
+                      } else if (desc.includes('certificate') || title.includes('certificate')) {
+                        path = '/admin/certificates';
+                      } else if (desc.includes('job') || title.includes('job')) {
+                        path = '/job-applications';
+                      } else if (desc.includes('ticket') || title.includes('ticket')) {
+                        path = '/tickets';
+                      } else if (desc.includes('asset') || title.includes('asset')) {
+                        path = '/assets';
+                      } else if (desc.includes('performance') || title.includes('performance')) {
+                        path = '/performance';
+                      } else if (desc.includes('course') || title.includes('course')) {
+                        path = '/courses';
+                      } else if (desc.includes('award') || title.includes('award') || desc.includes('recognition')) {
+                        path = '/awards';
+                      } else if (onOpenTask) {
+                        onOpenTask();
+                        path = '';
+                      } else {
+                        path = '/alerts';
+                      }
+
+                      markAsRead(notif.id);
+                      if (path) navigate(path);
+                      setIsOpen(false);
+                      setHasUnread(false);
+                    }}
+                    style={{
+                      background: notif.isNew ? '#f0f7ff' : '#ffffff',
+                      padding: '16px',
+                      borderRadius: '20px',
+                      border: notif.isNew ? '1.5px solid #3B599820' : '1.5px solid #f1f5f9',
+                      boxShadow: notif.isNew ? '0 8px 20px rgba(59, 89, 152, 0.06)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = notif.isNew ? '#e8f2ff' : '#fafbfc';
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = notif.isNew ? '#f0f7ff' : '#ffffff';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    {/* Left Icon Box */}
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '12px',
+                      backgroundColor: notif.type === 'quiz' ? '#0d676c' : (notif.isNew ? '#3B5998' : '#f1f5f9'),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: (notif.isNew || notif.type === 'quiz') ? 'white' : '#94a3b8',
+                      flexShrink: 0,
+                      transition: 'all 0.3s ease'
+                    }}>
+                      {notif.type === 'quiz' ? <Zap size={18} fill="white" /> : notif.type === 'award' ? <Award size={18} /> : <Bell size={18} fill={notif.isNew ? 'white' : 'transparent'} />}
                     </div>
-                    
-                    {isLeave && leaveInfo ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b' }}>Leave Request: {leaveInfo.name}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Type: {leaveInfo.type}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Dates: {leaveInfo.dates}</div>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.4', margin: 0, fontWeight: '600' }}>{notif.description}</p>
-                    )}
-                    
-                    {(notif.isNew || idx === 0) && (
-                      <button
-                        onClick={() => {
-                          const desc = (notif.description || '').toLowerCase();
-                          const title = (notif.title || '').toLowerCase();
 
-                          if (notif.isBlockedAlert) {
-                            navigate('/new-joinees#blocked');
-                          } else if (desc.includes('leave') || title.includes('leave')) {
-                            navigate('/leaves');
-                          } else if (desc.includes('resignation') || title.includes('resignation')) {
-                            navigate('/admin/resignations');
-                          } else if (desc.includes('certificate') || title.includes('certificate')) {
-                            navigate('/admin/certificates');
-                          } else if (desc.includes('job') || title.includes('job')) {
-                            navigate('/job-applications');
-                          } else if (desc.includes('ticket') || title.includes('ticket')) {
-                            navigate('/tickets');
-                          } else if (desc.includes('asset') || title.includes('asset')) {
-                            navigate('/assets');
-                          } else if (desc.includes('performance') || title.includes('performance')) {
-                            navigate('/performance');
-                          } else if (desc.includes('course') || title.includes('course')) {
-                            navigate('/courses');
-                          } else if (desc.includes('award') || title.includes('award') || desc.includes('recognition')) {
-                            navigate('/awards');
-                          } else if (onOpenTask) {
-                            onOpenTask();
-                          } else {
-                            navigate('/alerts');
-                          }
-                          setDismissedIds(prev => new Set([...prev, notif.id]));
-                          setIsOpen(false);
-                          setHasUnread(false);
-                        }}
+                    {/* Text details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h4 style={{ 
+                        margin: 0, 
+                        fontSize: '14px', 
+                        fontWeight: notif.isNew ? '1000' : '500', 
+                        color: notif.isNew ? '#0B1E3F' : '#64748b', 
+                        marginBottom: '2px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        transition: 'all 0.3s ease'
+                      }}>{notif.title}</h4>
+                      <p style={{ 
+                        margin: 0, 
+                        fontSize: '12px', 
+                        color: notif.isNew ? '#3B5998' : '#94a3b8', 
+                        fontWeight: notif.isNew ? '800' : '400', 
+                        lineHeight: '1.4',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease'
+                      }}>{notif.description}</p>
+                    </div>
+
+                    {/* Unread Blue dot */}
+                    {notif.isNew && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
                         style={{
-                          marginTop: '12px',
-                          width: '100%',
-                          background: notif.isBlockedAlert ? '#ef4444' : '#3B5998',
-                          color: 'white',
-                          border: 'none',
-                          padding: '10px',
-                          borderRadius: '10px',
-                          fontWeight: '1000',
-                          fontSize: '11px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          boxShadow: notif.isBlockedAlert ? '0 4px 12px rgba(239, 68, 68, 0.2)' : 'none'
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: '#3B5998',
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          boxShadow: '0 0 10px rgba(59, 89, 152, 0.4)'
                         }}
-                      >
-                        <Play size={12} fill="white" /> {notif.isBlockedAlert ? 'MANAGE JOINEES' : 'VIEW NOTIFICATION'}
-                      </button>
+                      />
                     )}
                   </div>
                 </div>
-                );
-              }) : (
+              )) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '13px', fontWeight: '700' }}>
                    No new assignments yet.
                 </div>

@@ -36,12 +36,14 @@ import JobPostings from './components/profile/JobPostings';
 import MyLeaves from './components/profile/MyLeaves';
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { WifiOff, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import TaskNotification from './components/profile/TaskNotification';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) return null; // Prevent flicker and redirect on refresh
 
@@ -54,9 +56,10 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="/dashboard" element={<HRDashboard />} />
+    <>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/dashboard" element={<HRDashboard />} />
       <Route path="/performance" element={<PerformanceModule />} />
       <Route path="/profile" element={<Navigate to="/performance" />} />
       <Route path="/courses" element={<CourseModule />} />
@@ -93,6 +96,8 @@ function AppRoutes() {
       <Route path="/holidays" element={<HolidayScreen />} />
 
     </Routes>
+      <TaskNotification onOpenTask={() => navigate('/performance')} />
+    </>
   );
 }
 

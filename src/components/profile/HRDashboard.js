@@ -12,7 +12,6 @@ import {
   FileText
 } from 'lucide-react';
 import './Dashboard.css';
-import TaskNotification from './TaskNotification';
 
 const parseLogDate = (log) => {
   const rawDate = log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '';
@@ -915,9 +914,7 @@ export default function HRDashboard() {
           </div>
         </div>
       </main>
-
       <AppFooter />
-      <TaskNotification onOpenTask={() => navigate('/performance')} />
 
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>

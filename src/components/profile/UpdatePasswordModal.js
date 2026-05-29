@@ -96,18 +96,16 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
         setInfoMsg('OTP verified successfully!');
         setError(null);
       } else {
-        if (response.status === 404) {
-          console.warn('verify-otp endpoint not found, falling back to client-side confirmation');
-          setOtpVerified(true);
-          setError(null);
-        } else {
-          setError(data.error || data.message || 'Invalid OTP');
-        }
+        setError(data.error || data.message || 'Invalid OTP');
+        setPasswords(prev => ({ ...prev, otp: '' }));
+        setResetMode(false);
+        setCountdown(0);
       }
     } catch (err) {
-      console.warn('Network error or endpoint not found, falling back to client-side confirmation', err);
-      setOtpVerified(true);
-      setError(null);
+      setError('Network error. Failed to connect to server.');
+      setPasswords(prev => ({ ...prev, otp: '' }));
+      setResetMode(false);
+      setCountdown(0);
     } finally {
       setVerifyingOtp(false);
     }
@@ -244,7 +242,9 @@ export default function UpdatePasswordModal({ isOpen, onClose, userEmail }) {
               padding: '40px',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
               position: 'relative',
-              fontFamily: "'Outfit', sans-serif"
+              fontFamily: "'Outfit', sans-serif",
+              maxHeight: '90vh',
+              overflowY: 'auto'
             }}
           >
             <button
