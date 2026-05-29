@@ -37,6 +37,7 @@ export default function PerformanceModule() {
   const [tempDob, setTempDob] = useState('');
   const [profileData, setProfileData] = useState({ name: '', employee_id: '', designation: '' });
   const [fetchedRole, setFetchedRole] = useState('');
+  const [joiningDate, setJoiningDate] = useState('N/A');
   const [toast, setToast] = useState({ show: false, message: '' });
   
   // Crop States
@@ -194,6 +195,18 @@ export default function PerformanceModule() {
           const target = users.find(u => String(u.employee_id || u.id || u.empId) === String(currentId));
           if (target) {
             setFetchedRole(target.Role || target.role || '');
+            if (target.joining_date) {
+              try {
+                const dateObj = new Date(target.joining_date);
+                if (!isNaN(dateObj)) {
+                  setJoiningDate(dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+                } else {
+                  setJoiningDate(target.joining_date);
+                }
+              } catch (e) {
+                setJoiningDate(target.joining_date);
+              }
+            }
           }
         }
       } catch (err) {
@@ -839,7 +852,7 @@ export default function PerformanceModule() {
             <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={20} /></div>
             <div>
               <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date of Joining</p>
-              <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>16 January 2026</p>
+              <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>{joiningDate}</p>
             </div>
           </div>
         </div>
