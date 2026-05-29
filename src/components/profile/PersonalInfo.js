@@ -374,14 +374,15 @@ export default function PersonalInfo({ onBack }) {
         const data = await res.json();
         const url = data.url || data.filePath || data.path || data.record?.path || data.profile_pic || data.profile_picture || data.data?.url || data.data?.path;
         if (url) {
-          setForm(prev => ({ ...prev, profile_pic: url }));
+          const timestampedUrl = url + (url.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+          setForm(prev => ({ ...prev, profile_pic: timestampedUrl }));
           await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ employee_id: selectedEmpId, id: selectedEmpId, profile_pic: url, profile_picture: url })
           });
           if (String(selectedEmpId) === String(user?.id) || String(selectedEmpId) === String(user?.employee_id)) {
-            if (updateUser) updateUser({ profile_pic: url });
+            if (updateUser) updateUser({ profile_pic: timestampedUrl });
           }
           setToast({ type: 'success', msg: `Profile picture updated successfully` });
         }
