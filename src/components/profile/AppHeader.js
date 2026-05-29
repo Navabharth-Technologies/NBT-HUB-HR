@@ -8,7 +8,7 @@ import { BASE_URL, API_ENDPOINTS } from '../../config';
 
 
 export default function AppHeader() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const theme = getTheme(user?.role);
   const navigate = useNavigate();
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
@@ -23,12 +23,36 @@ export default function AppHeader() {
   const [fetchedRole, setFetchedRole] = React.useState('');
 
   React.useEffect(() => {
-    const getRole = async () => {
+    const fetchUserData = async () => {
       const userRole = user?.role?.toLowerCase() || '';
       const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
-      
       const token = localStorage.getItem('token') || user?.token;
-      if (!token || !isAdmin) {
+      
+      if (!token) {
+        setFetchedRole(user?.role || user?.Role || '');
+        return;
+      }
+
+      try {
+        // Fetch own profile to ensure header has the latest profile pic globally
+        const currentId = user?.employee_id || user?.id || user?.empId;
+        if (currentId) {
+          const profileRes = await fetch(`${API_ENDPOINTS.PROFILE || `${BASE_URL}/api/employee-profile`}/${currentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (profileRes.ok) {
+            const pData = await profileRes.json();
+            const pic = pData.profile_pic || pData.profile_picture;
+            if (pic && user?.profile_pic !== pic && typeof updateUser === 'function') {
+              updateUser({ profile_pic: pic });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Fetch Profile Error:", err);
+      }
+
+      if (!isAdmin) {
         setFetchedRole(user?.role || user?.Role || '');
         return;
       }
@@ -50,8 +74,9 @@ export default function AppHeader() {
         console.error("Fetch Role Error:", err);
       }
     };
-    getRole();
-  }, [user]);
+    fetchUserData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.employee_id, user?.id, user?.token]);
 
   const styles = {
     header: {
