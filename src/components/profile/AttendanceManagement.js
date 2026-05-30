@@ -154,6 +154,7 @@ export default function AttendanceManagement() {
   const [userLocation, setUserLocation] = useState(localStorage.getItem('savedUserLocation') || 'Fetching location...');
   const [isLocating, setIsLocating] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('ALL');
   const dropdownRef = useRef(null);
   const getTodayStr = () => {
     const today = new Date();
@@ -773,8 +774,17 @@ export default function AttendanceManagement() {
       const logDate = parseLogDate(l);
       return logDate === todayStr;
     });
-    const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
-    const presentCount = uniquePresentToday;
+    const presentEmpIds = new Set();
+    todayLogs.forEach(l => {
+      const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
+      const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
+      const status = String(l?.status || l?.Status || '').toUpperCase();
+      const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
+      if (isPresent && !status.includes('ABSENT')) {
+        presentEmpIds.add(String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || ''));
+      }
+    });
+    const presentCount = presentEmpIds.size;
 
     const lateLogins = (attendanceLogs || []).filter(l => {
       const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
@@ -783,6 +793,8 @@ export default function AttendanceManagement() {
     });
 
     const halfDayLogs = (attendanceLogs || []).filter(l => {
+      const st = String(l?.status || '').toUpperCase().trim();
+      if (st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY') return true;
       const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
       const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
       if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
@@ -796,15 +808,36 @@ export default function AttendanceManagement() {
       return pOut < (17 * 60);
     });
 
-    return { total: totalCount, present: presentCount, absent: Math.max(0, totalCount - presentCount), halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs };
+
+    const lateLoginEmpIds = new Set(lateLogins.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
+    const earlyLogoutEmpIds = new Set(earlyLogouts.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
+    const halfDayEmpIds = new Set(halfDayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
+
+    return { 
+      total: totalCount, present: presentCount, absent: Math.max(0, totalCount - presentCount), 
+      halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs,
+      presentEmpIds, lateLoginEmpIds, earlyLogoutEmpIds, halfDayEmpIds
+    };
   };
 
   const metrics = calculateMetrics();
 
   const displayedEmployees = allEmployees.filter(emp => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    return (emp.name || emp.user_name || '').toLowerCase().startsWith(s);
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      if (!(emp.name || emp.user_name || '').toLowerCase().startsWith(s)) return false;
+    }
+    
+    if (activeFilter === 'ALL') return true;
+    
+    const empIdStr = String(emp.id || '').trim();
+    if (activeFilter === 'PRESENT') return metrics.presentEmpIds.has(empIdStr);
+    if (activeFilter === 'ABSENT') return !metrics.presentEmpIds.has(empIdStr);
+    if (activeFilter === 'HALF DAYS') return metrics.halfDayEmpIds.has(empIdStr);
+    if (activeFilter === 'Late Login') return metrics.lateLoginEmpIds.has(empIdStr);
+    if (activeFilter === 'Early logout') return metrics.earlyLogoutEmpIds.has(empIdStr);
+    
+    return true;
   });
 
   return (
@@ -1143,14 +1176,13 @@ export default function AttendanceManagement() {
                 onClick={() => {
                   if (m.isAction) setShowPunchEditModal(true);
                   else if (m.isOutAction) setShowPunchOutEditModal(true);
-                  else if (m.isLateAction) setShowLateLoginsModal(true);
-                  else if (m.isEarlyAction) setShowEarlyLogoutsModal(true);
-                  else if (m.label === 'HALF DAYS') setShowHalfDaysModal(true);
                   else if (m.isLeaveAction) navigate('/leaves');
+                  else if (activeFilter === m.label) setActiveFilter('ALL');
+                  else setActiveFilter(m.label);
                 }}
-                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? 'pointer' : 'default', transition: 'all 0.2s' }}
-                onMouseOver={e => (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(-4px)', e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.05)') : null}
-                onMouseOut={e => (m.isAction || m.isOutAction || m.isLateAction || m.isEarlyAction || m.isLeaveAction || m.label === 'HALF DAYS') ? (e.currentTarget.style.transform = 'translateY(0)', e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)') : null}
+                style={{ background: 'white', padding: winWidth < 768 ? '16px' : '24px', borderRadius: '24px', border: activeFilter === m.label ? `1.5px solid ${m.color}` : '1.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px', boxShadow: activeFilter === m.label ? `0 4px 12px ${m.color}33` : '0 4px 6px -1px rgba(0,0,0,0.01)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = activeFilter === m.label ? `0 10px 15px ${m.color}40` : '0 10px 15px -3px rgba(0,0,0,0.05)'; }}
+                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = activeFilter === m.label ? `0 4px 12px ${m.color}33` : '0 4px 6px -1px rgba(0,0,0,0.01)'; }}
               >
                 <div style={{ width: winWidth < 768 ? '38px' : '48px', height: winWidth < 768 ? '38px' : '48px', borderRadius: '12px', background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><m.icon size={winWidth < 768 ? 18 : 22} /></div>
                 <div>

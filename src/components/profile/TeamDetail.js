@@ -92,7 +92,7 @@ export default function TeamDetail() {
 
       <style>{`
         .member-report-card { transition: all 0.2s ease-in-out; }
-        .member-report-card:hover { border-color: #3863a8 !important; transform: scale(1.04); box-shadow: 0 10px 25px -5px rgba(56, 99, 168, 0.15) !important; }
+        .member-report-card:hover { border-color: #3863a8 !important; transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(56, 99, 168, 0.15) !important; }
         .dashboard-section:hover { border-color: #e2e8f0 !important; }
       `}</style>
 
@@ -191,9 +191,9 @@ export default function TeamDetail() {
               <div style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '17px' }}>Team Members</div>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(auto-fit, minmax(${winWidth < 480 ? '160px' : '290px'}, 1fr))`,
+                gridTemplateColumns: `repeat(auto-fill, minmax(${winWidth < 480 ? '160px' : '290px'}, 1fr))`,
                 gap: winWidth < 480 ? '12px' : '20px',
-                justifyContent: 'center'
+                justifyContent: 'flex-start'
               }}>
                 {team.members
                   .filter(m => !(/lead|manager|head/i.test(m.role)))

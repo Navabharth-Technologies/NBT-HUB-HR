@@ -21,8 +21,6 @@ export const API_ENDPOINTS = {
   EMPLOYEE_PROFILE_PUT: (id) => `${BASE_URL}/api/employee-profile/${id}`,
   EMPLOYEE_PROFILE_DELETE: (id) => `${BASE_URL}/api/employee-profile/${id}`,
   THREADS: `${BASE_URL}/api/threads`,
-  THREAD_REACT: (id) => `${BASE_URL}/api/threads/${id}/react`,
-  THREAD_REACTORS: (id, type) => `${BASE_URL}/api/threads/${id}/reactors${type ? `?type=${encodeURIComponent(type)}` : ''}`,
   THREAD_BADGE: (id) => `${BASE_URL}/api/threads/${id}/badge`,
   THREAD_COMMENT: (id) => `${BASE_URL}/api/threads/${id}/comment`,
   THREAD_COMMENTS: (id) => `${BASE_URL}/api/threads/${id}/comments`,

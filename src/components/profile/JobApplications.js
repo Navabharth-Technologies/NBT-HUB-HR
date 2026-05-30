@@ -487,8 +487,12 @@ export default function JobApplications() {
     All: applications.length,
     APPLIED: applications.filter(a => (a.status || 'Pending') === 'APPLIED' || a.status === 'Pending').length,
     SCREENING: applications.filter(a => a.status === 'SCREENING').length,
+    INTERVIEW_SCHEDULED: applications.filter(a => a.status === 'INTERVIEW_SCHEDULED').length,
+    INTERVIEW_COMPLETED: applications.filter(a => a.status === 'INTERVIEW_COMPLETED').length,
+    OFFER_EXTENDED: applications.filter(a => a.status === 'OFFER_EXTENDED').length,
     HIRED: applications.filter(a => a.status === 'HIRED').length,
     REJECTED: applications.filter(a => a.status === 'REJECTED').length,
+    WITHDRAWN: applications.filter(a => a.status === 'WITHDRAWN').length,
   };
 
   const formatDate = (d) => {
@@ -1081,7 +1085,7 @@ export default function JobApplications() {
                         }}
                       >
                         {JOB_STATUS_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>
+                          <option key={opt.value} value={opt.value} style={{ color: '#000' }}>
                             {opt.label}
                           </option>
                         ))}
@@ -1251,29 +1255,7 @@ export default function JobApplications() {
             }}>
               {notification.message}
             </p>
-            <button
-              onClick={() => setNotification({ show: false, message: '', type: 'success' })}
-              style={{
-                padding: '8px 28px',
-                borderRadius: '50px',
-                border: 'none',
-                background: notification.type === 'success'
-                  ? 'linear-gradient(135deg, #10b981, #059669)'
-                  : 'linear-gradient(135deg, #ef4444, #dc2626)',
-                color: 'white',
-                fontWeight: '900',
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: notification.type === 'success'
-                  ? '0 4px 12px rgba(16,185,129,0.35)'
-                  : '0 4px 12px rgba(239,68,68,0.35)',
-                transition: 'transform 0.15s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              OK
-            </button>
+
           </div>
         </div>
       )}

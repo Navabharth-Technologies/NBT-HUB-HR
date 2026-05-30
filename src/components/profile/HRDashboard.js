@@ -173,10 +173,30 @@ export default function HRDashboard() {
             const lDate = parseLogDate(l);
             return lDate === todayStr;
           });
-          const uniquePresentToday = new Set(todayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || ''))).size;
-          const lateTodayLogs = todayLogs.filter(l => String(l?.status || '').toUpperCase().includes('LATE'));
+          const presentIds = new Set();
+          todayLogs.forEach(l => {
+            const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
+            const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
+            const status = String(l?.status || l?.Status || '').toUpperCase();
+            const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
+            
+            if (isPresent && !status.includes('ABSENT')) {
+               const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+               if (pid) presentIds.add(pid);
+            }
+          });
+          const uniquePresentToday = presentIds.size;
+          const lateTodayLogs = todayLogs.filter(l => {
+            const st = String(l?.status || '').toUpperCase();
+            if (st.includes('LATE') || st === 'L') return true;
+            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
+            return (pIn !== -1 && pIn > (9 * 60 + 30));
+          });
           const lateToday = lateTodayLogs.length;
           const halfDayToday = todayLogs.filter(l => {
+            const st = String(l?.status || '').toUpperCase().trim();
+            console.log(`[HalfDay Check] User: ${l?.employee_name || l?.name || l?.user_id}, Status: '${st}'`);
+            if (st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY') return true;
             const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
             const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
             if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
@@ -240,8 +260,15 @@ export default function HRDashboard() {
           return lDate === todayStr;
         });
         todayLogs.forEach(l => {
-          const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-          if (pid) presentIds.add(pid);
+          const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
+          const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
+          const status = String(l?.status || l?.Status || '').toUpperCase();
+          const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
+          
+          if (isPresent && !status.includes('ABSENT')) {
+             const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+             if (pid) presentIds.add(pid);
+          }
         });
       }
 
@@ -428,7 +455,7 @@ export default function HRDashboard() {
   ];
 
   const row2Stats = [
-    { label: 'Awards and Recognition', value: rewardsCount || 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
+    { label: 'Awards and Recognition', value: 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
     { label: 'Asset Administration', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
     { label: 'Employee Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
   ];
@@ -575,8 +602,7 @@ export default function HRDashboard() {
           {/* Leave/Attendance Management */}
           <section 
             className="dashboard-section animate-fade-in" 
-            style={{ animationDelay: '0.2s', cursor: 'pointer' }}
-            onClick={() => navigate('/attendance')}
+            style={{ animationDelay: '0.2s' }}
           >
             <div style={{
               display: 'flex',
@@ -587,13 +613,28 @@ export default function HRDashboard() {
               gap: '12px'
             }}>
               <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" />Attendance Management</h2>
-
+              <button className="btn-ghost" style={{ 
+                fontSize: '12px', 
+                fontWeight: '800', 
+                color: '#3863a8', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                background: 'transparent',
+                border: '1.5px solid #3863a8',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                transition: 'all 0.2s'
+              }} onMouseOver={(e) => { e.currentTarget.style.background = '#3863a8'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#3863a8'; }}
+              onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}>
+                View All <ArrowRight size={14} />
+              </button>
             </div>
 
             {/* Attendance Quick Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px', width: '100%', boxSizing: 'border-box' }}>
               <div
-                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
                 style={{
                   padding: winWidth < 768 ? '16px 8px' : '24px',
                   background: '#f0fdf4',
@@ -606,8 +647,7 @@ export default function HRDashboard() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
-                  minWidth: 0,
-                  cursor: 'pointer'
+                  minWidth: 0
                 }}
               >
                 <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#15803d', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Present</div>
@@ -615,7 +655,6 @@ export default function HRDashboard() {
               </div>
 
               <div
-                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
                 style={{
                   padding: winWidth < 768 ? '16px 8px' : '24px',
                   background: '#fef2f2',
@@ -628,8 +667,7 @@ export default function HRDashboard() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
-                  minWidth: 0,
-                  cursor: 'pointer'
+                  minWidth: 0
                 }}
               >
                 <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#dc2626', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Absent</div>
@@ -637,7 +675,6 @@ export default function HRDashboard() {
               </div>
 
               <div
-                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
                 style={{
                   padding: winWidth < 768 ? '16px 8px' : '24px',
                   background: '#fff7ed',
@@ -650,8 +687,7 @@ export default function HRDashboard() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
-                  minWidth: 0,
-                  cursor: 'pointer'
+                  minWidth: 0
                 }}
               >
                 <div style={{ fontSize: winWidth < 768 ? '10px' : '13px', fontWeight: '900', color: '#ea580c', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: winWidth < 768 ? '0px' : '1px' }}>Half Days</div>

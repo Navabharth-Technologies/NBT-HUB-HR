@@ -5,6 +5,28 @@ import { Bell, X, Play, Clock, Zap, Award } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 
+const formatReadableDatesInString = (str) => {
+  if (!str) return '';
+  const jsDateRegex = /[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{4} \d{2}:\d{2}:\d{2}(?: GMT[+-]\d{1,4}(?::\d{2})?(?: \([^)]+\))?)?/g;
+  let res = str.replace(jsDateRegex, (match) => {
+    // Strip out timezone part before passing to Date if it fails to parse
+    const cleanMatch = match.replace(/GMT[+-]\d{1,4}(?::\d{2})?(?: \([^)]+\))?/g, '').trim();
+    const d = new Date(cleanMatch);
+    return isNaN(d.getTime()) ? match : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  });
+
+  const isoDateRegex = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g;
+  res = res.replace(isoDateRegex, (match) => {
+    const d = new Date(match);
+    return isNaN(d.getTime()) ? match : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  });
+
+  // Catch-all to remove any dangling standalone timezone strings like "GMT+5:30 (India Standard Time)"
+  res = res.replace(/GMT[+-]\d{1,4}(?::\d{2})?(?: \([^)]+\))?/g, '').trim();
+
+  return res;
+};
+
 const TaskNotification = ({ onOpenTask }) => {
   const { user } = useAuth();
   const location = useLocation();
@@ -24,7 +46,6 @@ const TaskNotification = ({ onOpenTask }) => {
       return new Set();
     }
   });
-  
   const [winWidth, setWinWidth] = useState(window.innerWidth);
 
   const markAsRead = (id) => {
@@ -41,29 +62,27 @@ const TaskNotification = ({ onOpenTask }) => {
   useEffect(() => {
     const path = location.pathname;
     setNotifications(prev => prev.filter(n => {
-       const msg = (n.description || '').toLowerCase();
-       const title = (n.title || '').toLowerCase();
-       const combine = msg + title;
+      const msg = (n.description || '').toLowerCase();
+      const title = (n.title || '').toLowerCase();
+      const combine = msg + title;
 
-       if (dismissedIds.has(n.id)) return false;
+      // Only auto-dismiss if notification is NOT new and user is on the page
+      const isOld = !n.isNew;
+      if (!isOld) return true;
 
-       // Only auto-dismiss if notification is NOT new and user is on the page
-       const isOld = !n.isNew;
-       if (!isOld) return true;
+      if (path.includes('/attendance') && combine.includes('leave')) return false;
+      if (path.includes('/tickets') && combine.includes('ticket')) return false;
+      if (path.includes('/threads') && combine.includes('thread')) return false;
+      if (path.includes('/admin/resignations') && combine.includes('resignation')) return false;
+      if (path.includes('/admin/certificates') && combine.includes('certificate')) return false;
+      if (path.includes('/job-applications') && combine.includes('job')) return false;
+      if (path.includes('/assets') && combine.includes('asset')) return false;
+      if (path.includes('/performance') && combine.includes('performance')) return false;
+      if (path.includes('/courses') && combine.includes('course')) return false;
+      if (path.includes('/awards') && combine.includes('award')) return false;
+      if (path.includes('/new-joinees') && (combine.includes('joinee') || n.isBlockedAlert)) return false;
 
-       if (path.includes('/attendance') && combine.includes('leave')) return false;
-       if (path.includes('/tickets') && combine.includes('ticket')) return false;
-       if (path.includes('/engagement') && combine.includes('thread')) return false;
-       if (path.includes('/admin/resignations') && combine.includes('resignation')) return false;
-       if (path.includes('/admin/certificates') && combine.includes('certificate')) return false;
-       if (path.includes('/job-applications') && combine.includes('job')) return false;
-       if (path.includes('/assets') && combine.includes('asset')) return false;
-       if (path.includes('/performance') && combine.includes('performance')) return false;
-       if (path.includes('/courses') && combine.includes('course')) return false;
-       if (path.includes('/awards') && combine.includes('award')) return false;
-       if (path.includes('/new-joinees') && (combine.includes('joinee') || n.isBlockedAlert)) return false;
-       
-       return true;
+      return true;
     }));
   }, [location.pathname, dismissedIds]);
 
@@ -78,19 +97,23 @@ const TaskNotification = ({ onOpenTask }) => {
 
     try {
       const uid = user.employee_id || user.id || user.EmpID;
-      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS_BY_USER(uid), { 
-        headers: { 'Authorization': `Bearer ${user.token}` } 
+      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS_BY_USER(uid), {
+        headers: { 'Authorization': `Bearer ${user.token}` }
       });
 
       if (!response.ok) return;
 
       const data = await response.json();
       const list = Array.isArray(data) ? data : (data.data || []);
-      
+
       const aggregatedMap = new Map();
 
       const parseDate = (d) => {
-        const r = new Date(d);
+        if (!d) return new Date();
+        // Strip out 'Z' and any other timezone indicators to force the browser 
+        // to parse it as local time, preventing unwanted +5:30 shifts.
+        const cleanDateStr = String(d).replace(/Z|GMT.*|[+-]\d{2}:?\d{2}$/gi, '').trim();
+        const r = new Date(cleanDateStr);
         return isNaN(r.getTime()) ? new Date() : r;
       };
 
@@ -105,7 +128,9 @@ const TaskNotification = ({ onOpenTask }) => {
           rawDate: parseDate(n.created_at || n.timestamp),
           isNew: (n.is_read === 0 || n.is_read === false || !n.is_read) && !readSet.has(n.id),
           type: n.type || 'system',
-          isBlockedAlert: n.isBlockedAlert || false
+          isBlockedAlert: n.isBlockedAlert || false,
+          referenceId: n.reference_id || n.related_id || n.target_id || n.item_id || n.entity_id || n.leave_id || n.ticket_id || null,
+          rawItem: n
         };
 
         const key = `${notif.id}|${notif.title}|${notif.description}`.toLowerCase().trim();
@@ -113,12 +138,11 @@ const TaskNotification = ({ onOpenTask }) => {
       });
 
       const finalMapped = Array.from(aggregatedMap.values())
-        .filter(n => !dismissedIds.has(n.id))
         .sort((a, b) => b.rawDate - a.rawDate)
         .map(n => ({
           ...n,
-          time: n.rawDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          date: n.rawDate.toLocaleDateString()
+          time: n.rawDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          date: n.rawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         }));
 
       setNotifications(finalMapped);
@@ -142,17 +166,17 @@ const TaskNotification = ({ onOpenTask }) => {
   const isMobile = winWidth < 768;
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      bottom: isMobile ? '40px' : '50px', 
-      right: isMobile ? '10px' : '30px', 
-      zIndex: 5000, 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'flex-end', 
-      gap: '15px' 
+    <div style={{
+      position: 'fixed',
+      bottom: isMobile ? '40px' : '50px',
+      right: isMobile ? '10px' : '30px',
+      zIndex: 5000,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: '15px'
     }}>
-      
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -176,12 +200,33 @@ const TaskNotification = ({ onOpenTask }) => {
                 <Bell size={20} fill="white" />
                 <span style={{ fontWeight: '1000', fontSize: '14px', letterSpacing: '0.5px' }}>NOTIFICATIONS</span>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => {
+                    const allIds = notifications.map(n => n.id);
+                    setDismissedIds(prev => new Set([...prev, ...allIds]));
+                    
+                    setReadIds(prev => {
+                      const next = new Set(prev);
+                      allIds.forEach(id => next.add(id));
+                      const uid = user?.employee_id || user?.id || user?.EmpID || 'hr';
+                      localStorage.setItem(`read_hr_notifs_${uid}`, JSON.stringify([...next].slice(-100)));
+                      return next;
+                    });
+                    
+                    setHasUnread(false);
+                  }}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '10px', padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: '1000' }}
+                >
+                  MARK ALL READ
+                </button>
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px', backgroundColor: '#f8fafc' }}>
@@ -313,13 +358,9 @@ const TaskNotification = ({ onOpenTask }) => {
                 </div>
               )) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '13px', fontWeight: '700' }}>
-                   No new assignments yet.
+                  No new assignments yet.
                 </div>
               )}
-            </div>
-
-            <div style={{ padding: '12px', background: 'white', borderTop: '1px solid #f1f5f9', textAlign: 'center', fontSize: '11px', fontWeight: '1000', color: '#3B5998' }}>
-              NBT HUB ASSISTANCE LIVE
             </div>
           </motion.div>
         )}

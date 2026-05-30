@@ -115,7 +115,7 @@ export default function AppFooter({ onCreateTeam }) {
         changed = true;
       }
 
-      if (currentPath.startsWith('/engagement')) {
+      if (currentPath.startsWith('/threads')) {
         if (next.threads !== unreadCounts.threads) {
           next.threads = unreadCounts.threads;
           changed = true;
@@ -164,7 +164,7 @@ export default function AppFooter({ onCreateTeam }) {
     { name: 'View tickets', path: '/tickets', icon: <Ticket size={22} /> },
     { name: 'Create', path: '/dashboard', icon: showAddMenu ? <X size={24} /> : <PlusCircle size={24} />, isAction: true },
     { name: 'Leaves', path: '/leaves', icon: <ClipboardList size={22} /> },
-    { name: 'Thread', path: '/engagement', icon: <MessageSquare size={22} /> },
+    { name: 'Thread', path: '/threads', icon: <MessageSquare size={22} /> },
     { name: 'Profile', path: '/profile', icon: <UserCheck size={22} /> },
   ];
 
@@ -276,7 +276,7 @@ export default function AppFooter({ onCreateTeam }) {
                   {item.icon}
                   {item.name === 'Leaves' && unreadCounts.leaves >= 0 && (unreadCounts.leaves - seenCounts.leaves) > 0 && !location.pathname.includes('/leaves') && <span className="footer-dot">{unreadCounts.leaves - seenCounts.leaves}</span>}
                   {item.name === 'View tickets' && unreadCounts.tickets >= 0 && (unreadCounts.tickets - seenCounts.tickets) > 0 && !location.pathname.includes('/tickets') && <span className="footer-dot">{unreadCounts.tickets - seenCounts.tickets}</span>}
-                  {item.name === 'Thread' && unreadCounts.threads >= 0 && (unreadCounts.threads - seenCounts.threads) > 0 && !location.pathname.includes('/engagement') && <span className="footer-dot">{unreadCounts.threads - seenCounts.threads}</span>}
+                  {item.name === 'Thread' && unreadCounts.threads >= 0 && (unreadCounts.threads - seenCounts.threads) > 0 && !location.pathname.includes('/threads') && <span className="footer-dot">{unreadCounts.threads - seenCounts.threads}</span>}
                 </div>
                 <span className="footer-label">{item.name}</span>
               </button>

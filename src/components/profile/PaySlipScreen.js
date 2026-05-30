@@ -467,6 +467,9 @@ export default function PaySlipScreen() {
                 setFormData(prev => ({
                     ...prev,
                     ...mapped,
+                    emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
+                    department: prev.department !== '' ? prev.department : mapped.department,
+                    designation: prev.designation !== '' ? prev.designation : mapped.designation,
                     lop: lopVal,
                     total_absent: lopVal, // LOP days count is sent in total_absent parameter
                     lop_deduction: String(calculatedLopDeduction),
@@ -598,6 +601,7 @@ export default function PaySlipScreen() {
                 ...prev,
                 employee_id: selectedUser.employee_id || selectedUser.id,
                 emp_name: selectedUser.name,
+                department: selectedUser.department || '',
                 designation: selectedUser.role || selectedUser.designation || ''
             }));
         } else {
@@ -796,6 +800,27 @@ export default function PaySlipScreen() {
                 if (idsToDelete.length > 0) {
                     await Promise.all(idsToDelete.map(id => deletePayslipById(id)));
                 }
+
+                // Sync the manually updated department and designation back to the user's profile
+                // This ensures it stores in the DB and shows as the new default going forward.
+                try {
+                    await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${user?.token}`
+                        },
+                        body: JSON.stringify({
+                            employee_id: formData.employee_id,
+                            id: formData.employee_id,
+                            department: formData.department,
+                            designation: formData.designation
+                        })
+                    });
+                } catch (syncErr) {
+                    console.error('Failed to sync employee profile:', syncErr);
+                }
+
                 setShowSuccessPopup(true);
             } else {
                 const err = await response.json();
@@ -1002,6 +1027,9 @@ export default function PaySlipScreen() {
             setFormData(prev => ({
                 ...prev,
                 ...mapped,
+                emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
+                department: prev.department !== '' ? prev.department : mapped.department,
+                designation: prev.designation !== '' ? prev.designation : mapped.designation,
                 basic_salary: String(basicSalaryNum),
                 lop: String(absentDaysNum),
                 total_absent: String(absentDaysNum),
@@ -1847,7 +1875,7 @@ export default function PaySlipScreen() {
                             Success!
                         </h3>
                         <p style={{ margin: '0 0 24px', fontSize: '13px', fontWeight: '750', color: '#475569', lineHeight: '1.5' }}>
-                            {isEditMode ? "Payslip Updated Successfully in Database!" : "Payslip Added Successfully to Database!"}
+                            {isEditMode ? "Payslip Updated Successfully!" : "Payslip Updated Successfully."}
                         </p>
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                             <button

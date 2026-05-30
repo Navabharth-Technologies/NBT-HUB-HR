@@ -13,6 +13,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const handleGlobalLogout = () => setUser(null);
+    window.addEventListener('auth:logout', handleGlobalLogout);
+    return () => window.removeEventListener('auth:logout', handleGlobalLogout);
+  }, []);
+
   // Restore session from localStorage on app load
   useEffect(() => {
     try {

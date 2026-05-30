@@ -64,7 +64,7 @@ function AppRoutes() {
       <Route path="/profile" element={<Navigate to="/performance" />} />
       <Route path="/courses" element={<CourseModule />} />
       <Route path="/suggestions" element={<SuggestionModule />} />
-      <Route path="/engagement" element={<EngagementModule />} />
+      <Route path="/threads" element={<EngagementModule />} />
       <Route path="/employees" element={<EmployeeModule />} />
       <Route path="/new-joinees" element={<NewJoineeModule />} />
       <Route path="/alerts" element={<AlertScreen />} />

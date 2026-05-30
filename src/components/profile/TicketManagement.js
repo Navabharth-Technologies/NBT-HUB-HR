@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function TicketManagement() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +51,20 @@ export default function TicketManagement() {
         // Only fetch HR related tickets per request
         const hrTickets = allTickets.filter(t => (t.department || '').toUpperCase() === 'HR');
         setTickets(hrTickets);
+        
+        // Auto-open ticket from notification
+        const openId = location.state?.openId;
+        if (openId) {
+          const target = hrTickets.find(t => String(t.id) === String(openId) || String(t.ticket_id) === String(openId) || String(t.ticket_number) === String(openId));
+          if (target) {
+            setSelectedTicket(target);
+            setActionText(target.action || '');
+            setIsManaging(true);
+            
+            // Clear state so it doesn't reopen on refresh
+            window.history.replaceState({}, document.title);
+          }
+        }
       }
     } catch (err) {
       console.error('Ticket fetch error:', err);
@@ -85,6 +100,8 @@ export default function TicketManagement() {
 
   const getPriorityStyle = (priority) => {
     switch (priority?.toLowerCase()) {
+      case 'critical':
+        return { color: '#b91c1c', label: 'CRITICAL' };
       case 'high':
       case 'urgent':
         return { color: '#ef4444', label: 'HIGH' };
@@ -263,6 +280,7 @@ export default function TicketManagement() {
               style={{ flex: 1, padding: '14px 16px', borderRadius: '15px', border: '2px solid #eef2f6', background: 'white', fontWeight: '700', color: '#1e293b', outline: 'none', cursor: 'pointer', fontSize: '13px' }}
             >
               <option>All Priority</option>
+              <option>Critical</option>
               <option>High</option>
               <option>Medium</option>
               <option>Low</option>

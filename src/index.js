@@ -122,6 +122,7 @@ window.fetch = async (...args) => {
           localStorage.removeItem('token');
           localStorage.removeItem('navAuthUser');
           localStorage.removeItem('userRole');
+          window.dispatchEvent(new Event('auth:logout'));
           showSessionExpiredModal(
             "Your session has expired because your password was changed on another device.",
             () => { window.location.hash = '/login'; },
@@ -135,6 +136,7 @@ window.fetch = async (...args) => {
       localStorage.removeItem('token');
       localStorage.removeItem('navAuthUser');
       localStorage.removeItem('userRole');
+      window.dispatchEvent(new Event('auth:logout'));
       window.location.hash = '/login';
     }
     return response;
