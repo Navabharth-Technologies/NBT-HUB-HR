@@ -401,22 +401,24 @@ const FunQuiz = ({ onBack }) => {
       let borderColor = '#eef2f3';
       let bgColor = 'white';
       let textColor = '#64748b';
+      let status = 'default';
 
       if (isAnswered) {
         if (isCorrectText) {
-          borderColor = '#22c55e'; bgColor = '#f0fdf4'; textColor = '#15803d';
+          borderColor = '#22c55e'; bgColor = '#f0fdf4'; textColor = '#15803d'; status = 'correct';
         } else if (isUserPicked) {
-          borderColor = '#ef4444'; bgColor = '#fef2f2'; textColor = '#b91c1c';
+          borderColor = '#ef4444'; bgColor = '#fef2f2'; textColor = '#b91c1c'; status = 'wrong';
         }
       } else if (isSelectedLocally) {
-        borderColor = '#0d676c'; bgColor = '#f0f9fa'; textColor = '#0d676c';
+        borderColor = '#0d676c'; bgColor = '#f0f9fa'; textColor = '#0d676c'; status = 'selected';
       }
 
       return {
         padding: '16px 20px', borderRadius: '14px', border: `1.5px solid ${borderColor}`, backgroundColor: bgColor,
         color: textColor, fontSize: '14px', fontWeight: '800', cursor: isAnswered ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', gap: '15px', transition: 'all 0.2s',
-        borderColor: borderColor // Export border color for the letter box
+        borderColor: borderColor,
+        status: status
       };
     }
   };
@@ -772,9 +774,22 @@ const FunQuiz = ({ onBack }) => {
                                   if (!currentQ.has_answered) setSelectedOption(optObj.letter);
                                 }}
                               >
-                                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: st.borderColor === '#22c55e' ? '#22c55e' : (st.borderColor === '#ef4444' ? '#ef4444' : '#0d676c'), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: '900' }}>
-                                  {optObj.letter}
-                                </div>
+                                  <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '8px',
+                                    backgroundColor: st.status === 'correct' ? '#22c55e' : (st.status === 'wrong' ? '#ef4444' : (st.status === 'selected' ? '#0d676c' : '#f1f5f9')),
+                                    color: (st.status === 'correct' || st.status === 'wrong' || st.status === 'selected') ? 'white' : '#475569',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '11px',
+                                    fontWeight: '900',
+                                    flexShrink: 0,
+                                    transition: 'all 0.2s'
+                                  }}>
+                                    {optObj.letter}
+                                  </div>
                                 {optObj.text}
                                 {currentQ.has_answered && currentQ.correct_answer === optObj.text && (
                                   <div style={{ marginLeft: 'auto', backgroundColor: '#22c55e', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900' }}>CORRECT</div>
