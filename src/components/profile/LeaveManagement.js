@@ -376,8 +376,8 @@ export default function LeaveManagement() {
                         </div>
                         <span style={{ fontSize: '9px', fontWeight: '950', color: sColor, background: sBg, padding: '4px 10px', borderRadius: '100px', textTransform: 'uppercase' }}>{displayStatus}</span>
                       </div>
-                      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '12px', fontWeight: '600' }}><Calendar size={14} /> {displayDate}</div>
-                      <div style={{ fontSize: '12px', color: '#475569', fontStyle: 'italic', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #f1f5f9', flex: 1 }}>"{req.reason || 'No reason provided'}"</div>
+                      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: '#1e293b', fontSize: '13.5px', fontWeight: '800' }}><Calendar size={14} color="#1d4ed8" /> {displayDate}</div>
+                      <div style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '750', fontStyle: 'italic', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', flex: 1 }}>"{req.reason || 'No reason provided'}"</div>
                     </div>
                   );
                 })

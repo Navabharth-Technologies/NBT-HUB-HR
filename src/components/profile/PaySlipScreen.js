@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Download, Printer, Share2, Mail, FileText, Landmark, Clock, User, Briefcase, Building2, MapPin, ChevronDown, FileSpreadsheet, Fingerprint, Calendar, Shield, Heart, X, Check, Edit, Trash2, Filter } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Share2, Mail, FileText, Landmark, Clock, User, Briefcase, Building2, MapPin, ChevronDown, FileSpreadsheet, Fingerprint, Calendar, Shield, Heart, X, Check, Edit, Trash2, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -26,15 +26,7 @@ export default function PaySlipScreen() {
     const [activePayslipForDownload, setActivePayslipForDownload] = useState(null);
     const [downloadingId, setDownloadingId] = useState(null);
     const [isExportingPDF, setIsExportingPDF] = useState(false);
-
-    useEffect(() => {
-        if (location.state?.openAddForm) {
-            setShowAddForm(true);
-            // Optional: clean up location state so refreshing doesn't reopen it
-            window.history.replaceState({}, document.title);
-        }
-    }, [location.state]);
-
+    const [currentPage, setCurrentPage] = useState(1);
     const [usersList, setUsersList] = useState([]);
     const [previewData, setPreviewData] = useState(null);
     const [formData, setFormData] = useState({
@@ -59,9 +51,12 @@ export default function PaySlipScreen() {
         basic_salary: ''
     });
     const [isFilterLoading, setIsFilterLoading] = useState(false);
-
     const [isFormFetching, setIsFormFetching] = useState(false);
     const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedEmployeeFilter, selectedMonthFilter, payslipsList]);
 
     const monthsList = [
         { value: '1', label: 'January' },
@@ -468,7 +463,7 @@ export default function PaySlipScreen() {
                     ...prev,
                     ...mapped,
                     emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
-                    department: prev.department !== '' ? prev.department : mapped.department,
+                    department: prev.department, // Do not auto-populate department from summary
                     designation: prev.designation !== '' ? prev.designation : mapped.designation,
                     lop: lopVal,
                     total_absent: lopVal, // LOP days count is sent in total_absent parameter
@@ -601,7 +596,7 @@ export default function PaySlipScreen() {
                 ...prev,
                 employee_id: selectedUser.employee_id || selectedUser.id,
                 emp_name: selectedUser.name,
-                department: selectedUser.department || '',
+                // department: selectedUser.department || '', // Manual entry requested
                 designation: selectedUser.role || selectedUser.designation || ''
             }));
         } else {
@@ -1028,7 +1023,7 @@ export default function PaySlipScreen() {
                 ...prev,
                 ...mapped,
                 emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
-                department: prev.department !== '' ? prev.department : mapped.department,
+                department: prev.department,
                 designation: prev.designation !== '' ? prev.designation : mapped.designation,
                 basic_salary: String(basicSalaryNum),
                 lop: String(absentDaysNum),
@@ -1375,6 +1370,11 @@ export default function PaySlipScreen() {
         return matchesEmployee && matchesMonth;
     });
 
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredPayslips.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedPayslips = filteredPayslips.slice(startIndex, startIndex + itemsPerPage);
+
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <div className="no-print">
@@ -1557,8 +1557,9 @@ export default function PaySlipScreen() {
                     <div style={{ background: 'white', borderRadius: '20px', boxShadow: '0 4px 24px rgba(15, 23, 42, 0.06)', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
                         {/* Table Header Row */}
                         <div style={{ overflowX: 'auto' }}>
-                            <div style={{ minWidth: '840px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr 0.5fr 0.5fr 0.5fr', padding: '14px 20px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', gap: '8px', alignItems: 'center' }}>
+                            <div style={{ minWidth: '880px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '0.5fr 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr 0.5fr 0.5fr 0.5fr', padding: '14px 20px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', gap: '8px', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>S.No</span>
                                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Employee ID</span>
                                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Employee Name</span>
                                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Month</span>
@@ -1591,13 +1592,13 @@ export default function PaySlipScreen() {
                                         <p style={{ margin: '6px 0 0', fontWeight: '600', fontSize: '12px', color: '#cbd5e1' }}>Try adjusting your filters or clear them to see all records</p>
                                     </div>
                                 ) : (
-                                    filteredPayslips.map((item, index) => (
+                                    paginatedPayslips.map((item, index) => (
                                         <div
                                             key={item._id || item.id || index}
                                             className="payslip-row"
                                             style={{
                                                 display: 'grid',
-                                                gridTemplateColumns: '1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr 0.5fr 0.5fr 0.5fr',
+                                                gridTemplateColumns: '0.5fr 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr 0.5fr 0.5fr 0.5fr',
                                                 padding: '13px 20px',
                                                 borderBottom: '1px solid #f1f5f9',
                                                 gap: '8px',
@@ -1607,6 +1608,7 @@ export default function PaySlipScreen() {
                                                 cursor: 'default'
                                             }}
                                         >
+                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#475569' }}>{startIndex + index + 1}</span>
                                             <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.employee_id || item.id || '-'}</span>
                                             <span style={{ fontSize: '13px', fontWeight: '700', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.emp_name || item.employee_name || item.name || '-'}</span>
                                             <span style={{ fontSize: '13px', fontWeight: '700', color: '#475569' }}>{item.month ? `${['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(item.month)] || item.month}${item.year ? ` ${item.year}` : ''}` : '-'}</span>
@@ -1701,6 +1703,83 @@ export default function PaySlipScreen() {
                                             </button>
                                         </div>
                                     ))
+                                )}
+
+                                {/* Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '12px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#64748b' }}>
+                                            Showing <span style={{ color: '#0f172a', fontWeight: '800' }}>{startIndex + 1}</span> to <span style={{ color: '#0f172a', fontWeight: '800' }}>{Math.min(startIndex + itemsPerPage, filteredPayslips.length)}</span> of <span style={{ color: '#0f172a', fontWeight: '800' }}>{filteredPayslips.length}</span> entries
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                            <button
+                                                type="button"
+                                                disabled={currentPage === 1}
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                    padding: '8px 12px',
+                                                    borderRadius: '10px',
+                                                    border: '1.5px solid #e2e8f0',
+                                                    background: currentPage === 1 ? '#f1f5f9' : 'white',
+                                                    color: currentPage === 1 ? '#cbd5e1' : '#475569',
+                                                    fontWeight: '800',
+                                                    fontSize: '12px',
+                                                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <ChevronLeft size={16} /> Previous
+                                            </button>
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                <button
+                                                    type="button"
+                                                    key={page}
+                                                    onClick={() => setCurrentPage(page)}
+                                                    style={{
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        borderRadius: '10px',
+                                                        border: '1.5px solid',
+                                                        borderColor: currentPage === page ? '#0f172a' : '#e2e8f0',
+                                                        background: currentPage === page ? '#0f172a' : 'white',
+                                                        color: currentPage === page ? 'white' : '#475569',
+                                                        fontWeight: '800',
+                                                        fontSize: '12px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                disabled={currentPage === totalPages}
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                    padding: '8px 12px',
+                                                    borderRadius: '10px',
+                                                    border: '1.5px solid #e2e8f0',
+                                                    background: currentPage === totalPages ? '#f1f5f9' : 'white',
+                                                    color: currentPage === totalPages ? '#cbd5e1' : '#475569',
+                                                    fontWeight: '800',
+                                                    fontSize: '12px',
+                                                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                Next <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -2124,7 +2203,7 @@ const inputStyle = {
     width: '100%',
     padding: '12px 14px 12px 40px',
     borderRadius: '14px',
-    border: '1.5px solid #e2e8f0',
+    border: '1.5px solid #94a3b8',
     fontSize: '14px',
     fontWeight: '700',
     color: '#0f172a',

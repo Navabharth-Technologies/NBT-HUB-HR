@@ -246,7 +246,7 @@ export default function AppFooter({ onCreateTeam }) {
               <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155', textAlign: 'left', lineHeight: '1.2', flex: 1, whiteSpace: 'nowrap' }}>Post Vacancy</span>
             </button>
             <button 
-              onClick={(e) => { e.stopPropagation(); navigate('/payslip', { state: { openAddForm: true } }); setShowAddMenu(false); }}
+              onClick={(e) => { e.stopPropagation(); navigate('/payslip'); setShowAddMenu(false); }}
               style={{ background: 'white', borderRadius: '24px', padding: '12px 16px', boxShadow: '0 12px 28px rgba(15,23,42,0.12)', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '12px', border: '1.5px solid #e2e8f0', width: '270px', height: '80px', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)' }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(15,23,42,0.18)'; e.currentTarget.style.borderColor = '#3863a8'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#eff6ff'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'scale(1.1)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(15,23,42,0.12)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.querySelector('.add-menu-icon').style.background = '#f1f5f9'; e.currentTarget.querySelector('.add-menu-icon').style.transform = 'none'; }}

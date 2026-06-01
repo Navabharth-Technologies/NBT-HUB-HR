@@ -33,9 +33,9 @@ const SECTIONS = [
       { key: 'nationality', label: 'Nationality', type: 'text', placeholder: 'e.g. Indian', required: true },
       { key: 'father_husband_name', label: "Father/Husband's Name", type: 'text' },
       { key: 'category', label: 'Category', type: 'select', options: ['General', 'OBC', 'SC', 'ST', 'Other'] },
-      { key: 'pan_number', label: 'PAN Number', type: 'text', placeholder: 'ABCDE1234F', required: true },
+      { key: 'pan_number', label: 'PAN Number', type: 'text', placeholder: 'Enter valid Pan Number(ABCDE1234F)', required: true },
       { key: 'pancard_photo', label: 'PAN Card Proof', type: 'file', required: true },
-      { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: '1234 5678 9012', required: true },
+      { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: 'Enter valid Aadhar Number(1234 5678 9012)', required: true },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof', type: 'file', required: true },
       { key: 'voter_id', label: 'Voter ID Number', type: 'text' },
       { key: 'voter_id_photo', label: 'Voter ID', type: 'file' },
@@ -152,15 +152,15 @@ export default function PersonalInfo({ onBack }) {
   const [form, setForm] = useState({
     emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
     pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
-    designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: 'Full Time', status: 'Active', place: '', moved: '', official_email: '',
+    designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
     contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
     sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
     ug_pg_percentage: '', ug_pg_markscard: '',
     qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
-    separation: '', lwd: '', attrition_bucket: 'N/A', reason: '',
+    separation: '', lwd: '', attrition_bucket: '', reason: '',
     experience_letter: '', previous_company_payslip: '',
     bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
-    bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: '',
+    bgv_status: '', appointment_letter: '', approved_by_ceo: '', onboarding_doc_completed: '', id_card: '', onboarding_link: '',
     profile_pic: ''
   });
   const [uploadingFiles, setUploadingFiles] = useState({});
@@ -250,15 +250,15 @@ export default function PersonalInfo({ onBack }) {
         const emptyForm = {
           emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
           pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
-          designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: 'Full Time', status: 'Active', place: '', moved: '', official_email: '',
+          designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
           contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
           sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
           ug_pg_percentage: '', ug_pg_markscard: '',
           qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
-          separation: '', lwd: '', attrition_bucket: 'N/A', reason: '',
+          separation: '', lwd: '', attrition_bucket: '', reason: '',
           experience_letter: '', previous_company_payslip: '',
           bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
-          bgv_status: 'Pending', appointment_letter: 'Not Sent', approved_by_ceo: 'No', onboarding_doc_completed: 'No', id_card: 'Not Issued', onboarding_link: '',
+          bgv_status: '', appointment_letter: '', approved_by_ceo: '', onboarding_doc_completed: '', id_card: '', onboarding_link: '',
           profile_pic: ''
         };
         setForm(emptyForm);
@@ -357,7 +357,7 @@ export default function PersonalInfo({ onBack }) {
     try {
       const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
       const croppedFile = new File([croppedImageBlob], selectedProfilePicFile?.name || 'profile_pic.jpg', { type: 'image/jpeg' });
-      
+
       const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('image', croppedFile);
@@ -576,7 +576,7 @@ export default function PersonalInfo({ onBack }) {
       } else {
         formatted = clean;
       }
-      
+
       sanitizedValue = formatted;
     }
 
@@ -743,14 +743,14 @@ export default function PersonalInfo({ onBack }) {
 
     // Strict validation logic
     const alphaFields = [
-      'emp_name', 'religion', 'nationality', 'father_husband_name', 'designation', 
-      'department', 'process', 'supervisor_l1', 'supervisor_l2', 'place', 'moved', 
-      'state', 'qualification', 'college', 'university', 'previous_org', 'source', 
+      'emp_name', 'religion', 'nationality', 'father_husband_name', 'designation',
+      'department', 'process', 'supervisor_l1', 'supervisor_l2', 'place', 'moved',
+      'state', 'qualification', 'college', 'university', 'previous_org', 'source',
       'bank_name', 'bank_branch', 'languages_known', 'blood_group'
     ];
-    
+
     const numericFields = [
-      'age', 'edu_completion_year', 'gross_salary_a', 'salary', 'pt', 
+      'age', 'edu_completion_year', 'gross_salary_a', 'salary', 'pt',
       'contact_no', 'emergency_contact_no', 'bank_account_no', 'aadhar_number'
     ];
 
@@ -815,7 +815,7 @@ export default function PersonalInfo({ onBack }) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         const year = parseInt(parts[2], 10);
-        
+
         if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1900) {
           const birthDate = new Date(year, month, day);
           if (!isNaN(birthDate.getTime())) {
@@ -1287,7 +1287,7 @@ export default function PersonalInfo({ onBack }) {
                 color: 'white', marginBottom: '10px', boxShadow: '0 10px 15px -3px rgba(11, 30, 63, 0.2)',
                 border: '1px solid rgba(255,255,255,0.1)'
               }}>
-                <motion.button 
+                <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => {
                     const idx = SECTIONS.findIndex(s => s.id === activeSection);
@@ -1302,7 +1302,7 @@ export default function PersonalInfo({ onBack }) {
                   <div style={{ fontSize: '10px', opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>Section {SECTIONS.findIndex(s => s.id === activeSection) + 1} of {SECTIONS.length}</div>
                   <div style={{ fontWeight: '900', fontSize: '14px', letterSpacing: '-0.2px' }}>{SECTIONS.find(s => s.id === activeSection)?.label}</div>
                 </div>
-                <motion.button 
+                <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => {
                     const idx = SECTIONS.findIndex(s => s.id === activeSection);
@@ -1457,31 +1457,39 @@ export default function PersonalInfo({ onBack }) {
                       </div>
                     ) : field.type === 'select' ? (
                       <select
-                        value={form[field.key]}
+                        value={form[field.key] || ''}
                         disabled={isDisabled}
                         onChange={e => handleChange(field.key, e.target.value)}
+<<<<<<< HEAD
                         style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', WebkitTextFillColor: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
                       >
                         {(field.key === 'gender' || field.key === 'category') && <option value="" disabled>{field.key === 'gender' ? 'Choose the gender' : 'Select the category'}</option>}
                         {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+=======
+                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
+                      >
+                        <option value="" disabled style={{ color: '#94a3b8', fontWeight: '900' }}>Choose {field.label}</option>
+                        {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F' }}>{o}</option>)}
+>>>>>>> e59be1c (feat: update HR application profile screens, placeholders, dropdowns, and formatting)
                       </select>
                     ) : (
                       <input
                         type="text"
                         value={form[field.key]}
+                        placeholder={field.placeholder || ''}
                         readOnly={isDisabled}
                         onChange={e => handleChange(field.key, e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '16px 20px', 
-                          borderRadius: '16px', 
-                          fontWeight: '900', 
+                        style={{
+                          width: '100%',
+                          padding: '16px 20px',
+                          borderRadius: '16px',
+                          fontWeight: '900',
                           color: '#0B1E3F',
                           WebkitTextFillColor: '#0B1E3F',
-                          border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', 
-                          backgroundColor: isDisabled ? '#f1f5f9' : 'white', 
-                          boxSizing: 'border-box', 
-                          fontFamily: 'inherit', 
+                          border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
+                          backgroundColor: isDisabled ? '#f1f5f9' : 'white',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
                           fontSize: '16px',
                           textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
                         }}

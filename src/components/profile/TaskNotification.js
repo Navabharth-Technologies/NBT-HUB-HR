@@ -121,10 +121,45 @@ const TaskNotification = ({ onOpenTask }) => {
       const readSet = new Set(savedRead);
 
       list.forEach(n => {
+        const descText = n.message || n.description || '';
+        const rawTitle = n.title || '';
+        
+        let displayTitle = '';
+        const descLower = descText.toLowerCase();
+        const titleLower = rawTitle.toLowerCase();
+        
+        if (n.isBlockedAlert) {
+          displayTitle = 'ACCESS BLOCKED';
+        } else if (descLower.includes('leave') || titleLower.includes('leave')) {
+          displayTitle = 'LEAVE REQUEST';
+        } else if (descLower.includes('resignation') || titleLower.includes('resignation')) {
+          displayTitle = 'RESIGNATION';
+        } else if (descLower.includes('certificate') || titleLower.includes('certificate')) {
+          displayTitle = 'SERVICE CERTIFICATE';
+        } else if (descLower.includes('job') || titleLower.includes('job')) {
+          displayTitle = 'JOB APPLICATION';
+        } else if (descLower.includes('task') || titleLower.includes('task')) {
+          displayTitle = 'TASK ASSIGNMENT';
+        } else if (descLower.includes('ticket') || titleLower.includes('ticket')) {
+          displayTitle = 'SUPPORT TICKET';
+        } else if (descLower.includes('asset') || titleLower.includes('asset')) {
+          displayTitle = 'ASSET ALLOCATION';
+        } else if (descLower.includes('performance') || titleLower.includes('performance')) {
+          displayTitle = 'PERFORMANCE REVIEW';
+        } else if (descLower.includes('course') || titleLower.includes('course')) {
+          displayTitle = 'COURSE ENROLLMENT';
+        } else if (descLower.includes('award') || titleLower.includes('award') || descLower.includes('recognition') || titleLower.includes('recognition')) {
+          displayTitle = 'AWARDS & RECOGNITION';
+        } else if (descLower.includes('quiz') || titleLower.includes('quiz')) {
+          displayTitle = 'QUIZ CHALLENGE';
+        } else {
+          displayTitle = (rawTitle || n.type || 'NOTIFICATION').toUpperCase();
+        }
+
         const notif = {
           id: n.id || `notif-${Math.random()}`,
-          title: (n.title || n.type || 'NOTIFICATION').toUpperCase(),
-          description: n.message || n.description || '',
+          title: displayTitle,
+          description: descText,
           rawDate: parseDate(n.created_at || n.timestamp),
           isNew: (n.is_read === 0 || n.is_read === false || !n.is_read) && !readSet.has(n.id),
           type: n.type || 'system',

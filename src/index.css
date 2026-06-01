@@ -29,6 +29,13 @@ select {
   font-size: inherit;
 }
 
+input::placeholder,
+textarea::placeholder {
+  font-weight: 400 !important;
+  opacity: 0.6;
+  text-transform: none !important;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

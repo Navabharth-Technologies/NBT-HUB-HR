@@ -725,7 +725,6 @@ export default function AssetsManagement() {
   };
 
   const categories = [
-    { key: 'all', name: 'All Assets', count: stockList.length, icon: <Package size={24} />, desc: 'Complete inventory of hardware stock', bg: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#0369a1', isClickable: true },
     { key: 'laptops', name: 'Laptops', count: stockList.filter(i => !!i.raw?.laptop_details).length, icon: <Laptop size={24} />, desc: 'Workstations and developer notebooks', bg: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', color: '#4338ca', isClickable: true },
   ];
 
