@@ -219,7 +219,7 @@ export default function ThreadScreen() {
     };
 
     const styles = {
-        container: { minHeight: '100vh', backgroundColor: 'transparent', display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '20px', padding: isMobile ? '15px 20px' : (isTablet ? '25px 50px' : '40px 100px'), maxWidth: '100%', margin: '0', boxSizing: 'border-box' },
+        container: { minHeight: '100vh', backgroundColor: 'transparent', display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '20px', padding: isMobile ? '110px 20px 40px' : (isTablet ? '120px 50px 40px' : '130px 100px 40px'), maxWidth: '100%', margin: '0', boxSizing: 'border-box' },
         card: { backgroundColor: 'white', borderRadius: isMobile ? '25px' : '40px', padding: isMobile ? '20px' : '30px', boxShadow: '0 10px 40px rgba(0,0,0,0.04)', border: '1px solid #eef2f6' },
         tagInput: { width: '100%', padding: isMobile ? '10px 15px' : '12px 20px', borderRadius: '15px', border: '1.5px solid #f1f5f9', background: '#f8fafc', fontSize: isMobile ? '11px' : '14px', fontWeight: '900', color: '#315A9E', outline: 'none', marginBottom: '12px' },
         mainInput: { width: '100%', padding: isMobile ? '12px' : '20px', borderRadius: '20px', border: '1.5px solid #f1f5f9', background: '#f8fafc', fontSize: isMobile ? '13px' : '16px', fontWeight: '600', color: '#0B1E3F', outline: 'none', resize: 'none', minHeight: isMobile ? '80px' : '100px' },
