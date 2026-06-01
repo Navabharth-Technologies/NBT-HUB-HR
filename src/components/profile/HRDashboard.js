@@ -422,15 +422,22 @@ export default function HRDashboard() {
           const lbData = await leaderboardRes.json();
           const list = Array.isArray(lbData) ? lbData : (lbData.data || []);
           participants = list.length;
-          topParticipants = list.slice(0, 3).map(p => ({
-            name: p.name || p.employee_name || 'User',
-            pic: p.profile_pic || p.profile_picture || null
-          }));
+          topParticipants = list.slice(0, 3).map(p => {
+            const empId = String(p.employee_id || p.user_id || p.empId || p.userId || p.id || '').trim();
+            const resolvedName = (empId && userLookup[empId]) || p.name || p.employee_name || 'User';
+            return {
+              name: resolvedName,
+              pic: p.profile_pic || p.profile_picture || null
+            };
+          });
           if (list.length > 0) {
+            const firstItem = list[0];
+            const empId = String(firstItem.employee_id || firstItem.user_id || firstItem.empId || firstItem.userId || firstItem.id || '').trim();
+            const resolvedName = (empId && userLookup[empId]) || firstItem.name || firstItem.employee_name || 'User';
             topPointsHolder = {
-              name: list[0].name || list[0].employee_name || 'User',
-              score: list[0].total_score || list[0].points || list[0].score || 0,
-              pic: list[0].profile_pic || list[0].profile_picture || null
+              name: resolvedName,
+              score: firstItem.total_score || firstItem.points || firstItem.score || 0,
+              pic: firstItem.profile_pic || firstItem.profile_picture || null
             };
           }
         }
