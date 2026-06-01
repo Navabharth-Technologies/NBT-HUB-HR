@@ -938,13 +938,17 @@ export default function PersonalInfo({ onBack }) {
         return;
       }
     }
-    if (activeSectionFields.includes('aadhar_number') && form.aadhar_number && form.aadhar_number.length !== 12) {
-      setToast({ type: 'error', msg: `Aadhar Number must be 12 digits${getSection('aadhar_number')}` });
-      return;
+    if (activeSectionFields.includes('aadhar_number') && form.aadhar_number) {
+      if (!/^[0-9]{12}$/.test(form.aadhar_number)) {
+        setToast({ type: 'error', msg: `Please enter a valid 12-digit Aadhar Number${getSection('aadhar_number')}` });
+        return;
+      }
     }
-    if (activeSectionFields.includes('pan_number') && form.pan_number && form.pan_number.length !== 10) {
-      setToast({ type: 'error', msg: `PAN Number must be 10 characters${getSection('pan_number')}` });
-      return;
+    if (activeSectionFields.includes('pan_number') && form.pan_number) {
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(form.pan_number)) {
+        setToast({ type: 'error', msg: `Please enter a valid PAN Number (e.g. ABCDE1234F)${getSection('pan_number')}` });
+        return;
+      }
     }
     if (activeSectionFields.includes('ifsc_code') && form.ifsc_code && form.ifsc_code.length !== 11) {
       setToast({ type: 'error', msg: `IFSC Code must be 11 characters${getSection('ifsc_code')}` });
@@ -1490,11 +1494,36 @@ export default function PersonalInfo({ onBack }) {
                             textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
                           }}
                         />
-                        {field.placeholder && (
-                          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
-                            {field.placeholder}
-                          </div>
-                        )}
+                        {field.placeholder && (() => {
+                          const val = form[field.key] || '';
+                          if (field.key === 'pan_number') {
+                            if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val)) {
+                              return null;
+                            }
+                            const isInvalid = val.length > 0;
+                            return (
+                              <div style={{ fontSize: '13px', color: isInvalid ? '#ef4444' : '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                                {isInvalid ? 'Enter valid format! (ABCDE1234F)' : field.placeholder}
+                              </div>
+                            );
+                          }
+                          if (field.key === 'aadhar_number') {
+                            if (/^[0-9]{12}$/.test(val)) {
+                              return null;
+                            }
+                            const isInvalid = val.length > 0;
+                            return (
+                              <div style={{ fontSize: '13px', color: isInvalid ? '#ef4444' : '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                                {isInvalid ? 'Enter valid format! (1234 5678 9012)' : field.placeholder}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                              {field.placeholder}
+                            </div>
+                          );
+                        })()}
                       </>
                     )}
                   </div>
