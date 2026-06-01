@@ -1460,17 +1460,12 @@ export default function PersonalInfo({ onBack }) {
                         value={form[field.key] || ''}
                         disabled={isDisabled}
                         onChange={e => handleChange(field.key, e.target.value)}
-<<<<<<< HEAD
                         style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', WebkitTextFillColor: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
                       >
-                        {(field.key === 'gender' || field.key === 'category') && <option value="" disabled>{field.key === 'gender' ? 'Choose the gender' : 'Select the category'}</option>}
-                        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-=======
-                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
-                      >
-                        <option value="" disabled style={{ color: '#94a3b8', fontWeight: '900' }}>Choose {field.label}</option>
-                        {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F' }}>{o}</option>)}
->>>>>>> e59be1c (feat: update HR application profile screens, placeholders, dropdowns, and formatting)
+                        <option value="" disabled style={{ color: '#94a3b8', fontWeight: '900', WebkitTextFillColor: '#94a3b8' }}>
+                          {field.key === 'gender' ? 'Choose gender' : field.key === 'category' ? 'Choose category' : `Choose ${field.label}`}
+                        </option>
+                        {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F' }}>{o}</option>)}
                       </select>
                     ) : (
                       <input
