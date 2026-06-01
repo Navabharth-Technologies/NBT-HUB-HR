@@ -150,7 +150,7 @@ export default function PersonalInfo({ onBack }) {
   const isSelfMode = searchParams.get('self') === 'true';
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
-    emp_name: '', gender: 'Male', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: 'General',
+    emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
     pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
     designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: 'Full Time', status: 'Active', place: '', moved: '', official_email: '',
     contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
@@ -248,7 +248,7 @@ export default function PersonalInfo({ onBack }) {
         if (!uid) return;
 
         const emptyForm = {
-          emp_name: '', gender: 'Male', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: 'General',
+          emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
           pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
           designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: 'Full Time', status: 'Active', place: '', moved: '', official_email: '',
           contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
@@ -1227,8 +1227,7 @@ export default function PersonalInfo({ onBack }) {
               <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
-              <h1 style={{ fontSize: isMobile ? '22px' : '32px', fontWeight: '900', color: '#0B1E3F', margin: 0 }}>Profile Info</h1>
-              <p style={{ fontSize: '14px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '600' }}>Employee metadata record</p>
+              <h1 style={{ fontSize: isMobile ? '22px' : '32px', fontWeight: '900', color: '#0B1E3F', margin: 0, marginTop: '8px' }}>Profile Info</h1>
             </div>
           </div>
 
@@ -1461,8 +1460,9 @@ export default function PersonalInfo({ onBack }) {
                         value={form[field.key]}
                         disabled={isDisabled}
                         onChange={e => handleChange(field.key, e.target.value)}
-                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
+                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', WebkitTextFillColor: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
                       >
+                        {(field.key === 'gender' || field.key === 'category') && <option value="" disabled>{field.key === 'gender' ? 'Choose the gender' : 'Select the category'}</option>}
                         {field.options.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
