@@ -1468,27 +1468,34 @@ export default function PersonalInfo({ onBack }) {
                         {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F' }}>{o}</option>)}
                       </select>
                     ) : (
-                      <input
-                        type="text"
-                        value={form[field.key]}
-                        placeholder={field.placeholder || ''}
-                        readOnly={isDisabled}
-                        onChange={e => handleChange(field.key, e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '16px 20px',
-                          borderRadius: '16px',
-                          fontWeight: '900',
-                          color: '#0B1E3F',
-                          WebkitTextFillColor: '#0B1E3F',
-                          border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
-                          backgroundColor: isDisabled ? '#f1f5f9' : 'white',
-                          boxSizing: 'border-box',
-                          fontFamily: 'inherit',
-                          fontSize: '16px',
-                          textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
-                        }}
-                      />
+                      <>
+                        <input
+                          type="text"
+                          value={form[field.key]}
+                          placeholder=""
+                          readOnly={isDisabled}
+                          onChange={e => handleChange(field.key, e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '16px 20px',
+                            borderRadius: '16px',
+                            fontWeight: '900',
+                            color: '#0B1E3F',
+                            WebkitTextFillColor: '#0B1E3F',
+                            border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
+                            backgroundColor: isDisabled ? '#f1f5f9' : 'white',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                            fontSize: '16px',
+                            textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
+                          }}
+                        />
+                        {field.placeholder && (
+                          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                            {field.placeholder}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );
