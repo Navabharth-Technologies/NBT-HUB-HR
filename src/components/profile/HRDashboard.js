@@ -89,7 +89,8 @@ export default function HRDashboard() {
   const [challengeData, setChallengeData] = useState({
     title: 'Loading...',
     participants: 0,
-    topParticipants: []
+    topParticipants: [],
+    topPointsHolder: null
   });
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
 
@@ -405,6 +406,7 @@ export default function HRDashboard() {
         let title = 'Tech Champions';
         let participants = 0;
         let topParticipants = [];
+        let topPointsHolder = null;
 
         if (quizRes.ok) {
           const quizzes = await quizRes.json();
@@ -421,9 +423,16 @@ export default function HRDashboard() {
           const list = Array.isArray(lbData) ? lbData : (lbData.data || []);
           participants = list.length;
           topParticipants = list.slice(0, 3).map(p => ({
-            name: p.name || 'User',
+            name: p.name || p.employee_name || 'User',
             pic: p.profile_pic || p.profile_picture || null
           }));
+          if (list.length > 0) {
+            topPointsHolder = {
+              name: list[0].name || list[0].employee_name || 'User',
+              score: list[0].total_score || list[0].points || list[0].score || 0,
+              pic: list[0].profile_pic || list[0].profile_picture || null
+            };
+          }
         }
 
         setChallengeData({
@@ -431,7 +440,8 @@ export default function HRDashboard() {
           participants: participants > 0 ? participants : 42,
           topParticipants: topParticipants.length > 0 ? topParticipants : [
             { name: 'A', pic: null }, { name: 'B', pic: null }, { name: 'C', pic: null }
-          ]
+          ],
+          topPointsHolder: topPointsHolder
         });
       } catch (e) {
         console.log('Challenge data sync error');
@@ -776,25 +786,34 @@ export default function HRDashboard() {
                 <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
                 <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', maxWidth: '200px' }}>{challengeData.participants} employees are currently competing for the top spot!</p>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ display: 'flex', marginLeft: '5px' }}>
-                    {challengeData.topParticipants.map((p, i) => (
-                      <div key={i} style={{
-                        width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b',
-                        background: '#3863a8', marginLeft: i === 0 ? '0' : '-8px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '10px', fontWeight: '800', overflow: 'hidden'
-                      }}>
-                        {p.pic ? (
-                          <img src={p.pic.startsWith('http') ? p.pic : `${BASE_URL}${p.pic.startsWith('/') ? '' : '/'}${p.pic}`} alt="p" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : p.name[0]}
-                      </div>
-                    ))}
+                {challengeData.topPointsHolder ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.1)', padding: '8px 16px', borderRadius: '50px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', marginTop: '5px' }}>
+                    <Trophy size={14} color="#f59e0b" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
+                      Top Spot: {challengeData.topPointsHolder.name} ({challengeData.topPointsHolder.score} pts)
+                    </span>
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#3863a8' }}>
-                    {challengeData.participants > 3 ? `+${challengeData.participants - 3} more` : ''}
-                  </span>
-                </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', marginLeft: '5px' }}>
+                      {challengeData.topParticipants.map((p, i) => (
+                        <div key={i} style={{
+                          width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b',
+                          background: '#3863a8', marginLeft: i === 0 ? '0' : '-8px',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '10px', fontWeight: '800', overflow: 'hidden'
+                        }}>
+                          {p.pic ? (
+                            <img src={p.pic.startsWith('http') ? p.pic : `${BASE_URL}${p.pic.startsWith('/') ? '' : '/'}${p.pic}`} alt="p" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : p.name[0]}
+                        </div>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#3863a8' }}>
+                      {challengeData.participants > 3 ? `+${challengeData.participants - 3} more` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Decorative elements */}
