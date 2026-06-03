@@ -11,6 +11,14 @@ export default function AppHeader() {
   const { user, logout, updateUser } = useAuth();
   const theme = getTheme(user?.role);
   const navigate = useNavigate();
+  const handleLogoClick = () => {
+    navigate('/dashboard');
+    setTimeout(() => {
+      if (window.location.hash.includes('dashboard') && !document.querySelector('.hr-dashboard-container')) {
+        window.location.reload();
+      }
+    }, 150);
+  };
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
   const [showLogoutModal, setShowLogoutModal] = React.useState(false);
 
@@ -123,14 +131,14 @@ export default function AppHeader() {
     <div style={styles.header}>
       <div style={{ ...styles.left, paddingRight: '20px' }}>
         <div
-          onClick={() => navigate('/')}
+          onClick={handleLogoClick}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
         >
           <img
             src={logo}
             alt="Navabharatha"
             style={{
-              height: winWidth < 768 ? '80px' : '100px',
+              height: winWidth < 768 ? '65px' : '85px',
               width: 'auto',
               objectFit: 'contain'
             }}
@@ -138,7 +146,10 @@ export default function AppHeader() {
         </div>
       </div>
 
-      <div style={styles.center}>
+      <div 
+        onClick={handleLogoClick}
+        style={{ ...styles.center, cursor: 'pointer' }}
+      >
         <div style={{
           display: 'flex',
           alignItems: 'center',

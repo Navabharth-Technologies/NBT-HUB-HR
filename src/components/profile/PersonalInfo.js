@@ -26,7 +26,7 @@ const SECTIONS = [
       { key: 'emp_name', label: 'Employee Name', placeholder: 'Full Name', type: 'text', required: true },
       { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'], required: true },
       { key: 'dob', label: 'Date of Birth', type: 'text', placeholder: 'DD/MM/YYYY', required: true },
-      { key: 'age', label: 'Age', type: 'text', placeholder: 'Years' },
+      { key: 'age', label: 'Age', type: 'text', placeholder: 'Age' },
       { key: 'religion', label: 'Religion', type: 'text' },
       { key: 'blood_group', label: 'Blood Group', type: 'text', required: true },
       { key: 'marital_status', label: 'Marital Status', type: 'select', options: ['Single', 'Married', 'Divorced', 'Widowed'] },
@@ -39,8 +39,6 @@ const SECTIONS = [
       { key: 'adharcard_photo', label: 'Aadhar Card Proof', type: 'file', required: true },
       { key: 'voter_id', label: 'Voter ID Number', type: 'text' },
       { key: 'voter_id_photo', label: 'Voter ID', type: 'file' },
-      { key: 'passport_no', label: 'Passport No', type: 'text' },
-      { key: 'passport_photo', label: 'Passport Proof', type: 'file' },
     ]
   },
   {
@@ -59,7 +57,7 @@ const SECTIONS = [
       { key: 'status', label: 'Status', type: 'select', options: ['Active', 'On Bench', 'Notice Period', 'Terminated'] },
       { key: 'place', label: 'Work Location', type: 'text' },
       { key: 'moved', label: 'Moved (Project/Dept)', type: 'text' },
-      { key: 'official_email', label: 'Official Email ID', type: 'text', required: true },
+      { key: 'official_email_id', label: 'Official Email ID', type: 'text', required: true },
     ]
   },
   {
@@ -70,7 +68,7 @@ const SECTIONS = [
     fields: [
       { key: 'contact_no', label: 'Contact No', type: 'text', required: true },
       { key: 'emergency_contact_no', label: 'Emergency Contact No', type: 'text', required: true },
-      { key: 'personal_email', label: 'Personal Email ID', type: 'text', required: true },
+      { key: 'personal_email_id', label: 'Personal Email ID', type: 'text', required: true },
       { key: 'present_address', label: 'Present Address', type: 'text', required: true },
       { key: 'permanent_address', label: 'Permanent Address', type: 'text', required: true },
       { key: 'state', label: 'State', type: 'text' },
@@ -293,8 +291,24 @@ export default function PersonalInfo({ onBack }) {
             if (lowerKey.includes('puc_markscard')) targetKey = 'puc_markscard';
             if (lowerKey.includes('ug_pg_markscard')) targetKey = 'ug_pg_markscard';
             if (lowerKey.includes('passbook_photo') || lowerKey.includes('bank_passbook')) targetKey = 'passbook_photo';
-            if (lowerKey.includes('experience_letter')) targetKey = 'experience_letter';
-            if (lowerKey.includes('previous_company_payslip') || lowerKey.includes('previous_payslip') || lowerKey.includes('payslip')) targetKey = 'previous_company_payslip';
+            if (lowerKey.includes('experience_letter')) {
+              const isEmpty = val === null || val === undefined || val === '';
+              const looksLikePath = typeof val === 'string' && (val.includes('.') || val.includes('/') || val.includes('\\') || val.startsWith('data:'));
+              if (isEmpty || lowerKey === 'experience_letter_photo' || lowerKey === 'experience_letter_proof' || lowerKey === 'experienceletterphoto' || looksLikePath) {
+                targetKey = 'experience_letter';
+              } else {
+                return;
+              }
+            }
+            if (lowerKey.includes('previous_company_payslip') || lowerKey.includes('previous_payslip') || lowerKey.includes('payslip')) {
+              const isEmpty = val === null || val === undefined || val === '';
+              const looksLikePath = typeof val === 'string' && (val.includes('.') || val.includes('/') || val.includes('\\') || val.startsWith('data:'));
+              if (isEmpty || lowerKey.includes('photo') || lowerKey.includes('proof') || lowerKey.includes('path') || looksLikePath) {
+                targetKey = 'previous_company_payslip';
+              } else {
+                return;
+              }
+            }
             if (lowerKey === 'profile_picture' || lowerKey === 'profile_pic') targetKey = 'profile_pic';
 
             // Format date fields to DD-MM-YYYY
@@ -578,6 +592,34 @@ export default function PersonalInfo({ onBack }) {
       }
 
       sanitizedValue = formatted;
+
+      // Auto-calculate age from DOB
+      const dobClean = sanitizedValue.replace(/\D/g, '');
+      if (dobClean.length === 8) {
+        const dd = parseInt(dobClean.slice(0, 2), 10);
+        const mm = parseInt(dobClean.slice(2, 4), 10);
+        const yyyy = parseInt(dobClean.slice(4, 8), 10);
+        const birthDate = new Date(yyyy, mm - 1, dd);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+        if (age >= 0 && age < 120) {
+          setForm(prev => ({ ...prev, dob: sanitizedValue, age: String(age) }));
+          setIsEditing(true);
+          return;
+        }
+      } else if (sanitizedValue === '' || dobClean.length === 0) {
+        // Clear age when DOB is cleared
+        setForm(prev => ({ ...prev, dob: sanitizedValue, age: '' }));
+        setIsEditing(true);
+        return;
+      } else {
+        // Incomplete DOB - clear age
+        setForm(prev => ({ ...prev, dob: sanitizedValue, age: '' }));
+        setIsEditing(true);
+        return;
+      }
     }
 
     if (key === 'separation') {
@@ -973,19 +1015,7 @@ export default function PersonalInfo({ onBack }) {
       const payload = { employee_id: uid, id: uid };
       activeSectionFields.forEach(k => {
         let val = form[k];
-        if (k === 'dob' && val) {
-          if (val.includes('/')) {
-            const parts = val.split('/');
-            if (parts.length === 3 && parts[0].length === 2) {
-              val = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
-          } else if (val.includes('-')) {
-            const parts = val.split('-');
-            if (parts.length === 3 && parts[0].length === 2) {
-              val = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
-          }
-        } else if (['doj', 'separation'].includes(k) && val && val.includes('-')) {
+        if (['doj', 'separation'].includes(k) && val && val.includes('-')) {
           const parts = val.split('-');
           if (parts.length === 3 && parts[0].length === 2) {
             val = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -1079,44 +1109,70 @@ export default function PersonalInfo({ onBack }) {
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 onClick={e => e.stopPropagation()}
                 style={{
-                  backgroundColor: 'white', borderRadius: '28px', padding: '12px',
-                  maxWidth: '90%', maxHeight: '90%', position: 'relative',
+                  backgroundColor: 'white', borderRadius: '28px', padding: '24px',
+                  width: isMobile ? '90vw' : '650px',
+                  maxHeight: '85vh', position: 'relative',
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                  border: '4px solid white', overflow: 'hidden'
+                  border: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '15px',
+                  overflow: 'hidden'
                 }}
               >
-                <button
-                  onClick={() => setPreviewDoc(null)}
-                  style={{
-                    position: 'absolute', top: '15px', right: '15px', width: '40px', height: '40px',
-                    borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.9)', border: 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1, color: '#0B1E3F'
-                  }}
-                >
-                  <X size={20} />
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, paddingRight: '40px' }}>
+                  <h3 style={{ margin: 0, color: '#0B1E3F', fontWeight: '900', fontSize: '18px', textTransform: 'uppercase' }}>{previewDoc.label}</h3>
+                  <button
+                    onClick={() => setPreviewDoc(null)}
+                    style={{
+                      position: 'absolute', top: '15px', right: '15px', width: '36px', height: '36px',
+                      borderRadius: '50%', backgroundColor: '#f1f5f9', border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      color: '#0B1E3F', transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
 
-                <div style={{ maxHeight: '80vh', overflowY: 'auto', borderRadius: '20px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', borderRadius: '20px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', width: '100%', boxSizing: 'border-box' }}>
                   {(previewDoc.url.toLowerCase().endsWith('.pdf') || previewDoc.url.includes('application/pdf')) ? (
-                    <iframe
-                      src={previewDoc.url}
-                      style={{ width: isMobile ? '80vw' : '600px', height: '80vh', border: 'none', borderRadius: '20px' }}
-                      title="Document Preview"
-                    />
+                    isMobile ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '30px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '64px', marginBottom: '16px' }}>📄</div>
+                        <div style={{ fontWeight: '900', color: '#0B1E3F', fontSize: '18px', marginBottom: '8px' }}>PDF Document</div>
+                        <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px', lineHeight: '1.5' }}>PDF previews cannot render directly inside emulated/mobile iframe.</div>
+                        <a
+                          href={previewDoc.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            background: '#315A9E', color: 'white', padding: '12px 24px',
+                            borderRadius: '12px', fontWeight: '900', textDecoration: 'none',
+                            fontSize: '14px', boxShadow: '0 4px 12px rgba(49, 90, 158, 0.2)'
+                          }}
+                        >
+                          OPEN / DOWNLOAD PDF
+                        </a>
+                      </div>
+                    ) : (
+                      <iframe
+                        src={previewDoc.url}
+                        style={{ width: '100%', height: '55vh', border: 'none', borderRadius: '20px' }}
+                        title="Document Preview"
+                      />
+                    )
                   ) : (previewDoc.url.includes('image/') || previewDoc.url.startsWith('data:image/') || !previewDoc.url.startsWith('data:')) ? (
                     <img
                       src={previewDoc.url}
                       alt="Proof Preview"
                       style={{
                         maxWidth: '100%',
-                        maxHeight: '80vh',
+                        maxHeight: '55vh',
                         display: 'block',
                         borderRadius: '20px',
                         objectFit: 'contain'
                       }}
                       onError={(e) => {
-                        // If image fails, show the fallback download UI
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML = `
                           <div style="display: flex; flex-direction: column; align-items: center; padding: 40px; text-align: center;">
@@ -1135,15 +1191,15 @@ export default function PersonalInfo({ onBack }) {
                     </div>
                   )}
                 </div>
-                <div style={{ padding: '15px', textAlign: 'center' }}>
-                  <div style={{ fontWeight: '900', color: '#0B1E3F', fontSize: '14px', textTransform: 'uppercase' }}>{previewDoc.label}</div>
+                
+                <div style={{ textAlign: 'center', flexShrink: 0, padding: '5px 0' }}>
                   <a
                     href={previewDoc.url}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ fontSize: '12px', color: '#315A9E', fontWeight: '800', textDecoration: 'none', marginTop: '5px', display: 'inline-block' }}
+                    style={{ fontSize: '13px', color: '#315A9E', fontWeight: '900', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    OPEN IN NEW TAB
+                    OPEN DOCUMENT IN NEW TAB ↗
                   </a>
                 </div>
               </motion.div>

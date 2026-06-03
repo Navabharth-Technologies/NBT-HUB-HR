@@ -42,10 +42,16 @@ export default function JobPostings() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
+  const [viewingPost, setViewingPost] = useState(null);
   const [saving, setSaving] = useState(false);
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
+  const [customAlert, setCustomAlert] = useState({ show: false, message: '' });
+
+  const showAlert = (message) => {
+    setCustomAlert({ show: true, message });
+  };
 
   const [form, setForm] = useState({
     title: '',
@@ -104,37 +110,37 @@ export default function JobPostings() {
 
   const handleSubmit = async () => {
     if (!navigator.onLine) {
-      alert('Submission Failed: Network disconnected ❌');
+      showAlert('Submission Failed: Network disconnected ❌');
       return;
     }
     if (!form.title || !form.department) {
-      alert('Please fill in Job Title and Department');
+      showAlert('Please fill in Job Title and Department');
       return;
     }
     if (form.experience !== '') {
       const expVal = parseInt(form.experience, 10);
       if (isNaN(expVal) || expVal < 0 || expVal > 99) {
-        alert('Experience must be a positive number between 0 and 99');
+        showAlert('Experience must be a positive number between 0 and 99');
         return;
       }
     }
     if (form.location) {
       const locationRegex = /^[a-zA-Z\s,]+$/;
       if (!locationRegex.test(form.location)) {
-        alert('Location must contain only alphabets, spaces, and commas');
+        showAlert('Location must contain only alphabets, spaces, and commas');
         return;
       }
     }
     
     // Requirements: just check it's not empty
     if (!form.requirements || form.requirements.trim() === '') {
-      alert('Please enter Requirements');
+      showAlert('Please enter Requirements');
       return;
     }
 
     // Job Description: just check it's not empty
     if (!form.description || form.description.trim() === '') {
-      alert('Please enter Job Description');
+      showAlert('Please enter Job Description');
       return;
     }
 
@@ -180,16 +186,16 @@ export default function JobPostings() {
       });
 
       if (res.ok) {
-        alert(editingPost ? 'Vacancy updated successfully ✅' : 'Vacancy posted successfully ✅');
+        showAlert(editingPost ? 'Vacancy updated successfully ✅' : 'Vacancy posted successfully ✅');
         setShowAddModal(false);
         resetForm();
         fetchPostings();
       } else {
-        alert('Failed to save vacancy');
+        showAlert('Failed to save vacancy');
       }
     } catch (err) {
       console.error('Save posting error:', err);
-      alert('Network error.');
+      showAlert('Network error.');
     } finally {
       setSaving(false);
     }
@@ -324,7 +330,7 @@ export default function JobPostings() {
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: post.status === 'Open' ? '#10b981' : '#64748b' }} />
                     {post.status?.toUpperCase()}
                   </div>
-                  <button onClick={() => { setEditingPost(post); setForm(post); setShowAddModal(true); }} style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>View Details</button>
+                  <button onClick={() => setViewingPost(post)} style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>View Details</button>
                 </div>
               </div>
             ))}
@@ -344,7 +350,6 @@ export default function JobPostings() {
           <div style={{ background: 'white', width: '100%', maxWidth: '700px', borderRadius: '30px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '25px 30px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0 }}>{editingPost ? 'Edit Vacancy' : 'Post New Vacancy'}</h2>
-              <button onClick={() => setShowAddModal(false)} style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }}><X size={16} /></button>
             </div>
             <div style={{ padding: '30px', overflowY: 'auto', flex: 1 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -383,8 +388,51 @@ export default function JobPostings() {
             <div style={{ padding: '20px 30px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '15px' }}>
               <button onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '14px', borderRadius: '50px', border: '1px solid #e2e8f0', background: 'white', fontWeight: '800', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleSubmit} disabled={saving} style={{ flex: 2, padding: '14px', borderRadius: '50px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}>
-                {saving ? 'Saving...' : (editingPost ? 'Update Vacancy' : 'Post Vacancy')}
+                {saving ? 'Saving...' : (editingPost ? 'Save Changes' : 'Post Vacancy')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal (Read-only) */}
+      {viewingPost && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: 'white', width: '100%', maxWidth: '700px', borderRadius: '30px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '25px 30px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: '#eff6ff', padding: '10px', borderRadius: '12px' }}>
+                  <Briefcase size={22} color="#3b82f6" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0 }}>{viewingPost.title}</h2>
+                  <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>{viewingPost.department} &bull; {viewingPost.location}</p>
+                </div>
+              </div>
+              <button onClick={() => setViewingPost(null)} style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+            </div>
+            <div style={{ padding: '30px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {[
+                  { label: 'Job Type', value: viewingPost.type || viewingPost.job_type || '—' },
+                  { label: 'Experience', value: viewingPost.experience ? `${viewingPost.experience} yrs` : '—' },
+                  { label: 'Location', value: viewingPost.location || '—' },
+                  { label: 'Status', value: viewingPost.status || '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ background: '#f8fafc', borderRadius: '14px', padding: '14px 18px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '18px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Requirements / Skills</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{viewingPost.requirements || '—'}</div>
+              </div>
+              <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '18px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Job Description</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{viewingPost.description || '—'}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -476,6 +524,95 @@ export default function JobPostings() {
                 Yes, Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Center Alert Pop-Up Modal */}
+      {customAlert.show && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '28px',
+            padding: winWidth < 768 ? '24px 20px' : '36px 40px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.15)',
+            border: '1.5px solid #e2e8f0',
+            textAlign: 'center',
+            fontFamily: "'Outfit', sans-serif"
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: (customAlert.message.includes('successfully') || customAlert.message.includes('✅')) ? '#ecfdf5' : '#fff1f2',
+              color: (customAlert.message.includes('successfully') || customAlert.message.includes('✅')) ? '#10b981' : '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 18px',
+              boxShadow: (customAlert.message.includes('successfully') || customAlert.message.includes('✅')) 
+                ? '0 8px 20px rgba(16, 185, 129, 0.15)' 
+                : '0 8px 20px rgba(239, 68, 68, 0.15)'
+            }}>
+              {(customAlert.message.includes('successfully') || customAlert.message.includes('✅')) ? (
+                <CheckCircle size={32} strokeWidth={2.5} />
+              ) : (
+                <XCircle size={32} strokeWidth={2.5} />
+              )}
+            </div>
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: '900',
+              color: '#0f172a',
+              margin: '0 0 8px'
+            }}>
+              {(customAlert.message.includes('successfully') || customAlert.message.includes('✅')) ? 'Success' : 'Notification'}
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: '#475569',
+              margin: '0 0 24px',
+              lineHeight: '1.6',
+              fontWeight: '600'
+            }}>
+              {customAlert.message}
+            </p>
+            <button
+              onClick={() => setCustomAlert({ show: false, message: '' })}
+              style={{
+                width: '100%',
+                padding: '12px 20px',
+                background: (customAlert.message.includes('successfully') || customAlert.message.includes('✅')) ? '#10b981' : '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '14px',
+                fontWeight: '900',
+                fontSize: '14px',
+                cursor: 'pointer',
+                boxShadow: (customAlert.message.includes('successfully') || customAlert.message.includes('✅'))
+                  ? '0 6px 16px rgba(16, 185, 129, 0.3)'
+                  : '0 6px 16px rgba(239, 68, 68, 0.3)',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

@@ -90,7 +90,7 @@ export default function AssetsManagement() {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
         const data = await response.json();
-        
+
         if (response.ok) {
           const list = Array.isArray(data) ? data : (data.recordset || data.data || []);
           const matchCount = list.filter(item => {
@@ -773,7 +773,7 @@ export default function AssetsManagement() {
               onMouseOut={(e) => { e.currentTarget.style.background = 'white'; }}
             >
               <Plus size={16} />
-              Add All Assets
+              Add stocks
             </button>
             <button
               onClick={() => {
@@ -1529,7 +1529,7 @@ export default function AssetsManagement() {
                         <Laptop size={14} /> LAPTOP UNIT DETAILS
                       </label>
                       <textarea placeholder="Model, Serial Number, OS details..." value={form.laptop_details} onChange={(e) => setForm({ ...form, laptop_details: e.target.value })} style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #1e3a8a', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '80px', resize: 'none', outline: 'none' }} />
-                      
+
                       {/* Real-Time Database Indicator */}
                       {loadingCheck && <p style={{ fontSize: '11px', color: '#64748b', margin: '8px 0 0 4px', fontWeight: '750' }}>🔍 Checking existing catalog...</p>}
                       {!loadingCheck && modelInfo && (

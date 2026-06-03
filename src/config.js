@@ -91,6 +91,7 @@ export const API_ENDPOINTS = {
   ASSET_UPDATE: (id) => `${BASE_URL}/api/assets/${id}`,
   JOB_APPLICATIONS: `${BASE_URL}/api/job-applications`,
   JOB_APPLICATION_UPDATE: (id) => `${BASE_URL}/api/job-applications/${id}`,
+  JOB_APPLICATION_DELETE: (id) => `${BASE_URL}/api/job-applications/${id}`,
   JOB_POSTINGS: `${BASE_URL}/api/job-postings`,
   JOB_POSTING_PUT: (id) => `${BASE_URL}/api/job-postings/${id}`,
   JOB_POSTING_DELETE: (id) => `${BASE_URL}/api/job-postings/${id}`,

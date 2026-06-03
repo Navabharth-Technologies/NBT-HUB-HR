@@ -26,6 +26,7 @@ export default function TicketManagement() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [actionText, setActionText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [viewingTicket, setViewingTicket] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
 
   useEffect(() => {
@@ -128,14 +129,22 @@ export default function TicketManagement() {
     doc.text(`Generated on: ${today}`, 14, 34);
 
     const tableColumn = ["Ticket ID", "Subject", "Requester", "Priority", "Status", "Created At"];
-    const tableRows = filteredTickets.map(t => [
-      t.id || t.ticket_id || 'N/A',
-      t.subject || t.title || 'Untitled',
-      t.requester || t.user_name || 'Anonymous',
-      t.priority || 'Normal',
-      t.status || 'Open',
-      t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'
-    ]);
+    const tableRows = filteredTickets.map((t, index) => {
+      const requesterName = t.creatorName || t.name || t.user_name || 'Anonymous';
+      const createdAtVal = Array.isArray(t.created_at) ? t.created_at[0] : t.created_at;
+      const createdAt = createdAtVal ? new Date(createdAtVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown';
+      const statusStr = String(t.status || '').toUpperCase() === 'OPEN' ? 'Pending' : (t.status || 'Pending');
+      const priorityStr = (t.priority || 'NORMAL').toUpperCase();
+
+      return [
+        `#${t.ticket_number || t.id || index + 1}`,
+        t.subject || t.title || 'Untitled',
+        requesterName,
+        priorityStr,
+        statusStr,
+        createdAt === 'Invalid Date' ? (createdAtVal ? String(createdAtVal).split('T')[0] : 'Unknown') : createdAt
+      ];
+    });
 
     autoTable(doc, {
       head: [tableColumn],
@@ -144,7 +153,15 @@ export default function TicketManagement() {
       theme: 'grid',
       headStyles: { fillColor: [56, 99, 168], fontSize: 10, fontStyle: 'bold', halign: 'center' },
       styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
-      alternateRowStyles: { fillColor: [248, 250, 252] }
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 28 }, // Ticket ID
+        1: { cellWidth: 'auto' }, // Subject
+        2: { cellWidth: 40 }, // Requester
+        3: { cellWidth: 22, halign: 'center' }, // Priority
+        4: { cellWidth: 22, halign: 'center' }, // Status
+        5: { cellWidth: 30, halign: 'center' }  // Created At
+      }
     });
 
     doc.save(`Ticket_Management_Report_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -328,9 +345,14 @@ export default function TicketManagement() {
                         </span>
                       </div>
 
-                      <div>
-                        <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '16px', marginBottom: '6px', lineHeight: '1.4' }}>{ticket.subject || 'No Subject'}</div>
-                        <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>{ticket.description || 'No description provided.'}</div>
+                      <div 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setViewingTicket(ticket);
+                        }}
+                      >
+                        <div style={{ fontWeight: '900', color: '#3863a8', fontSize: '16px', marginBottom: '6px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Click to view full subject">{ticket.subject || 'No Subject'}</div>
+                        <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.description || 'No description provided.'}</div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
@@ -407,8 +429,13 @@ export default function TicketManagement() {
                               #{ticket.ticket_number || ticket.id || index + 1}
                             </span>
                           </td>
-                          <td style={{ padding: '20px 25px' }}>
-                            <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '14px', maxWidth: '300px' }}>{ticket.subject || 'No Subject'}</div>
+                          <td 
+                            style={{ padding: '20px 25px', cursor: 'pointer' }}
+                            onClick={() => {
+                              setViewingTicket(ticket);
+                            }}
+                          >
+                            <div style={{ fontWeight: '800', color: '#3863a8', fontSize: '14px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Click to view full subject">{ticket.subject || 'No Subject'}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ticket.description || 'No description provided.'}</div>
                           </td>
                           <td style={{ padding: '20px 25px' }}>
@@ -529,6 +556,44 @@ export default function TicketManagement() {
                   >
                     {submitting ? 'Saving...' : <><Send size={18} /> Submit Response</>}
                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {viewingTicket && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+              >
+                <button
+                  onClick={() => setViewingTicket(null)}
+                  style={{ position: 'absolute', top: '20px', right: '20px', background: '#f8fafc', border: '1px solid #f1f5f9', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: '0.2s' }}
+                >
+                  <X size={18} />
+                </button>
+
+                <div style={{ marginBottom: '30px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                    <div style={{ background: '#eff6ff', padding: '10px', borderRadius: '12px' }}>
+                      <MessageCircle size={24} color="#3863a8" />
+                    </div>
+                    <div>
+                      <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: '0 0 2px 0' }}>View Ticket</h2>
+                      <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', margin: 0 }}>#{viewingTicket?.ticket_number || viewingTicket?.id}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '18px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Original Request</div>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>{viewingTicket?.subject}</div>
+                  <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{viewingTicket?.description || 'No description provided.'}</div>
                 </div>
               </motion.div>
             </div>

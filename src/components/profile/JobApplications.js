@@ -8,7 +8,7 @@ import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, User, Mail, Phone, FileText, Calendar,
   MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft,
-  Upload
+  Upload, Trash2
 } from 'lucide-react';
 
 const getGoogleDriveFileId = (url) => {
@@ -177,6 +177,7 @@ export default function JobApplications() {
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [previewResumeUrl, setPreviewResumeUrl] = useState(null);
+  const [deleteConfirmAppId, setDeleteConfirmAppId] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
   const showNotification = (message, type = 'success') => {
@@ -464,6 +465,31 @@ export default function JobApplications() {
     }
   };
 
+  const handleDeleteApplication = (applicationId) => {
+    setDeleteConfirmAppId(applicationId);
+  };
+
+  const executeDeleteApplication = async (applicationId) => {
+    try {
+      const res = await fetch(API_ENDPOINTS.JOB_APPLICATION_DELETE(applicationId), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      if (res.ok) {
+        showNotification('Application deleted successfully ✅', 'success');
+        fetchApplications();
+      } else {
+        const result = await res.json().catch(() => ({}));
+        showNotification(`Failed to delete: ${result.message || result.error || 'Server error'}`, 'error');
+      }
+    } catch (err) {
+      console.error('Delete application error:', err);
+      showNotification('Network error. Could not connect to server.', 'error');
+    }
+  };
+
   const filteredApps = applications
     .filter(app => {
       const name = (app.applicant_name || app.name || app.candidateName || app.candidate_name || app.full_name || '').toLowerCase();
@@ -718,12 +744,39 @@ export default function JobApplications() {
                         </div>
                       </div>
                     </div>
-                    <div style={{
-                      padding: '4px 8px', borderRadius: '8px', fontSize: '9px', fontWeight: '900',
-                      background: config.bg, color: config.color, border: `1px solid ${config.border}`,
-                      display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap'
-                    }}>
-                      {status}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        padding: '4px 8px', borderRadius: '8px', fontSize: '9px', fontWeight: '900',
+                        background: config.bg, color: config.color, border: `1px solid ${config.border}`,
+                        display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap'
+                      }}>
+                        {status}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteApplication(app.id || app._id);
+                        }}
+                        style={{
+                          background: '#fef2f2',
+                          border: 'none',
+                          color: '#ef4444',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.05)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+                        title="Delete application"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
 
@@ -1192,6 +1245,98 @@ export default function JobApplications() {
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="Resume Preview"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmAppId && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 20000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '24px',
+            padding: '30px',
+            maxWidth: '400px',
+            width: '100%',
+            boxShadow: '0 20px 50px rgba(15, 23, 42, 0.15)',
+            border: '1px solid #f1f5f9',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: '#fee2e2',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(239, 68, 68, 0.1)'
+            }}>
+              <Trash2 size={24} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0' }}>Delete Application</h3>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0, fontWeight: '500', lineHeight: '1.5' }}>Are you sure you want to delete this job application? This action cannot be undone.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '10px' }}>
+              <button
+                onClick={() => setDeleteConfirmAppId(null)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '50px',
+                  border: '2px solid #e2e8f0',
+                  background: 'white',
+                  color: '#64748b',
+                  fontSize: '14px',
+                  fontWeight: '900',
+                  cursor: 'pointer',
+                  transition: '0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = deleteConfirmAppId;
+                  setDeleteConfirmAppId(null);
+                  await executeDeleteApplication(id);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '50px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '955',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 16px rgba(239, 68, 68, 0.2)',
+                  transition: '0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

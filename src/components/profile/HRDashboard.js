@@ -106,13 +106,15 @@ export default function HRDashboard() {
 
   const fetchDashboardData = async () => {
     if (!user?.token) return;
+
+    let currentUsers = [];
+    const userLookup = {};
+
     try {
       // 1. Fetch Total Users and create lookup for name resolution (DO THIS FIRST)
       const usersRes = await fetch(API_ENDPOINTS.USERS, {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
-      const userLookup = {};
-      let currentUsers = [];
       if (usersRes.ok) {
         const uData = await usersRes.json();
         const rawUsers = Array.isArray(uData) ? uData : (uData?.data || []);
@@ -123,28 +125,37 @@ export default function HRDashboard() {
           if (uid) userLookup[uid] = u.name;
         });
       }
+    } catch (e) {
+      console.error('Error fetching users:', e);
+    }
 
-      // Fetch New Joinees & Interns (Combined & Filtered)
-      const [joineeRes, internRes] = await Promise.all([
-        fetch(API_ENDPOINTS.NEW_JOINEES, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
-        fetch(API_ENDPOINTS.INTERNS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
-      ]);
+    // Now start all other fetches in parallel!
+    const fetchJoinees = async () => {
+      try {
+        const [joineeRes, internRes] = await Promise.all([
+          fetch(API_ENDPOINTS.NEW_JOINEES, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null),
+          fetch(API_ENDPOINTS.INTERNS, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
+        ]);
 
-      let totalActiveJoinees = 0;
-      if (joineeRes && joineeRes.ok) {
-        const jData = await joineeRes.json();
-        const activeJoinees = (Array.isArray(jData) ? jData : []).filter(j => Number(j.is_blocked) !== 1);
-        totalActiveJoinees += activeJoinees.length;
+        let totalActiveJoinees = 0;
+        if (joineeRes && joineeRes.ok) {
+          const jData = await joineeRes.json();
+          const activeJoinees = (Array.isArray(jData) ? jData : []).filter(j => Number(j.is_blocked) !== 1);
+          totalActiveJoinees += activeJoinees.length;
+        }
+        if (internRes && internRes.ok) {
+          const iData = await internRes.json();
+          const internsList = Array.isArray(iData) ? iData : (iData.data || []);
+          const activeInterns = internsList.filter(i => Number(i.is_blocked) !== 1);
+          totalActiveJoinees += activeInterns.length;
+        }
+        setJoineeCount(totalActiveJoinees);
+      } catch (e) {
+        console.error('Error fetching joinees:', e);
       }
-      if (internRes && internRes.ok) {
-        const iData = await internRes.json();
-        const internsList = Array.isArray(iData) ? iData : (iData.data || []);
-        const activeInterns = internsList.filter(i => Number(i.is_blocked) !== 1);
-        totalActiveJoinees += activeInterns.length;
-      }
-      setJoineeCount(totalActiveJoinees);
+    };
 
-      // Fetch Job Applications count
+    const fetchJobApps = async () => {
       try {
         const jobAppRes = await fetch(API_ENDPOINTS.JOB_APPLICATIONS, {
           headers: { 'Authorization': `Bearer ${user.token}` }
@@ -155,169 +166,39 @@ export default function HRDashboard() {
           setJobAppCount(jobList.length);
         }
       } catch (e) {
-        console.log('Job applications endpoint not available yet');
+        console.error('Error fetching job apps:', e);
       }
-      // Fetch Real-time Attendance Logs for Dashboard Metrics
-      const attLogsRes = await fetch(API_ENDPOINTS.ATTENDANCE_LOGS_GET, {
-        headers: { 'Authorization': `Bearer ${user.token || TEAM_OFFICE_AUTH_TOKEN}` }
-      });
-      let masterLogs = [];
-      if (attLogsRes.ok) {
-        const logData = await attLogsRes.json();
-        const rawLogs = logData.data || logData.attendance || logData.logs || (Array.isArray(logData) ? logData : []);
-        masterLogs = Array.isArray(rawLogs) ? rawLogs.filter(l => String(l?.user_id || l?.Empcode || l?.EmpID || '').trim() !== '20250') : [];
+    };
 
-        if (Array.isArray(masterLogs)) {
-          const today = new Date();
-          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          const todayLogs = masterLogs.filter(l => {
-            const lDate = parseLogDate(l);
-            return lDate === todayStr;
-          });
-          const presentIds = new Set();
-          todayLogs.forEach(l => {
-            const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
-            const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
-            const status = String(l?.status || l?.Status || '').toUpperCase();
-            const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
-            
-            if (isPresent && !status.includes('ABSENT')) {
-               const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-               if (pid) presentIds.add(pid);
-            }
-          });
-          const uniquePresentToday = presentIds.size;
-          const lateTodayLogs = todayLogs.filter(l => {
-            const st = String(l?.status || '').toUpperCase();
-            if (st.includes('LATE') || st === 'L') return true;
-            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
-            return (pIn !== -1 && pIn > (9 * 60 + 30));
-          });
-          const lateToday = lateTodayLogs.length;
-          const halfDayToday = todayLogs.filter(l => {
-            const st = String(l?.status || '').toUpperCase().trim();
-            console.log(`[HalfDay Check] User: ${l?.employee_name || l?.name || l?.user_id}, Status: '${st}'`);
-            if (st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY') return true;
-            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
-            const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
-            if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
-            if (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60)) return true;
-            return false;
-          }).length;
-          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday, late: lateToday, halfDay: halfDayToday }));
-
-          const processedLate = lateTodayLogs.map(l => {
-            const uid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-            const name = l?.employee_name || l?.name || l?.EmpName || (uid && userLookup[uid]) || 'Employee';
-            const time = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time || 'N/A';
-            return {
-              id: uid,
-              name: name,
-              time: time,
-              status: l?.status || 'LATE'
-            };
-          });
-          setLateLogins(processedLate);
+    const fetchTeams = async () => {
+      try {
+        const teamsRes = await fetch(API_ENDPOINTS.TEAMS, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        if (teamsRes.ok) {
+          const tData = await teamsRes.json();
+          setTeamsCount(Array.isArray(tData) ? tData.length : (tData?.data?.length || 0));
         }
+      } catch (e) {
+        console.error('Error fetching teams:', e);
       }
+    };
 
-      // Fetch Leave Requests
-      setLeavesLoading(true);
-      const leavesRes = await fetch(API_ENDPOINTS.LEAVES_GET, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      let resolvedLeaves = [];
-      if (leavesRes.ok) {
-        const lData = await leavesRes.json();
-        const lList = Array.isArray(lData) ? lData : (lData?.leaves || lData?.all || lData?.data || lData?.requests || []);
-
-        // RESOLVE: Resolve employee names using our lookup
-        resolvedLeaves = (Array.isArray(lList) ? lList : []).map(r => {
-          if (!r.employee_name && !r.name) {
-            const uid = String(r.userId || r.user_id || r.employee_id || r.empId || '').trim();
-            if (uid && userLookup[uid]) {
-              r.employee_name = userLookup[uid];
-            }
-          }
-          return r;
+    const fetchRewards = async () => {
+      try {
+        const rewardsRes = await fetch(API_ENDPOINTS.REWARDS_HISTORY, {
+          headers: { 'Authorization': `Bearer ${user.token}` }
         });
-
-        setLeaveRequests(resolvedLeaves);
-
-        // Count all active leaves (Pending + Approved)
-        const totalActiveLeaves = resolvedLeaves.filter(r =>
-          ['PENDING', 'APPROVED'].includes(String(r.status || '').toUpperCase())
-        ).length;
-        setAttendanceStats(prev => ({ ...prev, onLeave: totalActiveLeaves }));
-      }
-
-      // Calculate daily absentees
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const presentIds = new Set();
-      if (Array.isArray(masterLogs)) {
-        const todayLogs = masterLogs.filter(l => {
-          const lDate = parseLogDate(l);
-          return lDate === todayStr;
-        });
-        todayLogs.forEach(l => {
-          const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
-          const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
-          const status = String(l?.status || l?.Status || '').toUpperCase();
-          const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
-          
-          if (isPresent && !status.includes('ABSENT')) {
-             const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-             if (pid) presentIds.add(pid);
-          }
-        });
-      }
-
-      const activeLeavesToday = (resolvedLeaves || []).filter(r => {
-        const rStatus = String(r?.status || '').toUpperCase();
-        if (!['PENDING', 'APPROVED'].includes(rStatus)) return false;
-        let rDate = r?.date || r?.start_date || '';
-        if (rDate) {
-          rDate = parseLogDate({ punch_date: rDate });
+        if (rewardsRes.ok) {
+          const rData = await rewardsRes.json();
+          setRewardsCount(Array.isArray(rData) ? rData.length : (rData?.data?.length || 0));
         }
-        return rDate === todayStr;
-      });
-      const leaveUserIds = new Set(activeLeavesToday.map(r => String(r.user_id || r.userId || r.empId || '').trim()));
-
-      if (Array.isArray(currentUsers)) {
-        const todayAbsentees = currentUsers.filter(u => {
-          const uid = String(u.id || u.empId || u.employee_id || '').trim();
-          return uid && !presentIds.has(uid);
-        }).map(u => {
-          const uid = String(u.id || u.empId || u.employee_id || '').trim();
-          const isOnLeave = leaveUserIds.has(uid);
-          return {
-            ...u,
-            status: isOnLeave ? 'ON LEAVE' : 'ABSENT'
-          };
-        });
-        setAbsentees(todayAbsentees);
+      } catch (e) {
+        console.error('Error fetching rewards:', e);
       }
+    };
 
-      // Fetch Rewards History
-      const rewardsRes = await fetch(API_ENDPOINTS.REWARDS_HISTORY, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      if (rewardsRes.ok) {
-        const rData = await rewardsRes.json();
-        setRewardsCount(Array.isArray(rData) ? rData.length : (rData?.data?.length || 0));
-      }
-
-      // Fetch Total Teams
-      const teamsRes = await fetch(API_ENDPOINTS.TEAMS, {
-        headers: { 'Authorization': `Bearer ${user.token}` }
-      });
-      if (teamsRes.ok) {
-        const tData = await teamsRes.json();
-        setTeamsCount(Array.isArray(tData) ? tData.length : (tData?.data?.length || 0));
-      }
-
-      // Fetch Upcoming Birthdays for Dashboard Preview
+    const fetchBirthdays = async () => {
       try {
         const bRes = await fetch(API_ENDPOINTS.BIRTHDAYS, {
           headers: { 'Authorization': `Bearer ${user.token}` }
@@ -334,14 +215,11 @@ export default function HRDashboard() {
             if (!dateStr) return new Date(NaN);
             if (dateStr instanceof Date) return dateStr;
             const s = String(dateStr).trim();
-            // Handle ISO YYYY-MM-DD
             if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
-            // Handle DD-MM-YYYY or DD/MM/YYYY
             if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(s)) {
               const [d, m, y] = s.split(/[-/]/);
               return new Date(y, m - 1, d);
             }
-            // Handle DD-MM or DD/MM
             if (/^\d{1,2}[-/]\d{1,2}$/.test(s)) {
               const [d, m] = s.split(/[-/]/);
               return new Date(new Date().getFullYear(), m - 1, d);
@@ -366,15 +244,16 @@ export default function HRDashboard() {
           setUpcomingBirthdays(sorted.slice(0, 5));
         }
       } catch (e) {
-        console.log('Birthdays sync error');
+        console.error('Error fetching birthdays:', e);
       }
+    };
 
-      // Fetch Holidays
+    const fetchHolidays = async () => {
       try {
         const hRes = await fetch(API_ENDPOINTS.HOLIDAYS, {
           headers: { 'Authorization': `Bearer ${user.token}` }
-        }).catch(() => null);
-        if (hRes && hRes.ok) {
+        });
+        if (hRes.ok) {
           const hData = await hRes.json();
           const hList = Array.isArray(hData) ? hData : (hData.data || []);
           const today = new Date();
@@ -391,10 +270,11 @@ export default function HRDashboard() {
           setHolidays(processedH);
         }
       } catch (e) {
-        console.log('Holidays sync error');
+        console.error('Error fetching holidays:', e);
       }
+    };
 
-      // Fetch Quiz Challenge Data
+    const fetchQuiz = async () => {
       try {
         const quizRes = await fetch(`${BASE_URL}/api/fun-quizzes`, {
           headers: { 'Authorization': `Bearer ${user.token}` }
@@ -413,7 +293,6 @@ export default function HRDashboard() {
           const quizList = Array.isArray(quizzes) ? quizzes : (quizzes.data || []);
           if (quizList.length > 0) {
             title = quizList[0].question || title;
-            // Shorten title if too long
             if (title.length > 30) title = title.substring(0, 27) + '...';
           }
         }
@@ -451,13 +330,141 @@ export default function HRDashboard() {
           topPointsHolder: topPointsHolder
         });
       } catch (e) {
-        console.log('Challenge data sync error');
+        console.error('Error fetching quiz:', e);
       }
-    } catch (err) {
-      console.error('Fetch dashboard data error:', err);
-    } finally {
-      setLeavesLoading(false);
-    }
+    };
+
+    const fetchAttendanceAndLeaves = async () => {
+      try {
+        setLeavesLoading(true);
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        const [attLogsRes, leavesRes] = await Promise.all([
+          fetch(`${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${todayStr}&endDate=${todayStr}`, { headers: { 'Authorization': `Bearer ${user.token || TEAM_OFFICE_AUTH_TOKEN}` } }).catch(() => null),
+          fetch(API_ENDPOINTS.LEAVES_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }).catch(() => null)
+        ]);
+
+        let masterLogs = [];
+        let resolvedLeaves = [];
+        const presentIds = new Set();
+
+        if (attLogsRes && attLogsRes.ok) {
+          const logData = await attLogsRes.json();
+          const rawLogs = logData.data || logData.attendance || logData.logs || (Array.isArray(logData) ? logData : []);
+          masterLogs = Array.isArray(rawLogs) ? rawLogs.filter(l => String(l?.user_id || l?.Empcode || l?.EmpID || '').trim() !== '20250') : [];
+
+          const todayLogs = masterLogs.filter(l => parseLogDate(l) === todayStr);
+          todayLogs.forEach(l => {
+            const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
+            const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
+            const status = String(l?.status || l?.Status || '').toUpperCase();
+            const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
+            
+            if (isPresent && !status.includes('ABSENT')) {
+               const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+               if (pid) presentIds.add(pid);
+            }
+          });
+
+          const uniquePresentToday = presentIds.size;
+          const lateTodayLogs = todayLogs.filter(l => {
+            const st = String(l?.status || '').toUpperCase();
+            if (st.includes('LATE') || st === 'L') return true;
+            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
+            return (pIn !== -1 && pIn > (9 * 60 + 30));
+          });
+          const lateToday = lateTodayLogs.length;
+          const halfDayToday = todayLogs.filter(l => {
+            const st = String(l?.status || '').toUpperCase().trim();
+            if (st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY') return true;
+            const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
+            const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
+            if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
+            if (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60)) return true;
+            return false;
+          }).length;
+
+          setAttendanceStats(prev => ({ ...prev, present: uniquePresentToday, late: lateToday, halfDay: halfDayToday }));
+
+          const processedLate = lateTodayLogs.map(l => {
+            const uid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+            const name = l?.employee_name || l?.name || l?.EmpName || (uid && userLookup[uid]) || 'Employee';
+            const time = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time || 'N/A';
+            return {
+              id: uid,
+              name: name,
+              time: time,
+              status: l?.status || 'LATE'
+            };
+          });
+          setLateLogins(processedLate);
+        }
+
+        if (leavesRes && leavesRes.ok) {
+          const lData = await leavesRes.json();
+          const lList = Array.isArray(lData) ? lData : (lData?.leaves || lData?.all || lData?.data || lData?.requests || []);
+
+          resolvedLeaves = (Array.isArray(lList) ? lList : []).map(r => {
+            if (!r.employee_name && !r.name) {
+              const uid = String(r.userId || r.user_id || r.employee_id || r.empId || '').trim();
+              if (uid && userLookup[uid]) {
+                r.employee_name = userLookup[uid];
+              }
+            }
+            return r;
+          });
+
+          setLeaveRequests(resolvedLeaves);
+
+          const totalActiveLeaves = resolvedLeaves.filter(r =>
+            ['PENDING', 'APPROVED'].includes(String(r.status || '').toUpperCase())
+          ).length;
+          setAttendanceStats(prev => ({ ...prev, onLeave: totalActiveLeaves }));
+        }
+
+        // Calculate absentees
+        const activeLeavesToday = (resolvedLeaves || []).filter(r => {
+          const rStatus = String(r?.status || '').toUpperCase();
+          if (!['PENDING', 'APPROVED'].includes(rStatus)) return false;
+          let rDate = r?.date || r?.start_date || '';
+          if (rDate) {
+            rDate = parseLogDate({ punch_date: rDate });
+          }
+          return rDate === todayStr;
+        });
+        const leaveUserIds = new Set(activeLeavesToday.map(r => String(r.user_id || r.userId || r.empId || '').trim()));
+
+        if (Array.isArray(currentUsers)) {
+          const todayAbsentees = currentUsers.filter(u => {
+            const uid = String(u.id || u.empId || u.employee_id || '').trim();
+            return uid && !presentIds.has(uid);
+          }).map(u => {
+            const uid = String(u.id || u.empId || u.employee_id || '').trim();
+            const isOnLeave = leaveUserIds.has(uid);
+            return {
+              ...u,
+              status: isOnLeave ? 'ON LEAVE' : 'ABSENT'
+            };
+          });
+          setAbsentees(todayAbsentees);
+        }
+      } catch (e) {
+        console.error('Error fetching attendance and leaves:', e);
+      } finally {
+        setLeavesLoading(false);
+      }
+    };
+
+    // Trigger all fetches in parallel
+    fetchJoinees();
+    fetchJobApps();
+    fetchTeams();
+    fetchRewards();
+    fetchBirthdays();
+    fetchHolidays();
+    fetchQuiz();
+    fetchAttendanceAndLeaves();
   };
 
   useEffect(() => {
@@ -465,10 +472,10 @@ export default function HRDashboard() {
   }, [user]);
 
   const row1Stats = [
-    { label: 'Total Teams', value: teamsCount || 'View', icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
-    { label: 'Total Employees', value: employeesCount || 'View', icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
-    { label: 'New Joinee', value: joineeCount || 'View', icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
-    { label: 'New Hirings', value: jobAppCount || 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
+    { label: 'Total Teams', value: typeof teamsCount === 'number' ? teamsCount : 'View', icon: <Users size={20} color="#6366f1" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eff6ff', path: '/teams' },
+    { label: 'Total Employees', value: typeof employeesCount === 'number' ? employeesCount : 'View', icon: <User size={20} color="#8b5cf6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#f5f3ff', path: '/employees' },
+    { label: 'New Joinee', value: typeof joineeCount === 'number' ? joineeCount : 'View', icon: <Sparkles size={20} color="#06b6d4" />, badge: 'This Month', badgeClass: 'badge-green', iconBg: '#ecfeff', path: '/new-joinees' },
+    { label: 'New Hirings', value: typeof jobAppCount === 'number' ? jobAppCount : 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
   ];
 
   const row2Stats = [
@@ -630,21 +637,10 @@ export default function HRDashboard() {
               gap: '12px'
             }}>
               <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" />Attendance Management</h2>
-              <button className="btn-ghost" style={{ 
-                fontSize: '12px', 
-                fontWeight: '800', 
-                color: '#3863a8', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                background: 'transparent',
-                border: '1.5px solid #3863a8',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                transition: 'all 0.2s'
-              }} onMouseOver={(e) => { e.currentTarget.style.background = '#3863a8'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#3863a8'; }}
-              onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}>
+              <button 
+                className="btn-view-all btn-blue"
+                onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
+              >
                 View All <ArrowRight size={14} />
               </button>
             </div>
@@ -791,7 +787,6 @@ export default function HRDashboard() {
                   <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#94a3b8' }}>Weekly Challenge</span>
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', maxWidth: '200px' }}>{challengeData.participants} employees are currently competing for the top spot!</p>
 
                 {challengeData.topPointsHolder ? (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.1)', padding: '8px 16px', borderRadius: '50px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', marginTop: '5px' }}>
@@ -838,20 +833,10 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer' }} onClick={() => navigate('/holidays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
-              <button className="btn-ghost" style={{ 
-                fontSize: '12px', 
-                fontWeight: '800', 
-                color: '#0d9488', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                background: 'transparent',
-                border: '1.5px solid #0d9488',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                transition: 'all 0.2s'
-              }} onMouseOver={(e) => { e.currentTarget.style.background = '#0d9488'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0d9488'; }}>
+              <button 
+                className="btn-view-all btn-teal"
+                onClick={(e) => { e.stopPropagation(); navigate('/holidays'); }}
+              >
                 View All <ArrowRight size={14} />
               </button>
             </div>
@@ -871,8 +856,15 @@ export default function HRDashboard() {
                     <div style={{ fontSize: '12px', color: '#5b7c7a' }}>{holiday.day || holiday.d?.toLocaleDateString('en-US', { weekday: 'long' }) || 'Holiday'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#0d9488' }}>{holiday.date || holiday.d?.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>2026</div>
+                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#0d9488' }}>
+                      {holiday.d ? (() => {
+                        const day = String(holiday.d.getDate()).padStart(2, '0');
+                        const month = String(holiday.d.getMonth() + 1).padStart(2, '0');
+                        const year = holiday.d.getFullYear();
+                        return `${day}-${month}-${year}`;
+                      })() : (holiday.date || '')}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>{holiday.d ? holiday.d.getFullYear() : '2026'}</div>
                   </div>
                 </div>
               )) : (
@@ -887,20 +879,10 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer' }} onClick={() => navigate('/birthdays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
-              <button className="btn-ghost" style={{ 
-                fontSize: '12px', 
-                fontWeight: '800', 
-                color: '#ec4899', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                background: 'transparent',
-                border: '1.5px solid #ec4899',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                transition: 'all 0.2s'
-              }} onMouseOver={(e) => { e.currentTarget.style.background = '#ec4899'; e.currentTarget.style.color = '#ffffff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ec4899'; }}>
+              <button 
+                className="btn-view-all btn-pink"
+                onClick={(e) => { e.stopPropagation(); navigate('/birthdays'); }}
+              >
                 View All <ArrowRight size={14} />
               </button>
             </div>

@@ -69,3 +69,49 @@ section div::-webkit-scrollbar-thumb {
     gap: 16px;
   }
 }
+
+/* Custom View All Pill Buttons */
+.btn-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 12px;
+  transition: all 0.2s ease;
+  font-family: 'Outfit', sans-serif;
+  white-space: nowrap;
+}
+
+.btn-view-all.btn-blue {
+  color: #3863a8;
+  border: 1.5px solid #3863a8;
+}
+.btn-view-all.btn-blue:hover {
+  background: #3863a8 !important;
+  color: #ffffff !important;
+  border-color: #3863a8 !important;
+}
+
+.btn-view-all.btn-teal {
+  color: #0d9488;
+  border: 1.5px solid #0d9488;
+}
+.btn-view-all.btn-teal:hover {
+  background: #0d9488 !important;
+  color: #ffffff !important;
+  border-color: #0d9488 !important;
+}
+
+.btn-view-all.btn-pink {
+  color: #ec4899;
+  border: 1.5px solid #ec4899;
+}
+.btn-view-all.btn-pink:hover {
+  background: #ec4899 !important;
+  color: #ffffff !important;
+  border-color: #ec4899 !important;
+}

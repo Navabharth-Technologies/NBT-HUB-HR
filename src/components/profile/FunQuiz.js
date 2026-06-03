@@ -125,66 +125,83 @@ const FunQuiz = ({ onBack }) => {
       // Local Cache & Merge Strategy to prevent historical score loss when quiz is deleted
       if (fetchSuccess) {
         try {
-          if (scoreList.length === 0) {
-            localStorage.setItem('nbt_historical_quiz_scores', '[]');
-            scoreList = [];
-          } else {
-            let cachedQuizScores = [];
-            const localData = localStorage.getItem('nbt_historical_quiz_scores');
-            if (localData) {
-              const parsed = JSON.parse(localData);
-              if (Array.isArray(parsed)) {
-                cachedQuizScores = parsed;
+          let cachedQuizScores = [];
+          const localData = localStorage.getItem('nbt_historical_quiz_scores');
+          if (localData) {
+            const parsed = JSON.parse(localData);
+            if (Array.isArray(parsed)) {
+              cachedQuizScores = parsed;
+            }
+          }
+
+          // A robust helper to get local date string YYYY-MM-DD
+          const getLocalDateString = (dateVal) => {
+            const d = dateVal ? new Date(dateVal) : new Date();
+            if (isNaN(d.getTime())) {
+              const now = new Date();
+              const y = now.getFullYear();
+              const m = String(now.getMonth() + 1).padStart(2, '0');
+              const day = String(now.getDate()).padStart(2, '0');
+              return `${y}-${m}-${day}`;
+            }
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+
+          const mergedMap = new Map();
+          // 1. Load historical cache first (all of it, no activeEmpIds filtering!)
+          cachedQuizScores.forEach(item => {
+            if (item) {
+              const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
+              if (empId) {
+                const score = Number(item.total_score || item.points || item.quiz_score || item.score || 0);
+                const originalDateStr = item.created_at || item.completion_date || item.date || null;
+                // Use 'cumulative' key for undated entries so they don't double-count with dated entries
+                const uniqueKey = originalDateStr
+                  ? `${empId}-${getLocalDateString(originalDateStr)}`
+                  : `${empId}-cumulative`;
+                
+                if (mergedMap.has(uniqueKey)) {
+                  const existing = mergedMap.get(uniqueKey);
+                  if (score > existing.points) {
+                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                  }
+                } else {
+                  mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                }
               }
             }
+          });
 
-            const activeEmpIds = new Set(scoreList.map(item => String(item.employee_id || item.user_id || item.userId || item.id || '')));
-
-            const mergedMap = new Map();
-            // 1. Load historical cache first (only for active employees)
-            cachedQuizScores.forEach(item => {
-              if (item) {
-                const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
-                if (activeEmpIds.has(empId)) {
-                  const score = Number(item.total_score || item.points || item.quiz_score || item.score || 0);
-                  const qId = item.quiz_id || item.quizId || '';
-                  const date = item.created_at || item.completion_date || item.date || '';
-                  
-                  if (date) {
-                    const datePart = date.split('T')[0];
-                    const uniqueKey = `${empId}-${qId || 'default'}-${datePart}`;
-                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: date });
-                  } else {
-                    const uniqueKey = `${empId}-cumulative`;
-                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: null });
-                  }
-                }
-              }
-            });
-
-            // 2. Overlay new active quiz scores
-            scoreList.forEach(item => {
-              if (item) {
-                const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
+          // 2. Overlay new active quiz scores from server
+          scoreList.forEach(item => {
+            if (item) {
+              const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
+              if (empId) {
                 const score = Number(item.total_score || item.points || item.quiz_score || item.score || 0);
-                const qId = item.quiz_id || item.quizId || '';
-                const date = item.created_at || item.completion_date || item.date || '';
+                const originalDateStr = item.created_at || item.completion_date || item.date || null;
+                // Undated server entries (cumulative totals) get a 'cumulative' key to avoid double-counting
+                const uniqueKey = originalDateStr
+                  ? `${empId}-${getLocalDateString(originalDateStr)}`
+                  : `${empId}-cumulative`;
                 
-                if (date) {
-                  const datePart = date.split('T')[0];
-                  const uniqueKey = `${empId}-${qId || 'default'}-${datePart}`;
-                  mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: date });
+                if (mergedMap.has(uniqueKey)) {
+                  const existing = mergedMap.get(uniqueKey);
+                  if (score > existing.points) {
+                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                  }
                 } else {
-                  const uniqueKey = `${empId}-cumulative`;
-                  mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: null });
+                  mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
                 }
               }
-            });
+            }
+          });
 
-            const mergedList = Array.from(mergedMap.values());
-            localStorage.setItem('nbt_historical_quiz_scores', JSON.stringify(mergedList));
-            scoreList = mergedList;
-          }
+          const mergedList = Array.from(mergedMap.values());
+          localStorage.setItem('nbt_historical_quiz_scores', JSON.stringify(mergedList));
+          scoreList = mergedList;
         } catch (cacheErr) {
           console.error("Local quiz score caching error:", cacheErr);
         }
@@ -608,12 +625,6 @@ const FunQuiz = ({ onBack }) => {
                   <h2 style={s.heroTitle}>Get Ready for<br />a Fun Quiz!</h2>
                   <p style={s.heroDesc}>Train your brain with smart, scientifically backed games that enhance various cognitive functions.</p>
 
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.7)', padding: '8px 12px', borderRadius: '10px', border: '1px solid #dcfce7', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '900', color: '#15803d', textTransform: 'uppercase' }}>Session Score</div>
-                      <div style={{ fontSize: '14px', fontWeight: '1000', color: '#0B1E3F' }}>{questions.filter(q => q.previous_result === 'correct').reduce((sum, q) => sum + (q.points_reward || 0), 0)}</div>
-                    </div>
-                  </div>
 
                   <div style={{ display: 'flex', gap: '15px', marginTop: '25px', alignItems: 'center' }}>
                     <button
@@ -1268,19 +1279,45 @@ const FunQuiz = ({ onBack }) => {
       <AnimatePresence>
         {feedback.show && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{
-              position: 'fixed', top: '50%', left: '50%',
-              backgroundColor: feedback.type === 'success' ? '#0d676c' : '#ef4444',
-              color: 'white', padding: '20px 40px', borderRadius: '20px',
-              fontSize: '16px', fontWeight: '850', zIndex: 30000,
-              boxShadow: '0 20px 50px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '12px'
+              position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+              backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
+              zIndex: 30000, display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
-            {feedback.type === 'success' ? <CheckCircle size={20} /> : <XIcon size={20} />}
-            {feedback.msg}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              style={{
+                backgroundColor: 'white',
+                width: '320px', height: '320px',
+                padding: '30px', borderRadius: '32px',
+                boxShadow: '0 20px 50px rgba(15,23,42,0.15)', 
+                border: '1.5px solid #f1f5f9',
+                display: 'flex', flexDirection: 'column', 
+                alignItems: 'center', justifyContent: 'center', gap: '20px',
+                textAlign: 'center', fontFamily: "'Outfit', 'Nunito', sans-serif"
+              }}
+            >
+              <div style={{
+                width: '80px', height: '80px', borderRadius: '24px',
+                background: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `2px solid ${feedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+              }}>
+                {feedback.type === 'success' ? <CheckCircle size={40} color="#16a34a" /> : <XIcon size={40} color="#ef4444" />}
+              </div>
+              <h2 style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a', margin: 0, lineHeight: '1.3' }}>
+                {feedback.type === 'success' ? 'Success!' : 'Error'}
+              </h2>
+              <p style={{ fontSize: '15px', color: '#64748b', margin: 0, fontWeight: '700', lineHeight: '1.5' }}>
+                {feedback.msg}
+              </p>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

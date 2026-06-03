@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Trophy, Star, Award, Zap, ArrowLeft, ShieldCheck, UserCheck, Flame, Edit, Trash2, Plus, Users, Search, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AppHeader from './AppHeader';
@@ -98,7 +98,19 @@ export default function AwardsScreen() {
     const [showGrantModal, setShowGrantModal] = React.useState(false);
     const [showEditModal, setShowEditModal] = React.useState(false);
     const [selectedReward, setSelectedReward] = React.useState(null);
+    
     const [employees, setEmployees] = React.useState([]);
+    // Fix for React Router getting stuck when using browser's back button
+    React.useEffect(() => {
+        const handleHashChange = () => {
+            if (!window.location.hash.includes('awards') && document.getElementById('awards-screen-main')) {
+                window.location.reload();
+            }
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
+
     const [grantData, setGrantData] = React.useState({ employee_id: '', reward_name: '', points: 50, note: '' });
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [selectedEmployee, setSelectedEmployee] = React.useState(null);
@@ -106,20 +118,8 @@ export default function AwardsScreen() {
     const [granting, setGranting] = React.useState(false);
     const [history, setHistory] = React.useState({ pm: [] });
     const [feedback, setFeedback] = React.useState(null);
-    const [startDate, setStartDate] = React.useState(() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${year}-${month}-01`;
-    });
-    const [endDate, setEndDate] = React.useState(() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const lastDay = new Date(year, d.getMonth() + 1, 0).getDate();
-        const day = String(lastDay).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    });
+    const [startDate, setStartDate] = React.useState('');
+    const [endDate, setEndDate] = React.useState('');
     const [selectedHistoryUser, setSelectedHistoryUser] = React.useState(null);
     const [showAllFeed, setShowAllFeed] = React.useState(false);
     const [showRecipientDropdown, setShowRecipientDropdown] = React.useState(false);
@@ -142,6 +142,8 @@ export default function AwardsScreen() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Removed fetchUserQuizCompletions effect - cumulative leaderboard handles it directly
     const [availableAwards] = React.useState([
         { id: 'visionary', title: "Visionary Lead", rep: 200, desc: "Acknowledge exceptional leadership and vision." },
         { id: 'achiever', title: "Goal Achiever", rep: 150, desc: "Recognize consistent goal hitting and performance." },
@@ -201,69 +203,122 @@ export default function AwardsScreen() {
                 }
             } catch (e) { }
 
-            // Local Cache & Merge Strategy to prevent historical score loss when quiz is deleted
-            if (fetchSuccess) {
-                try {
-                    if (qList.length === 0) {
-                        localStorage.setItem('nbt_historical_quiz_scores', '[]');
-                        qList = [];
-                    } else {
-                        let cachedQuizScores = [];
-                        const localData = localStorage.getItem('nbt_historical_quiz_scores');
-                        if (localData) {
-                            const parsed = JSON.parse(localData);
-                            if (Array.isArray(parsed)) {
-                                cachedQuizScores = parsed;
+            // Fetch exact cumulative quiz points for all employees from backend database
+            let backendCumulativeQuizScores = [];
+            try {
+                const rewardsPromises = unique.map(async (emp) => {
+                    const empId = emp.id || emp.employee_id || emp.userId;
+                    if (!empId) return null;
+                    try {
+                        const res = await fetch(`${BASE_URL}/api/rewards/user/${empId}`, { headers: { 'Authorization': `Bearer ${user.token}` } });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const quizPoints = parsePoints(data.quizPointsNum || data.quizPoints);
+                            if (quizPoints > 0) {
+                                return {
+                                    employee_id: String(empId),
+                                    points: quizPoints,
+                                    created_at: null // Cumulative
+                                };
                             }
                         }
-
-                        const activeEmpIds = new Set(qList.map(item => String(item.employee_id || item.user_id || item.userId || item.id || '')));
-
-                        const mergedMap = new Map();
-                        // 1. Load historical cache first (only for active employees)
-                        cachedQuizScores.forEach(item => {
-                            if (item) {
-                                const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
-                                if (activeEmpIds.has(empId)) {
-                                    const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
-                                    const qId = item.quiz_id || item.quizId || '';
-                                    const date = item.created_at || item.completion_date || item.date || '';
-                                    
-                                    if (date) {
-                                        const datePart = date.split('T')[0];
-                                        const uniqueKey = `${empId}-${qId || 'default'}-${datePart}`;
-                                        mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: date });
-                                    } else {
-                                        const uniqueKey = `${empId}-cumulative`;
-                                        mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: null });
-                                    }
-                                }
-                            }
-                        });
-
-                        // 2. Overlay new active quiz scores
-                        qList.forEach(item => {
-                            if (item) {
-                                const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
-                                const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
-                                const qId = item.quiz_id || item.quizId || '';
-                                const date = item.created_at || item.completion_date || item.date || '';
-                                
-                                if (date) {
-                                    const datePart = date.split('T')[0];
-                                    const uniqueKey = `${empId}-${qId || 'default'}-${datePart}`;
-                                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: date });
-                                } else {
-                                    const uniqueKey = `${empId}-cumulative`;
-                                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: null });
-                                }
-                            }
-                        });
-
-                        const mergedList = Array.from(mergedMap.values());
-                        localStorage.setItem('nbt_historical_quiz_scores', JSON.stringify(mergedList));
-                        qList = mergedList;
+                    } catch (e) {
+                        console.error(`Failed to fetch rewards for user ${empId}:`, e);
                     }
+                    return null;
+                });
+                backendCumulativeQuizScores = (await Promise.all(rewardsPromises)).filter(Boolean);
+            } catch (e) {
+                console.error("Failed to fetch backend cumulative rewards:", e);
+            }
+
+            // Local Cache & Merge Strategy to prevent historical score loss when quiz is deleted
+            if (fetchSuccess || backendCumulativeQuizScores.length > 0) {
+                try {
+                    let cachedQuizScores = [];
+                    const localData = localStorage.getItem('nbt_historical_quiz_scores');
+                    if (localData) {
+                        const parsed = JSON.parse(localData);
+                        if (Array.isArray(parsed)) {
+                            cachedQuizScores = parsed;
+                        }
+                    }
+
+                    // A robust helper to get local date string YYYY-MM-DD
+                    const getLocalDateString = (dateVal) => {
+                        const d = dateVal ? new Date(dateVal) : new Date();
+                        if (isNaN(d.getTime())) {
+                            const now = new Date();
+                            const y = now.getFullYear();
+                            const m = String(now.getMonth() + 1).padStart(2, '0');
+                            const day = String(now.getDate()).padStart(2, '0');
+                            return `${y}-${m}-${day}`;
+                        }
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                    };
+
+                    const mergedMap = new Map();
+                    // 1. Load historical cache first (all of it, no activeEmpIds filtering!)
+                    cachedQuizScores.forEach(item => {
+                        if (item) {
+                            const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
+                            if (empId) {
+                                const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
+                                const originalDateStr = item.created_at || item.completion_date || item.date || null;
+                                // Use 'cumulative' key for undated entries so they don't double-count with dated entries
+                                const uniqueKey = originalDateStr
+                                    ? `${empId}-${getLocalDateString(originalDateStr)}`
+                                    : `${empId}-cumulative`;
+                                
+                                if (mergedMap.has(uniqueKey)) {
+                                    const existing = mergedMap.get(uniqueKey);
+                                    if (score > existing.points) {
+                                        mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                                    }
+                                } else {
+                                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                                }
+                            }
+                        }
+                    });
+
+                    // 2. Overlay new active quiz scores from server
+                    qList.forEach(item => {
+                        if (item) {
+                            const empId = String(item.employee_id || item.user_id || item.userId || item.id || '');
+                            if (empId) {
+                                const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
+                                const originalDateStr = item.created_at || item.completion_date || item.date || null;
+                                // Undated server entries (cumulative totals) get a 'cumulative' key to avoid double-counting
+                                const uniqueKey = originalDateStr
+                                    ? `${empId}-${getLocalDateString(originalDateStr)}`
+                                    : `${empId}-cumulative`;
+                                
+                                if (mergedMap.has(uniqueKey)) {
+                                    const existing = mergedMap.get(uniqueKey);
+                                    if (score > existing.points) {
+                                        mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                                    }
+                                } else {
+                                    mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: originalDateStr });
+                                }
+                            }
+                        }
+                    });
+
+                    // 3. Overlay the exact all-time cumulative scores from the backend
+                    backendCumulativeQuizScores.forEach(item => {
+                        const empId = item.employee_id;
+                        const uniqueKey = `${empId}-cumulative`;
+                        mergedMap.set(uniqueKey, item);
+                    });
+
+                    const mergedList = Array.from(mergedMap.values());
+                    localStorage.setItem('nbt_historical_quiz_scores', JSON.stringify(mergedList));
+                    qList = mergedList;
                 } catch (cacheErr) {
                     console.error("Local quiz score caching error:", cacheErr);
                 }
@@ -327,6 +382,39 @@ export default function AwardsScreen() {
         return emp ? (emp.name || emp.employee_name || 'Anonymous Member') : 'Anonymous Member';
     };
 
+    const isSameEmployee = (id1, id2) => {
+        if (!id1 || !id2) return false;
+        if (String(id1) === String(id2)) return true;
+        
+        const emp1 = employees.find(e =>
+            String(e.id) === String(id1) ||
+            String(e.employee_id) === String(id1) ||
+            String(e.userId) === String(id1) ||
+            String(e.emp_id) === String(id1)
+        );
+        
+        const emp2 = employees.find(e =>
+            String(e.id) === String(id2) ||
+            String(e.employee_id) === String(id2) ||
+            String(e.userId) === String(id2) ||
+            String(e.emp_id) === String(id2)
+        );
+        
+        if (emp1 && emp2) {
+            const uid1 = String(emp1.id || emp1.employee_id || emp1.userId || emp1.emp_id);
+            const uid2 = String(emp2.id || emp2.employee_id || emp2.userId || emp2.emp_id);
+            if (uid1 === uid2) return true;
+        }
+        
+        const s1 = String(id1);
+        const s2 = String(id2);
+        if (s1.endsWith(s2) || s2.endsWith(s1)) {
+            return true;
+        }
+        
+        return false;
+    };
+
     /* fetchLeaderboard replaced by local effect */
 
     const combinedRewards = React.useMemo(() => {
@@ -337,7 +425,7 @@ export default function AwardsScreen() {
                 employee_id: q.employee_id || q.user_id || q.userId || q.id,
                 reward_name: 'Quiz Excellence',
                 points: parsePoints(q.total_score || q.points || q.quiz_score || q.score || 0),
-                created_at: q.created_at || q.completion_date || q.date || new Date().toISOString(),
+                created_at: q.created_at || q.completion_date || q.date || null,
                 note: 'Earned from Quiz Hub',
                 isCumulative: !hasDate
             };
@@ -374,7 +462,14 @@ export default function AwardsScreen() {
         const userQuizRewards = {}; // id -> list of quiz rewards
 
         filteredRewards.forEach(r => {
-            const id = String(r.employee_id || r.user_id || r.userId || r.id);
+            const rawId = String(r.employee_id || r.user_id || r.userId || r.id);
+            const emp = employees.find(e =>
+                String(e.id) === rawId ||
+                String(e.employee_id) === rawId ||
+                String(e.userId) === rawId ||
+                String(e.emp_id) === rawId
+            );
+            const id = emp ? String(emp.id || emp.employee_id || emp.userId || rawId) : rawId;
             const isQuiz = String(r.id).startsWith('quiz-');
 
             if (!mergedMap.has(id)) {
@@ -404,13 +499,8 @@ export default function AwardsScreen() {
                 const datedEntries = qRewards.filter(q => !q.isCumulative);
 
                 if (isDateFilterActive) {
-                    if (datedEntries.length > 0) {
-                        // Sum up all dated quiz points in the range
-                        existing.total_quiz_points = datedEntries.reduce((sum, q) => sum + parsePoints(q.points), 0);
-                    } else if (cumulativeEntry) {
-                        // If no individual dated entries, fallback to cumulative entry
-                        existing.total_quiz_points = parsePoints(cumulativeEntry.points);
-                    }
+                    // Sum up all dated quiz points in the range
+                    existing.total_quiz_points = datedEntries.reduce((sum, q) => sum + parsePoints(q.points), 0);
                 } else {
                     if (cumulativeEntry) {
                         // All-time: use cumulative entry if present
@@ -554,16 +644,29 @@ export default function AwardsScreen() {
     }, [filteredRewards, user, auditSearch, resolveEmployeeName]);
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
+        <div id="awards-screen-main" style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <AppHeader />
 
             <main style={{ flex: 1, padding: winWidth < 768 ? '100px 16px 40px' : '120px 26px 40px', width: '100%', boxSizing: 'border-box', marginTop: 0 }}>
                 <div style={{ width: '100%' }}>
 
-                    {/* â”€â”€ Header Controls â”€â”€ */}
+                    {/* ── Header Controls ── */}
                     <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', gap: '20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <button onClick={() => navigate(-1)} style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    navigate('/dashboard', { replace: true });
+                                    setTimeout(() => {
+                                        if (window.location.hash.includes('dashboard') && document.getElementById('awards-screen-main')) {
+                                            window.location.reload();
+                                        }
+                                    }, 100);
+                                }}
+                                style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                            >
                                 <ArrowLeft size={18} color="#64748b" />
                             </button>
                             <div>
@@ -883,20 +986,33 @@ export default function AwardsScreen() {
                                         <div style={{ fontSize: '16px', fontWeight: '950', color: '#0f172a', padding: '0 4px' }}>
                                             {resolveEmployeeName(selectedHistoryUser)}'s Recognitions
                                         </div>
-                                        {filteredRewards.filter(r => String(r.employee_id) === String(selectedHistoryUser)).map((r, i) => (
-                                            <div key={i} style={{ padding: '18px 20px', borderRadius: '16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: '900', fontSize: '14px', color: '#0f172a' }}>{r.reward_name || 'Excellence'}</div>
-                                                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', marginTop: '3px' }}>
-                                                        {r.note || ''} Â· {(() => {
-                                                            const d = parseToDate(r.created_at || r.date);
-                                                            return d ? d.toLocaleDateString() : 'N/A';
-                                                        })()}
+                                        {(() => {
+                                            // Show ALL filtered rewards (reward points + quiz points) for the selected user
+                                            const allUserHistory = filteredRewards.filter(r => isSameEmployee(r.employee_id, selectedHistoryUser));
+                                            
+                                            allUserHistory.sort((a, b) => {
+                                                const dA = parseToDate(a.created_at || a.date);
+                                                const dB = parseToDate(b.created_at || b.date);
+                                                if (!dA) return 1;
+                                                if (!dB) return -1;
+                                                return dB - dA;
+                                            });
+
+                                            return allUserHistory.map((r, i) => (
+                                                <div key={i} style={{ padding: '18px 20px', borderRadius: '16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: '900', fontSize: '14px', color: '#0f172a' }}>{r.reward_name || 'Excellence'}</div>
+                                                        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', marginTop: '3px' }}>
+                                                            {r.note || ''} · {(() => {
+                                                                const d = parseToDate(r.created_at || r.date);
+                                                                return d ? d.toLocaleDateString() : 'N/A';
+                                                            })()}
+                                                        </div>
                                                     </div>
+                                                    <div style={{ fontSize: '16px', fontWeight: '950', color: '#10b981' }}>+{formatPoints(r.points)} REP</div>
                                                 </div>
-                                                <div style={{ fontSize: '16px', fontWeight: '950', color: '#10b981' }}>+{formatPoints(r.points)} REP</div>
-                                            </div>
-                                        ))}
+                                            ));
+                                        })()}
                                     </div>
                                 )}
                             </div>

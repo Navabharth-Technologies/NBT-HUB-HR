@@ -21,7 +21,6 @@ export default function ThreadScreen() {
     const { user } = useAuth();
     const currentUserId = user?.id || user?.userId || user?.empId || user?.employee_id;
 
-    const [tagline, setTagline] = useState('');
     const [newPost, setNewPost] = useState('');
     const [mediaFile, setMediaFile] = useState(null);
     const [mediaType, setMediaType] = useState(null);
@@ -72,6 +71,19 @@ export default function ThreadScreen() {
         }
     }, [threads]);
 
+    useEffect(() => {
+        if (!activeCommentPost) return;
+        const interval = setInterval(async () => {
+            try {
+                const comments = await fetchComments(activeCommentPost);
+                setPostComments(prev => ({ ...prev, [activeCommentPost]: comments }));
+            } catch (err) {
+                console.error("Comments poll error:", err);
+            }
+        }, 4000);
+        return () => clearInterval(interval);
+    }, [activeCommentPost, fetchComments]);
+
     const fetchProfiles = async () => {
         try {
             const resp = await fetch(API_ENDPOINTS.USERS);
@@ -120,13 +132,12 @@ export default function ThreadScreen() {
                 userId: currentUserId,
                 user: user?.name || 'User',
                 role: user?.role?.toUpperCase() || 'EMPLOYEE',
-                tagline: tagline,
+                tagline: '',
                 content: newPost,
                 file: mediaFile,
                 mediaType: mediaType
             });
             setNewPost('');
-            setTagline('');
             clearMedia();
         } catch (err) {
             console.error("Post Error:", err);
@@ -140,7 +151,7 @@ export default function ThreadScreen() {
     const [commentText, setCommentText] = useState('');
     const handleAddComment = async (id) => {
         if (!commentText.trim()) return;
-        const success = await addComment(id, currentUserId, user?.name || 'User', commentText);
+        const success = await addComment(id, commentText);
         if (success) {
             setCommentText('');
             const comments = await fetchComments(id);
@@ -343,7 +354,6 @@ export default function ThreadScreen() {
             <main style={styles.container}>
                 {/* CREATE THREAD */}
             <div style={{ ...styles.card, borderTop: '5px solid #FDB913' }}>
-                <input id="thread-tagline-input" style={styles.tagInput} placeholder="Add a tagline..." value={tagline} onChange={e => setTagline(e.target.value)} />
                 <textarea id="thread-content-input" style={styles.mainInput} placeholder="Share an update with the team..." value={newPost} onChange={e => setNewPost(e.target.value)} />
 
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} hidden accept="image/*,video/*" />
@@ -392,11 +402,28 @@ export default function ThreadScreen() {
                 const nameMatch = (user?.name && (post.userName || post.user)) && (user.name === (post.userName || post.user));
                 const isAuthor = authorIdMatch || nameMatch;
 
-                const isLead = user?.role === 'TEAMLEADER' || user?.role === 'ADMIN' || user?.role === 'MANAGER';
                 const canManage = isAuthor;
+                const isHr = String(user?.role || '').toLowerCase().includes('hr') ||
+                             String(user?.designation || '').toLowerCase().includes('human resource') ||
+                             String(user?.designation || '').toLowerCase().includes('hr') ||
+                             String(user?.name || '').toLowerCase().includes('ravikumar');
+                const isLead = user?.role === 'TEAMLEADER' || user?.role === 'ADMIN' || user?.role === 'MANAGER' || isHr;
                 const isEditing = editingPostId === post.id;
                 const pLiked = post.userHasLiked || false;
-                const activeReaction = pLiked ? '❤️' : Object.keys(post.userReactions || {}).find(k => post.userReactions[k] === true);
+                const getActiveReactionChar = (activeEmoji, pLiked) => {
+                  if (!activeEmoji) return pLiked ? '❤️' : null;
+                  const nameToEmoji = {
+                    'heart': '❤️', 'love': '❤️', 'like': '❤️', 'heart_count': '❤️', 'likes_count': '❤️', '❤️': '❤️',
+                    'thumbsup': '👍', 'thumbsup_count': '👍', '👍': '👍',
+                    'shocked': '😮', 'shocked_count': '😮', '😮': '😮',
+                    'laugh': '😂', 'laugh_count': '😂', '😂': '😂',
+                    'fire': '🔥', 'fire_count': '🔥', '🔥': '🔥',
+                    'clap': '👏', 'clap_count': '👏', '👏': '👏',
+                    'cake': '🎂', 'cake_count': '🎂', '🎂': '🎂'
+                  };
+                  return nameToEmoji[String(activeEmoji).toLowerCase()] || activeEmoji;
+                };
+                const activeReaction = getActiveReactionChar(post.activeEmoji, pLiked);
                 const likeCount = post.likeCount || 0;
                 const commentCount = post.commentCount || 0;
 
@@ -406,15 +433,28 @@ export default function ThreadScreen() {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ display: 'flex', gap: '15px' }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '15px', backgroundColor: '#0B1E3F', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(11, 30, 63, 0.15)' }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '15px', backgroundColor: '#0B1E3F', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(11, 30, 63, 0.15)', position: 'relative' }}>
                                     {(() => {
                                         const profile = userProfiles[uid] || Object.values(userProfiles).find(p => p.name === (post.userName || post.user));
-                                        const pic = profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.profile_picture || profile?.avatar || post.userImage;
-                                        if (pic) {
-                                            const src = pic.startsWith('http') ? pic : `${BASE_URL}${pic.startsWith('/') ? pic : '/' + pic}`;
-                                            return <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />;
-                                        }
-                                        return (profile?.name || post.user_name || post.userName || post.user || '?').charAt(0).toUpperCase();
+                                        const pic = profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.profile_picture || profile?.avatar || profile?.profile_pic || profile?.photo || post.userImage;
+                                        const empIdForPhoto = profile?.employee_id || profile?.id || profile?.empId || post.userId || post.user_id;
+                                        const finalPicUrl = pic ? (pic.startsWith('http') ? pic : `${BASE_URL}${pic.startsWith('/') ? pic : '/' + pic}`) : (empIdForPhoto ? `${BASE_URL}/api/users/${empIdForPhoto}/photo` : null);
+                                        return (
+                                            <>
+                                                {finalPicUrl && (
+                                                    <img 
+                                                        src={finalPicUrl} 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }} 
+                                                        alt="" 
+                                                        onLoad={(e) => { if (e.target.nextSibling) e.target.nextSibling.style.display = 'none'; }}
+                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                    />
+                                                )}
+                                                <span>
+                                                    {(profile?.name || post.user_name || post.userName || post.user || '?').charAt(0).toUpperCase()}
+                                                </span>
+                                            </>
+                                        );
                                     })()}
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -443,7 +483,7 @@ export default function ThreadScreen() {
                                         <Edit3 size={16} />
                                     </button>
                                     <button
-                                        onClick={() => deletePost(post.id)}
+                                        onClick={() => deletePost(post.id, post.userId || post.user_id || post.employee_id)}
                                         style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                         title="Delete post"
                                     >
@@ -506,7 +546,7 @@ export default function ThreadScreen() {
                                                     file: editMediaFile,
                                                     mediaType: editMediaType,
                                                     removeMedia: editRemoveMedia
-                                                });
+                                                }, post.userId || post.user_id || post.employee_id);
                                                 if (success) {
                                                     setEditingPostId(null);
                                                     setEditMediaFile(null);
@@ -570,7 +610,7 @@ export default function ThreadScreen() {
                                 // Only render actual emoji reactions — skip metadata keys like 'like', 'badge', 'total', 'count'
                                 if (!EMOJI_LIST.includes(emoji)) return null;
                                 if (!count || count <= 0) return null;
-                                const hasReacted = post.userReactions?.[emoji] === true;
+                                const hasReacted = activeReaction === emoji;
                                 return (
                                     <div
                                         key={emoji}
@@ -600,9 +640,6 @@ export default function ThreadScreen() {
                                     </span>
                                 ) : (
                                     <Heart size={isMobile ? 16 : 18} fill="none" stroke="#ef4444" strokeWidth={2.5} />
-                                )}
-                                {likeCount > 0 && (
-                                    <span style={{ fontSize: isMobile ? '10px' : '12px', fontWeight: '900' }}>{likeCount}</span>
                                 )}
 
                                 <AnimatePresence>
@@ -674,27 +711,48 @@ export default function ThreadScreen() {
 
                                                 return (
                                                     <div key={c.id} style={{ display: 'flex', gap: '12px' }}>
-                                                        <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)' }}>
-                                                            {cUser.charAt(0).toUpperCase()}
+                                                        <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#315A9E', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '1000', flexShrink: 0, boxShadow: '0 4px 10px rgba(49, 90, 158, 0.2)', overflow: 'hidden', position: 'relative' }}>
+                                                            {(() => {
+                                                                const profile = userProfiles[commentAuthorId] || Object.values(userProfiles).find(p => p.name === cUser);
+                                                                const pic = profile?.profileImage || profile?.profilePicture || profile?.profile_image || profile?.profile_picture || profile?.avatar || profile?.profile_pic || profile?.photo;
+                                                                const empIdForPhoto = profile?.employee_id || profile?.id || profile?.empId || commentAuthorId;
+                                                                const finalPicUrl = pic ? (pic.startsWith('http') ? pic : `${BASE_URL}${pic.startsWith('/') ? pic : '/' + pic}`) : (empIdForPhoto ? `${BASE_URL}/api/users/${empIdForPhoto}/photo` : null);
+                                                                return (
+                                                                    <>
+                                                                        {finalPicUrl && (
+                                                                            <img 
+                                                                                src={finalPicUrl} 
+                                                                                style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }} 
+                                                                                alt="" 
+                                                                                onLoad={(e) => { if (e.target.nextSibling) e.target.nextSibling.style.display = 'none'; }}
+                                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                                            />
+                                                                        )}
+                                                                        <span>
+                                                                            {cUser.charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </div>
                                                         <div style={{ flex: 1, padding: '15px', background: 'white', borderRadius: '20px', border: '1.5px solid #f1f5f9', position: 'relative' }}>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                                                                 <span style={{ fontSize: '12px', fontWeight: '1000', color: '#0B1E3F' }}>{cUser}</span>
-                                                                {isMyComment && (
+                                                                {(isMyComment || isLead) && (
                                                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                                                        <button onClick={() => { setEditingCommentId(c.id); setEditCommentContent(cText); }} style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}><Edit3 size={13} /></button>
+                                                                        <button onClick={() => { setEditingCommentId(c.id || c._id); setEditCommentContent(cText); }} style={{ border: '1px solid #e2e8f0', background: '#f8fafc', color: '#315A9E', padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} title="Edit comment"><Edit3 size={15} /></button>
                                                                         <button onClick={async () => {
-                                                                            const success = await deleteComment(post.id, c.id);
+                                                                            const success = await deleteComment(post.id, c.id || c._id, c.userId || c.user_id || c.employee_id || c.EmpID);
                                                                             if (success) {
                                                                                 const comments = await fetchComments(post.id);
                                                                                 setPostComments(prev => ({ ...prev, [post.id]: comments }));
                                                                             }
-                                                                        }} style={{ border: 'none', background: 'none', color: '#fda4af', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
+                                                                        }} style={{ border: '1px solid #fecaca', background: '#fef2f2', color: '#ef4444', padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} title="Delete comment"><Trash2 size={15} /></button>
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            {editingCommentId === c.id ? (
+                                                            {editingCommentId === (c.id || c._id) ? (
                                                                 <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                     <textarea
                                                                         style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #315A9E', fontSize: '13px', outline: 'none', minHeight: '60px', background: '#f8fafc' }}
@@ -704,7 +762,7 @@ export default function ThreadScreen() {
                                                                     />
                                                                     <div style={{ display: 'flex', gap: '8px' }}>
                                                                         <button onClick={async () => {
-                                                                            const success = await updateComment(post.id, c.id, editCommentContent);
+                                                                            const success = await updateComment(post.id, c.id || c._id, editCommentContent, c.userId || c.user_id || c.employee_id || c.EmpID);
                                                                             if (success) {
                                                                                 const comments = await fetchComments(post.id);
                                                                                 setPostComments(prev => ({ ...prev, [post.id]: comments }));

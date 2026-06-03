@@ -198,6 +198,9 @@ export default function AttendanceManagement() {
   const [showPunchOutEditModal, setShowPunchOutEditModal] = useState(false);
   const [punchOutEditData, setPunchOutEditData] = useState({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
 
+  const [alertState, setAlertState] = useState({ show: false, message: '' });
+  const showAlert = (msg) => setAlertState({ show: true, message: String(msg) });
+
   const [isPunchFetching, setIsPunchFetching] = useState(false);
 
 
@@ -239,7 +242,7 @@ export default function AttendanceManagement() {
 
   const submitPunchInEdit = async () => {
     if (!punchEditData.empId || !punchEditData.newTime) {
-      alert("Please select an employee and enter the new time.");
+      showAlert("Please select an employee and enter the new time.");
       return;
     }
 
@@ -262,16 +265,16 @@ export default function AttendanceManagement() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ Punch-in time updated to ${punchEditData.newTime} for ${punchEditData.empName}!`);
+        showAlert(`✅ Punch-in time updated to ${punchEditData.newTime} for ${punchEditData.empName}!`);
         setShowPunchEditModal(false);
         setPunchEditData({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
         fetchAttendance();
       } else {
-        alert(`Failed: ${data.message || 'Unknown error'}`);
+        showAlert(`Failed: ${data.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error(err);
-      alert("Network error updating punch-in.");
+      showAlert("Network error updating punch-in.");
     }
   };
 
@@ -307,7 +310,7 @@ export default function AttendanceManagement() {
 
   const submitPunchOutEdit = async () => {
     if (!punchOutEditData.empId || !punchOutEditData.newTime) {
-      alert("Please select an employee and enter the new time.");
+      showAlert("Please select an employee and enter the new time.");
       return;
     }
 
@@ -329,16 +332,16 @@ export default function AttendanceManagement() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ Punch-out time updated to ${punchOutEditData.newTime} for ${punchOutEditData.empName}!`);
+        showAlert(`✅ Punch-out time updated to ${punchOutEditData.newTime} for ${punchOutEditData.empName}!`);
         setShowPunchOutEditModal(false);
         setPunchOutEditData({ empId: '', empName: '', actualTime: '', newTime: '', date: new Date().toISOString().split('T')[0] });
         fetchAttendance();
       } else {
-        alert(`Failed: ${data.message || 'Unknown error'}`);
+        showAlert(`Failed: ${data.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error(err);
-      alert("Network error updating punch-out.");
+      showAlert("Network error updating punch-out.");
     }
   };
 
@@ -559,10 +562,10 @@ export default function AttendanceManagement() {
         }));
         fetchAttendance();
       } else {
-        alert(data.message || 'Check-in failed');
+        showAlert(data.message || 'Check-in failed');
       }
     } catch (err) {
-      alert('System error during check-in');
+      showAlert('System error during check-in');
     } finally {
       setIsProcessing(false);
     }
@@ -609,10 +612,10 @@ export default function AttendanceManagement() {
         }));
         fetchAttendance();
       } else {
-        alert(data.message || 'Check-out failed');
+        showAlert(data.message || 'Check-out failed');
       }
     } catch (err) {
-      alert('System error during check-out');
+      showAlert('System error during check-out');
     } finally {
       setIsProcessing(false);
     }
@@ -652,20 +655,126 @@ export default function AttendanceManagement() {
     );
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF('l', 'mm', 'a4');
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    const formatDate = (dateStr) => {
-      if (!dateStr) return '----';
-      try {
-        return new Date(dateStr).toISOString().split('T')[0];
-      } catch (e) {
-        return String(dateStr).split('T')[0];
+  const getExportRows = (forExcel = false) => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const getDatesInRange = (startDate, endDate) => {
+      const dates = [];
+      let currentDate = new Date(startDate);
+      const end = new Date(endDate);
+      while (currentDate <= end) {
+        const dd = String(currentDate.getDate()).padStart(2, '0');
+        const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const yyyy = currentDate.getFullYear();
+        dates.push(`${yyyy}-${mm}-${dd}`);
+        currentDate.setDate(currentDate.getDate() + 1);
       }
+      return dates.sort((a, b) => new Date(b) - new Date(a));
     };
 
-    const dateRangeDisplay = `${fromDate} to ${toDate}`;
+    const dateRange = getDatesInRange(fromDate, toDate);
+    const rows = [];
+
+    dateRange.forEach(targetDate => {
+      displayedEmployees.forEach(emp => {
+        const logsForEmp = (attendanceLogs || [])
+          .filter(l => {
+            if (!l) return false;
+            const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
+            const empId = String(emp?.id || '').trim();
+            const extractDate = (record) => {
+              if (!record) return null;
+              const dStr = record.punch_date || record.date || record.created_at || '';
+              return String(dStr).split('T')[0];
+            };
+            const logDate = extractDate(l);
+            return empId && logId && (logId === empId) && (logDate === targetDate);
+          })
+          .sort((a, b) => new Date(a?.created_at || a?.punch_time) - new Date(b?.created_at || b?.punch_time));
+
+        const firstLog = logsForEmp[0];
+        const lastLog = logsForEmp.length > 1 ? logsForEmp[logsForEmp.length - 1] : null;
+
+        const checkHasPunchOut = (record) => {
+          if (!record) return false;
+          const outVal = record.out_time || record.OUTTime || record.PunchOut || record.punch_time_out || record.out_time_biometric;
+          return outVal && outVal !== '----' && outVal !== '--:--' && outVal !== '00:00' && outVal !== '00:00:00';
+        };
+        
+        const hasDayPunchOut = logsForEmp.some(checkHasPunchOut);
+        const dayPunchOutLog = [...logsForEmp].reverse().find(checkHasPunchOut) || lastLog || firstLog;
+        const dayPunchOutVal = dayPunchOutLog?.out_time || dayPunchOutLog?.OUTTime || dayPunchOutLog?.PunchOut || dayPunchOutLog?.punch_time_out || dayPunchOutLog?.out_time_biometric || '----';
+
+        const inTime = firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time || '----';
+        const outTime = firstLog ? ((targetDate === todayStr && !hasDayPunchOut) ? '----' : dayPunchOutVal) : '----';
+        
+        let displayStatus = 'Absent';
+        if (firstLog) {
+          const pIn = parseTimeStr(inTime);
+          const pOut = parseTimeStr(outTime);
+          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
+          
+          let rawStatus = isHalfDayTime ? 'HALF_DAY' : String(firstLog.status || firstLog.Status || 'PRESENT').trim().toUpperCase();
+          if (inTime !== '----' && inTime !== '--:--' && rawStatus === 'ABSENT') rawStatus = 'PRESENT';
+          
+          if (rawStatus === 'PRESENT' || rawStatus === 'P' || rawStatus === 'IN OFFICE' || rawStatus === 'IN-OFFICE') {
+            displayStatus = 'In Office';
+          } else if (rawStatus === 'ABSENT' || rawStatus === 'A') {
+            displayStatus = 'Absent';
+          } else if (rawStatus === 'HALF_DAY' || rawStatus === 'HD' || rawStatus === 'HALF DAY') {
+            displayStatus = 'Half Day';
+          } else if (rawStatus === 'LATE' || rawStatus === 'L') {
+            displayStatus = 'Late';
+          } else {
+            displayStatus = firstLog.status || 'In Office';
+          }
+        }
+
+        const inLoc = firstLog ? (firstLog.punchin_location || firstLog.in_location || '----') : '----';
+        const outLoc = firstLog ? ((targetDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog?.punchout_location || dayPunchOutLog?.out_location || '----')) : '----';
+        const workHrs = firstLog ? getWorkHrs(inTime, outTime, targetDate) : '00:00';
+
+        const formatToDDMMYYYY = (dStr) => {
+          if (!dStr || dStr === '----') return '----';
+          const parts = dStr.split('-');
+          if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          return dStr;
+        };
+
+        rows.push([
+          formatToDDMMYYYY(targetDate),
+          emp?.name || emp?.user_name || 'Employee',
+          forExcel ? String(emp?.id || 'N/A') : `#${emp?.id || 'N/A'}`,
+          inTime,
+          outTime,
+          workHrs,
+          displayStatus,
+          inLoc,
+          outLoc
+        ]);
+      });
+    });
+
+    return rows;
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const todayFormatted = `${dd}-${mm}-${yyyy}`;
+
+    const formatToDDMMYYYY = (dStr) => {
+        if (!dStr || dStr === '----') return '----';
+        const parts = dStr.split('-');
+        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        return dStr;
+    };
+    
+    const dateRangeDisplay = `${formatToDDMMYYYY(fromDate)} to ${formatToDDMMYYYY(toDate)}`;
 
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 297, 45, 'F');
@@ -677,38 +786,13 @@ export default function AttendanceManagement() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text(`Generated: ${today} | Period: ${dateRangeDisplay}`, 14, 30);
+    doc.text(`Generated: ${todayFormatted} | Period: ${dateRangeDisplay}`, 14, 30);
 
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.text(`Total Records: ${attendanceLogs.length} | Departments: ${user?.department || 'Organization-wide'}`, 14, 38);
+    doc.text(`Total Records: ${displayedEmployees.length} | Departments: ${user?.department || 'Organization-wide'}`, 14, 38);
 
-    const allLogs = [...(attendanceLogs || [])]
-      .filter(l => l !== null)
-      .sort((a, b) => new Date(b.punch_date || b.date || b.created_at).getTime() - new Date(a.punch_date || a.date || a.created_at).getTime());
-
-    const rows = allLogs.map(log => {
-      const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-      const emp = allEmployees.find(e => String(e.id).trim() === empId);
-
-      return [
-        formatDate(log.punch_date || log.date || log.created_at),
-        emp?.name || emp?.user_name || log?.user_name || 'Employee',
-        `#${empId || 'N/A'}`,
-        log.in_time || log.INTime || '----',
-        log.out_time || log.OUTTime || '----',
-        log.work_time || log.work_hrs || '00:00',
-        (() => {
-          const pIn = parseTimeStr(log.in_time || log.INTime || log.PunchIn || log.punch_time);
-          const pOut = parseTimeStr(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
-          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-          if (isHalfDayTime) return 'HALF_DAY';
-          return (log.in_time || log.INTime) ? (log.status || 'PRESENT') : 'ABSENT';
-        })(),
-        log.punchin_location || log.in_location || log.PunchIn_location || log.location || '----',
-        log.punchout_location || log.out_location || log.PunchOut_location || '----'
-      ];
-    });
+    const rows = getExportRows(false);
 
     autoTable(doc, {
       head: [['Date', 'Employee', 'ID', 'In Time', 'Out Time', 'Work Hrs', 'Status', 'In Location', 'Out Location']],
@@ -727,35 +811,7 @@ export default function AttendanceManagement() {
 
   const handleExportExcel = () => {
     const headers = ['Date', 'Employee', 'ID', 'In Time', 'Out Time', 'Work Hours', 'Status', 'In Location', 'Out Location'];
-
-    const allLogs = [...(attendanceLogs || [])]
-      .filter(l => l !== null)
-      .sort((a, b) => new Date(b.punch_date || b.date || b.created_at).getTime() - new Date(a.punch_date || a.date || a.created_at).getTime());
-
-    const rows = allLogs.map(log => {
-      const empId = String(log?.user_id || log?.Empcode || log?.EmpID || '').trim();
-      const emp = allEmployees.find(e => String(e.id).trim() === empId);
-      const logDate = (log.punch_date || log.date || log.created_at || '').split('T')[0];
-
-      return [
-        logDate,
-        emp?.name || emp?.user_name || log?.user_name || 'Employee',
-        empId,
-        log.in_time || log.INTime || '----',
-        log.out_time || log.OUTTime || '----',
-        log.work_time || log.work_hrs || '00:00',
-        (() => {
-          const pIn = parseTimeStr(log.in_time || log.INTime || log.PunchIn || log.punch_time);
-          const pOut = parseTimeStr(log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
-          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-          if (isHalfDayTime) return 'HALF_DAY';
-          return (log.in_time || log.INTime) ? (log.status || 'PRESENT') : 'ABSENT';
-        })(),
-        log.punchin_location || log.in_location || log.PunchIn_location || log.location || '----',
-        log.punchout_location || log.out_location || log.PunchOut_location || '----'
-      ];
-    });
-
+    const rows = getExportRows(true);
     const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -770,53 +826,115 @@ export default function AttendanceManagement() {
     const totalCount = allEmployees.length;
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const todayLogs = (attendanceLogs || []).filter(l => {
-      const logDate = parseLogDate(l);
-      return logDate === todayStr;
-    });
+
     const presentEmpIds = new Set();
-    todayLogs.forEach(l => {
-      const punchIn = l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time;
-      const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
-      const status = String(l?.status || l?.Status || '').toUpperCase();
-      const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
-      if (isPresent && !status.includes('ABSENT')) {
-        presentEmpIds.add(String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || ''));
+    const lateLoginEmpIds = new Set();
+    const earlyLogoutEmpIds = new Set();
+    const halfDayEmpIds = new Set();
+
+    const lateLogins = [];
+    const earlyLogouts = [];
+    const halfDayLogs = [];
+
+    allEmployees.forEach(emp => {
+      const empIdStr = String(emp.id || '').trim();
+      const logsForEmp = (attendanceLogs || [])
+        .filter(l => {
+          if (!l) return false;
+          const logId = String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '').trim();
+          return empIdStr && logId && (logId === empIdStr);
+        });
+
+      if (logsForEmp.length > 0) {
+        // Group logs by date to prevent cross-day data leaking
+        const groupedByDate = (logsForEmp || []).reduce((acc, log) => {
+          const d = parseLogDate(log);
+          if (d) {
+            if (!acc[d]) acc[d] = [];
+            acc[d].push(log);
+          }
+          return acc;
+        }, {});
+
+        // Get the latest date available in the range for this employee
+        const dates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+        const latestDate = dates[0];
+        const latestDayLogs = groupedByDate[latestDate] || [];
+
+        // Sort logs within THAT day only
+        const sortedDayLogs = latestDayLogs.sort((a, b) => new Date(a.created_at || a.punch_time || 0) - new Date(b.created_at || b.punch_time || 0));
+
+        if (sortedDayLogs.length > 0) {
+          const firstLog = sortedDayLogs[0];
+          const checkHasPunchOut = (record) => {
+            if (!record) return false;
+            const outVal = record.out_time || record.OUTTime || record.PunchOut || record.punch_time_out || record.out_time_biometric;
+            return outVal && outVal !== '----' && outVal !== '--:--' && outVal !== '00:00' && outVal !== '00:00:00';
+          };
+          const hasDayPunchOut = sortedDayLogs.some(checkHasPunchOut);
+          const dayPunchOutLog = [...sortedDayLogs].reverse().find(checkHasPunchOut) || (sortedDayLogs.length > 1 ? sortedDayLogs[sortedDayLogs.length - 1] : firstLog);
+
+          const punchIn = firstLog?.in_time || firstLog?.INTime || firstLog?.PunchIn || firstLog?.punch_time || '----';
+          const punchOut = (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog?.out_time || dayPunchOutLog?.OUTTime || dayPunchOutLog?.PunchOut || dayPunchOutLog?.punch_time_out || dayPunchOutLog?.out_time_biometric || '----');
+
+          const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
+          const status = String(firstLog?.status || firstLog?.Status || '').toUpperCase();
+          const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
+
+          const log = {
+            ...firstLog,
+            punch_date: latestDate,
+            in_time: punchIn,
+            out_time: punchOut,
+            in_location: firstLog?.punchin_location || firstLog?.in_location || '----',
+            out_location: (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog?.punchout_location || dayPunchOutLog?.out_location || '----'),
+            work_hrs: (latestDate === todayStr && !hasDayPunchOut) ? '00:00' : (dayPunchOutLog?.work_hrs || firstLog?.work_hrs || '00:00')
+          };
+
+          if (isPresent && !status.includes('ABSENT')) {
+            presentEmpIds.add(empIdStr);
+          }
+
+          // Late Login check on the first punch-in of the latest day
+          const pIn = parseTimeStr(punchIn);
+          if (pIn !== -1 && pIn > (9 * 60 + 30)) {
+            lateLoginEmpIds.add(empIdStr);
+            lateLogins.push(log);
+          }
+
+          // Early Logout check
+          const pOut = parseTimeStr(punchOut);
+          if (pOut !== -1 && pOut < (17 * 60)) {
+            earlyLogoutEmpIds.add(empIdStr);
+            earlyLogouts.push(log);
+          }
+
+          // Half Day check
+          const st = String(firstLog?.status || '').toUpperCase().trim();
+          const isHalfDayStatus = st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY';
+          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
+          if (isHalfDayStatus || isHalfDayTime) {
+            halfDayEmpIds.add(empIdStr);
+            halfDayLogs.push(log);
+          }
+        }
       }
     });
+
     const presentCount = presentEmpIds.size;
 
-    const lateLogins = (attendanceLogs || []).filter(l => {
-      const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
-      if (pIn === -1) return false;
-      return pIn > (9 * 60 + 30);
-    });
-
-    const halfDayLogs = (attendanceLogs || []).filter(l => {
-      const st = String(l?.status || '').toUpperCase().trim();
-      if (st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY') return true;
-      const pIn = parseTimeStr(l?.in_time || l?.INTime || l?.PunchIn || l?.punch_time);
-      const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
-      if (pIn !== -1 && pIn > (13 * 60 + 30)) return true;
-      if (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60)) return true;
-      return false;
-    });
-
-    const earlyLogouts = (attendanceLogs || []).filter(l => {
-      const pOut = parseTimeStr(l?.out_time || l?.OUTTime || l?.PunchOut || l?.punch_time_out || l?.out_time_biometric);
-      if (pOut === -1) return false;
-      return pOut < (17 * 60);
-    });
-
-
-    const lateLoginEmpIds = new Set(lateLogins.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
-    const earlyLogoutEmpIds = new Set(earlyLogouts.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
-    const halfDayEmpIds = new Set(halfDayLogs.map(l => String(l?.user_id || l?.Empcode || l?.EmpID || l?.userId || l?.UserId || '')));
-
-    return { 
-      total: totalCount, present: presentCount, absent: Math.max(0, totalCount - presentCount), 
-      halfDay: halfDayLogs.length, lateLogins, earlyLogouts, halfDayLogs,
-      presentEmpIds, lateLoginEmpIds, earlyLogoutEmpIds, halfDayEmpIds
+    return {
+      total: totalCount,
+      present: presentCount,
+      absent: Math.max(0, totalCount - presentCount),
+      halfDay: halfDayEmpIds.size,
+      lateLogins,
+      earlyLogouts,
+      halfDayLogs,
+      presentEmpIds,
+      lateLoginEmpIds,
+      earlyLogoutEmpIds,
+      halfDayEmpIds
     };
   };
 
@@ -1532,7 +1650,9 @@ export default function AttendanceManagement() {
                               const d = new Date(dateStr);
                               if (isNaN(d.getTime())) return dateStr;
                               const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-                              return `${dateStr} (${dayName})`;
+                              const parts = dateStr.split('-');
+                              const formattedDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr;
+                              return `${formattedDate} (${dayName})`;
                             })()}
                           </td>
                           <td style={{ padding: '20px', fontWeight: '900', color: '#1e293b' }}>
@@ -1979,8 +2099,28 @@ export default function AttendanceManagement() {
           </div>
         )}
 
-
-
+        {alertState.show && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+            <div className="animate-slide-up" style={{ background: 'white', width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #f1f5f9', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: alertState.message.includes('✅') ? '#ecfdf5' : '#fff1f2', color: alertState.message.includes('✅') ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                {alertState.message.includes('✅') ? (
+                  <CheckCircle size={28} />
+                ) : (
+                  <AlertTriangle size={28} />
+                )}
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: '0 0 10px 0' }}>
+                {alertState.message.includes('✅') ? 'Success' : 'Notification'}
+              </h3>
+              <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#475569', fontWeight: '600', lineHeight: '1.5' }}>
+                {alertState.message.replace('✅', '').trim()}
+              </p>
+              <button onClick={() => setAlertState({ show: false, message: '' })} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: alertState.message.includes('✅') ? '#10b981' : '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: alertState.message.includes('✅') ? '0 4px 10px rgba(16, 185, 129, 0.25)' : 'none' }}>
+                OK
+              </button>
+            </div>
+          </div>
+        )}
 
       </main>
       <AppFooter />

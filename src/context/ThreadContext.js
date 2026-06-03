@@ -18,7 +18,7 @@ export const ThreadProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       fetchThreads(user.id);
-      const interval = setInterval(() => fetchThreads(user.id, true), 30000);
+      const interval = setInterval(() => fetchThreads(user.id, true), 4000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -33,6 +33,11 @@ export const ThreadProvider = ({ children }) => {
       if (res.ok) {
         const data = await res.json();
         const rawThreads = Array.isArray(data) ? data : (data.value || []);
+
+        let activeReactions = {};
+        try {
+          activeReactions = JSON.parse(localStorage.getItem('nbt_active_reactions') || '{}');
+        } catch {}
 
         const normalized = rawThreads.map(t => {
           const tid = t.id || t._id;
@@ -49,8 +54,13 @@ export const ThreadProvider = ({ children }) => {
             return rid && rid === currentUid;
           });
 
-          const userLikedVal = Object.values(reactions).some(v => v === true) || userLikedByList;
-          const activeEmojiVal = Object.keys(reactions).find(k => reactions[k] === true) || (userLikedByList ? 'like' : null);
+          const localActiveEmoji = activeReactions[tid];
+          const backendLikedVal = Object.values(reactions).some(v => v === true) || userLikedByList;
+          const backendActiveEmojiVal = Object.keys(reactions).find(k => reactions[k] === true) || (userLikedByList ? 'like' : null);
+
+          const hasLocalReact = localActiveEmoji !== undefined;
+          const userLikedVal = hasLocalReact ? (localActiveEmoji !== null) : backendLikedVal;
+          const activeEmojiVal = hasLocalReact ? localActiveEmoji : backendActiveEmojiVal;
           
           const userBadgeVal = !!(t.user_has_badged || t.userHasBadged || false);
           const badgeTypeVal = t.badge_type || t.badgeType || null;
@@ -71,6 +81,7 @@ export const ThreadProvider = ({ children }) => {
           return {
             ...t,
             id: tid,
+            tagline: t.tagline || t.tagLine || t.tag_line || null,
             likes: pending.likes !== undefined ? pending.likes : totalLikes,
             likeCount: pending.likes !== undefined ? pending.likes : totalLikes,
             userLiked: pending.userLiked !== undefined ? pending.userLiked : userLikedVal,
@@ -111,10 +122,17 @@ export const ThreadProvider = ({ children }) => {
   const addPost = async (postData) => {
     try {
       let body;
-      let headers = {};
+      const headers = {
+        'Authorization': `Bearer ${user.token}`
+      };
 
       if (postData instanceof FormData) {
         body = postData;
+        const taglineVal = postData.get('tagline');
+        if (taglineVal) {
+          if (!postData.has('tagLine')) postData.append('tagLine', taglineVal);
+          if (!postData.has('tag_line')) postData.append('tag_line', taglineVal);
+        }
         // Do NOT set Content-Type for FormData; browser does it automatically with boundary
       } else {
         headers['Content-Type'] = 'application/json';
@@ -133,6 +151,8 @@ export const ThreadProvider = ({ children }) => {
           EmpID: user?.employee_id || user?.id,
           userName: user?.name,
           tagline: postData.tagline || '',
+          tagLine: postData.tagline || '',
+          tag_line: postData.tagline || '',
           content: postData.content || '',
           media: mediaData,
           mediaType: postData.mediaType
@@ -141,10 +161,7 @@ export const ThreadProvider = ({ children }) => {
 
       const res = await fetch(API_ENDPOINTS.THREADS, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
+        headers: headers,
         body: body
       });
 
@@ -196,6 +213,30 @@ export const ThreadProvider = ({ children }) => {
       'clap': 'clap_count',
       'cake': 'cake_count'
     };
+
+    const targetThread = threads.find(t => t.id === threadId);
+    let newUserLikedVal = true;
+    if (targetThread) {
+      const currentUserLiked = !!(targetThread.userLiked || targetThread.userHasLiked || targetThread.user_has_liked || targetThread.user_liked);
+      const currentActiveEmoji = targetThread.activeEmoji || 'heart';
+      const normalizedActiveEmoji = emojiToNormalized[currentActiveEmoji] || currentActiveEmoji;
+      const isSameEmoji = normalizedActiveEmoji === normalizedEmoji;
+      if (currentUserLiked && isSameEmoji) {
+        newUserLikedVal = false;
+      }
+    }
+
+    try {
+      const activeReactions = JSON.parse(localStorage.getItem('nbt_active_reactions') || '{}');
+      if (newUserLikedVal) {
+        activeReactions[threadId] = emoji; // Save raw emoji symbol character (e.g. '👍')
+      } else {
+        delete activeReactions[threadId];
+      }
+      localStorage.setItem('nbt_active_reactions', JSON.stringify(activeReactions));
+    } catch (e) {
+      console.error(e);
+    }
 
     let updatedPending = {};
     setThreads(prev => prev.map(t => {
@@ -262,14 +303,14 @@ export const ThreadProvider = ({ children }) => {
             }
         }
 
-        updatedPending = { likes: newCount, userLiked: newUserLiked, activeEmoji: newUserLiked ? normalizedEmoji : null, ...specificFields, reactions: newReactions };
+        updatedPending = { likes: newCount, userLiked: newUserLiked, activeEmoji: newUserLiked ? emoji : null, ...specificFields, reactions: newReactions };
         return {
           ...t,
           ...updatedPending,
           userHasLiked: newUserLiked,
           userLiked: newUserLiked,
           likeCount: newCount,
-          activeEmoji: newUserLiked ? normalizedEmoji : null,
+          activeEmoji: newUserLiked ? emoji : null,
           reactions: newReactions
         };
       }
@@ -289,9 +330,20 @@ export const ThreadProvider = ({ children }) => {
           userId: user?.id || user?.employee_id || userId,
           user_id: user?.id || user?.employee_id || userId,
           employee_id: user?.id || user?.employee_id || userId,
-          reaction: emoji,
-          emoji: emoji,
-          type: emoji
+          EmpID: user?.id || user?.employee_id || userId,
+          userName: user?.name,
+          reaction: normalizedEmoji, // e.g. 'thumbsup'
+          emoji: emoji, // e.g. '👍'
+          type: normalizedEmoji, // e.g. 'thumbsup'
+          reactionType: emoji, // e.g. '👍'
+          reaction_type: emoji, // e.g. '👍'
+          reactionEmoji: emoji,
+          reaction_emoji: emoji,
+          emojiSymbol: emoji,
+          emoji_symbol: emoji,
+          symbol: emoji,
+          value: normalizedEmoji,
+          reactionVal: normalizedEmoji
         })
       });
       
@@ -414,20 +466,30 @@ export const ThreadProvider = ({ children }) => {
     return [];
   };
 
-  const deletePost = async (id) => {
-    if (!user?.token) return;
+  const deletePost = async (id, postAuthorId = null) => {
+    if (!user?.token) return false;
+    const post = threads.find(t => t.id === id);
+    const authorId = postAuthorId || post?.userId || post?.user_id || post?.employee_id;
+    const finalUserId = authorId || user?.id || user?.employee_id || user?.EmpID;
     try {
       const res = await fetch(API_ENDPOINTS.THREAD_DELETE(id), {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
-        }
+        },
+        body: JSON.stringify({
+          userId: finalUserId,
+          employee_id: finalUserId,
+          user_id: finalUserId
+        })
       });
       if (res.ok) {
-        await fetchThreads(undefined, true);
+        await fetchThreads(true);
+        return true;
       }
     } catch { }
+    return false;
   };
 
   const fetchSingleThread = async (id) => {
@@ -452,22 +514,33 @@ export const ThreadProvider = ({ children }) => {
     return [];
   };
 
-  const deleteComment = async (threadId, commentId) => {
-    if (!user?.token) return;
+  const deleteComment = async (threadId, commentId, commentAuthorId = null) => {
+    if (!user?.token) return false;
+    const finalUserId = commentAuthorId || user?.id || user?.employee_id || user?.EmpID;
     try {
       const res = await fetch(API_ENDPOINTS.COMMENT_DELETE(threadId, commentId), {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
-        }
+        },
+        body: JSON.stringify({
+          userId: finalUserId,
+          employee_id: finalUserId,
+          user_id: finalUserId
+        })
       });
-      if (res.ok) await fetchThreads(undefined, true);
+      if (res.ok) {
+        await fetchThreads(true);
+        return true;
+      }
     } catch { }
+    return false;
   };
 
-  const updateComment = async (threadId, commentId, content) => {
-    if (!user?.token) return;
+  const updateComment = async (threadId, commentId, content, commentAuthorId = null) => {
+    if (!user?.token) return false;
+    const finalUserId = commentAuthorId || user?.id || user?.employee_id || user?.EmpID;
     try {
       const res = await fetch(API_ENDPOINTS.COMMENT_UPDATE(threadId, commentId), {
         method: 'PUT',
@@ -476,26 +549,47 @@ export const ThreadProvider = ({ children }) => {
           'Authorization': `Bearer ${user.token}`
         },
         body: JSON.stringify({
-          content
+          content,
+          userId: finalUserId,
+          employee_id: finalUserId,
+          user_id: finalUserId
         })
       });
-      if (res.ok) await fetchThreads(undefined, true);
+      if (res.ok) {
+        await fetchThreads(true);
+        return true;
+      }
     } catch { }
+    return false;
   };
 
-  const updatePost = async (id, content) => {
-    if (!user?.token) return;
+  const updatePost = async (id, contentText, postAuthorId = null) => {
+    if (!user?.token) return false;
+    const post = threads.find(t => t.id === id);
+    const authorId = postAuthorId || post?.userId || post?.user_id || post?.employee_id;
+    const finalUserId = authorId || user?.id || user?.employee_id || user?.EmpID;
     try {
+      const actualContent = typeof contentText === 'object' && contentText !== null ? contentText.content : contentText;
       const res = await fetch(API_ENDPOINTS.THREAD_UPDATE(id), {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ 
+          content: actualContent,
+          userId: finalUserId,
+          employee_id: finalUserId,
+          user_id: finalUserId
+        })
       });
-      if (res.ok) setThreads(threads.map(t => t.id === id ? { ...t, content } : t));
+      if (res.ok) {
+        setThreads(threads.map(t => t.id === id ? { ...t, content: actualContent } : t));
+        await fetchThreads(true);
+        return true;
+      }
     } catch { }
+    return false;
   };
 
   return (

@@ -39,7 +39,8 @@ export default function PerformanceModule() {
   const [fetchedRole, setFetchedRole] = useState('');
   const [joiningDate, setJoiningDate] = useState('N/A');
   const [toast, setToast] = useState({ show: false, message: '' });
-  
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   // Crop States
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState(null);
@@ -83,9 +84,9 @@ export default function PerformanceModule() {
             designation: data.role || data.designation || user?.role || user?.designation || 'Employee'
           });
           const isHr = String(data.role || user?.role || '').toLowerCase().includes('hr') ||
-                       String(data.designation || user?.designation || '').toLowerCase().includes('human resource') ||
-                       String(data.designation || user?.designation || '').toLowerCase().includes('hr') ||
-                       String(data.name || user?.name || '').toLowerCase().includes('ravikumar');
+            String(data.designation || user?.designation || '').toLowerCase().includes('human resource') ||
+            String(data.designation || user?.designation || '').toLowerCase().includes('hr') ||
+            String(data.name || user?.name || '').toLowerCase().includes('ravikumar');
 
           if (isHr) {
             setReportingManager({
@@ -137,9 +138,9 @@ export default function PerformanceModule() {
     const loadManager = async () => {
       if (!user?.token || !user?.email) return;
       const isHr = String(user?.role || '').toLowerCase().includes('hr') ||
-                   String(user?.designation || '').toLowerCase().includes('human resource') ||
-                   String(user?.designation || '').toLowerCase().includes('hr') ||
-                   String(user?.name || '').toLowerCase().includes('ravikumar');
+        String(user?.designation || '').toLowerCase().includes('human resource') ||
+        String(user?.designation || '').toLowerCase().includes('hr') ||
+        String(user?.name || '').toLowerCase().includes('ravikumar');
       if (isHr) {
         try {
           const mRes = await fetch(`${API_ENDPOINTS.PROFILE}/20250`, {
@@ -273,7 +274,7 @@ export default function PerformanceModule() {
       // 1. Local preview instantly
       const previewUrl = URL.createObjectURL(croppedBlob);
       setProfileImage(previewUrl);
-      
+
       // Update global context immediately so header syncs instantly
       const reader = new FileReader();
       reader.readAsDataURL(croppedBlob);
@@ -341,7 +342,7 @@ export default function PerformanceModule() {
     const day = parseInt(dStr, 10);
     const month = parseInt(mStr, 10);
     const year = parseInt(yStr, 10);
-    
+
     if (day < 1 || day > 31) {
       return 'Day must be between 01 and 31';
     }
@@ -421,7 +422,7 @@ export default function PerformanceModule() {
       // We use user context values as final fallback to ensure we never send empty strings if data exists
       const nextPhone = field === 'phone_number' ? value : (phone !== 'Add Phone Number' ? phone : (user.phone_number || ''));
       let nextDob = field === 'date_of_birth' ? value : (dob !== 'Add Date of Birth' ? dob : (user.date_of_birth || ''));
-      
+
       // Handle formatting for both input types (date picker YYYY-MM-DD and manual DD-MM-YYYY)
       if (field === 'date_of_birth' && nextDob) {
         if (/^\d{4}-\d{2}-\d{2}$/.test(nextDob)) {
@@ -752,62 +753,12 @@ export default function PerformanceModule() {
                       )}
                     </div>
 
-                    {/* DOB Editable */}
+                    {/* DOB Display */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
                       <Calendar size={16} />
-                      {isEditingDob ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <input
-                              type="text"
-                              value={tempDob}
-                              onChange={handleDobChange}
-                              onKeyDown={e => e.key === 'Enter' && updateProfileField('date_of_birth', tempDob)}
-                              placeholder="DD/MM/YYYY"
-                              autoFocus
-                              style={{ border: '1.5px solid #3b82f6', borderRadius: '8px', padding: '6px 35px 6px 12px', fontSize: '13px', outline: 'none', background: 'white', width: '130px' }}
-                            />
-                            <Calendar 
-                              size={14} 
-                              color="#64748b" 
-                              style={{ position: 'absolute', right: '10px', cursor: 'pointer' }} 
-                              onClick={() => dobInputRef.current?.showPicker()}
-                            />
-                            <input
-                              type="date"
-                              ref={dobInputRef}
-                              style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
-                              max="2090-12-31"
-                              onChange={e => {
-                                const val = e.target.value; // YYYY-MM-DD
-                                if (val) {
-                                  const [y, m, d] = val.split('-');
-                                  setTempDob(`${d}/${m}/${y}`);
-                                }
-                              }}
-                            />
-                          </div>
-                          <button
-                            onClick={() => updateProfileField('date_of_birth', tempDob)}
-                            style={{ background: '#22c55e', color: 'white', padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)', transition: 'transform 0.1s active' }}
-                            title="Save Changes"
-                          >
-                            <Check size={16} strokeWidth={3} />
-                          </button>
-                          <button
-                            onClick={() => setIsEditingDob(false)}
-                            style={{ background: '#f1f5f9', color: '#64748b', padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
-                            title="Cancel"
-                          >
-                            <X size={16} strokeWidth={3} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => { setTempDob(formatDateDisplay(dob)); setIsEditingDob(true); }}>
-                          <span>{formatDateDisplay(dob)}</span>
-                          <Edit3 size={14} color="#94a3b8" />
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{formatDateDisplay(dob)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -884,7 +835,7 @@ export default function PerformanceModule() {
                 </div>
                 <div>
                   <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Support &amp; Maintenance</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Raise Technical Ticket</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>View Tickets</p>
                 </div>
               </div>
               <ChevronRight size={winWidth < 768 ? 16 : 20} color="#9a3412" />
@@ -951,7 +902,7 @@ export default function PerformanceModule() {
                 <div style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LogOut color="#ef4444" size={26} /></div>
                 <div>
                   <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Resignation Letter</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>View Resignation Requests</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Apply for Resignation</p>
                 </div>
               </div>
               <ChevronRight size={24} color="#94a3b8" />
@@ -981,6 +932,10 @@ export default function PerformanceModule() {
                   placeholder="Tell us about yourself..."
                   style={{ width: '100%', minHeight: '120px', padding: '16px', borderRadius: '16px', border: '1.5px solid #3b82f6', outline: 'none', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
                   autoFocus
+                  onFocus={(e) => {
+                    const len = e.target.value.length;
+                    e.target.setSelectionRange(len, len);
+                  }}
                 />
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
@@ -1016,7 +971,7 @@ export default function PerformanceModule() {
         {/* Logout */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '5px' }}>
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             style={{ background: 'white', color: '#ef4444', border: '2px solid #ef4444', borderRadius: '16px', padding: winWidth < 768 ? '10px 40px' : '12px 60px', fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '950', cursor: 'pointer', width: winWidth < 480 ? '100%' : 'auto' }}
           >
             Logout Securely
@@ -1074,6 +1029,78 @@ export default function PerformanceModule() {
               {cropUploading ? 'Uploading...' : 'Apply & Upload'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Custom Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '32px',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '380px',
+            textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            transform: 'scale(1)',
+            animation: 'modalIn 0.3s ease-out'
+          }}>
+            <div style={{
+              width: '64px', height: '64px', background: '#fee2e2', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', color: '#ef4444'
+            }}>
+              <LogOut size={32} />
+            </div>
+            <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Confirm Logout</h2>
+            <p style={{ color: '#64748b', fontSize: '15px', fontWeight: '600', marginBottom: '32px' }}>
+              Are you sure you want to logout from NBT Hub?
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                  background: 'white', color: '#64748b', fontWeight: '800', cursor: 'pointer',
+                  transition: '0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '16px', border: 'none',
+                  background: '#ef4444', color: 'white', fontWeight: '800', cursor: 'pointer',
+                  boxShadow: '0 10px 15px -3px rgba(239, 68, 68, 0.3)',
+                  transition: '0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes modalIn {
+              from { opacity: 0; transform: scale(0.9) translateY(20px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
         </div>
       )}
     </div>

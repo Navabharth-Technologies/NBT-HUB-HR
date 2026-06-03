@@ -124,7 +124,20 @@ export default function LeaveManagement() {
           }
         } catch (e) { console.error(`Error fetching ${ep}:`, e); }
       }
-      setLeaveRequests(bestList);
+
+      const sortedList = [...bestList].sort((a, b) => {
+        const statusA = String(a.status || 'PENDING').toUpperCase().split(',')[0].trim();
+        const statusB = String(b.status || 'PENDING').toUpperCase().split(',')[0].trim();
+        const isPendingA = statusA.includes('PENDING');
+        const isPendingB = statusB.includes('PENDING');
+        if (isPendingA && !isPendingB) return -1;
+        if (!isPendingA && isPendingB) return 1;
+        const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      setLeaveRequests(sortedList);
     } finally { setLeavesLoading(false); }
   };
 
