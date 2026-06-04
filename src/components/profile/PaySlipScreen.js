@@ -144,7 +144,7 @@ export default function PaySlipScreen() {
 
                 {/* Company Branding */}
                 <div style={{ textAlign: 'center', marginBottom: '30px', position: 'relative', zIndex: 2 }}>
-                    <img src={logo} alt="Company Logo" style={{ width: '50px', marginBottom: '15px' }} />
+                    <img src={logo} alt="Company Logo" style={{ width: '120px', marginBottom: '15px' }} />
                     <h1 style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a', margin: '0 0 5px 0', letterSpacing: '-1px' }}>NAVABHARATH TECHNOLOGIES</h1>
                     <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Smarter Solutions for Better Future</p>
                     <div style={{ width: '100%', height: '1.5px', background: '#f1f5f9', margin: '20px 0' }}></div>
@@ -1220,12 +1220,13 @@ export default function PaySlipScreen() {
 
             // Prepare table headers and rows
             const headers = [
-                ['Employee ID', 'Employee Name', 'Month', 'Basic Salary', 'Present', 'LOP', 'Deductions', 'Net Payable']
+                ['S.No', 'Employee ID', 'Employee Name', 'Month', 'Basic Salary', 'Present', 'LOP', 'Deductions', 'Net Payable']
             ];
 
-            const rows = filteredPayslips.map(item => {
+            const rows = filteredPayslips.map((item, idx) => {
                 const data = normalizePayslipData(item);
                 return [
+                    idx + 1,
                     data.employee_id || '-',
                     data.emp_name || '-',
                     getMonthName(data.month) + ' ' + (data.year || ''),
@@ -1247,14 +1248,15 @@ export default function PaySlipScreen() {
                 bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 columnStyles: {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 65 },
-                    2: { cellWidth: 30 },
-                    3: { cellWidth: 30 },
-                    4: { cellWidth: 20 },
-                    5: { cellWidth: 15 },
-                    6: { cellWidth: 30 },
-                    7: { cellWidth: 35 }
+                    0: { cellWidth: 15 }, // S.No
+                    1: { cellWidth: 25 }, // Employee ID
+                    2: { cellWidth: 55 }, // Employee Name
+                    3: { cellWidth: 30 }, // Month
+                    4: { cellWidth: 30 }, // Basic Salary
+                    5: { cellWidth: 20 }, // Present
+                    6: { cellWidth: 15 }, // LOP
+                    7: { cellWidth: 30 }, // Deductions
+                    8: { cellWidth: 35 }  // Net Payable
                 },
                 margin: { top: 32, left: 14, right: 14 },
                 didDrawPage: (data) => {
@@ -1334,9 +1336,9 @@ export default function PaySlipScreen() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Payslips");
         
-        let filename = 'Payslips';
+        let filename = 'Payslips_Report';
         if (selectedEmployeeFilter) {
-            filename += `_${selectedEmployeeFilter}`;
+            filename += `_${selectedEmployeeFilter.replace(/\s+/g, '_')}`;
         }
         if (selectedMonthFilter) {
             filename += `_${getMonthName(selectedMonthFilter)}`;
@@ -1545,6 +1547,8 @@ export default function PaySlipScreen() {
                                 {showExportOptions && (
                                     <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '8px', width: '220px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 1000, animation: 'dropdown-fade-in 0.2s ease-out' }}>
                                         <button onClick={handleDownloadPDF} style={dropdownItemStyle}><FileText size={16} color="#ef4444" /> PDF</button>
+                                        <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
+                                        <button onClick={handleDownloadExcel} style={dropdownItemStyle}><FileSpreadsheet size={16} color="#16a34a" /> Excel</button>
                                         <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
                                         <button onClick={handlePrint} style={dropdownItemStyle}><Printer size={16} color="#64748b" /> Print</button>
                                     </div>

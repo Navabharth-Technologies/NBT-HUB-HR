@@ -27,10 +27,10 @@ export default function SuggestionModule() {
     const parts = dateStr.split('/');
     if (parts.length === 3) {
       // Try d/m/yyyy
-      const d = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+      const d = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
       if (!isNaN(d)) return d;
       // Try m/d/yyyy
-      const d2 = new Date(`${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+      const d2 = new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`);
       if (!isNaN(d2)) return d2;
     }
     return null;
@@ -164,7 +164,7 @@ export default function SuggestionModule() {
             </button>
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--secondary)' }}>Suggestions Hub</h1>
-              <p style={{ color: 'var(--text-muted)' }}>Collaborative space for internal suggestions &amp; workflow improvements.</p>
+              <p style={{ color: 'var(--text-muted)' }}></p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -192,7 +192,6 @@ export default function SuggestionModule() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#315A9E' }}>
             <Calendar size={18} />
-            <span style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b' }}>Filter by Date</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -52,7 +52,7 @@ export default function TicketManagement() {
         // Only fetch HR related tickets per request
         const hrTickets = allTickets.filter(t => (t.department || '').toUpperCase() === 'HR');
         setTickets(hrTickets);
-        
+
         // Auto-open ticket from notification
         const openId = location.state?.openId;
         if (openId) {
@@ -61,7 +61,7 @@ export default function TicketManagement() {
             setSelectedTicket(target);
             setActionText(target.action || '');
             setIsManaging(true);
-            
+
             // Clear state so it doesn't reopen on refresh
             window.history.replaceState({}, document.title);
           }
@@ -265,7 +265,7 @@ export default function TicketManagement() {
             </button>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '26px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Ticket Management</h1>
-              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '600', lineHeight: '1.5' }}>Manage organization-wide support requests and resolutions</p>
+              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '600', lineHeight: '1.5' }}>Manage Organization-Wide Support Requests and Resolutions</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto' }}>
@@ -345,7 +345,7 @@ export default function TicketManagement() {
                         </span>
                       </div>
 
-                      <div 
+                      <div
                         style={{ cursor: 'pointer' }}
                         onClick={() => {
                           setViewingTicket(ticket);
@@ -429,7 +429,7 @@ export default function TicketManagement() {
                               #{ticket.ticket_number || ticket.id || index + 1}
                             </span>
                           </td>
-                          <td 
+                          <td
                             style={{ padding: '20px 25px', cursor: 'pointer' }}
                             onClick={() => {
                               setViewingTicket(ticket);
@@ -496,12 +496,12 @@ export default function TicketManagement() {
 
         <AnimatePresence>
           {isManaging && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+                style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
               >
                 <button
                   onClick={() => setIsManaging(false)}
@@ -564,12 +564,12 @@ export default function TicketManagement() {
 
         <AnimatePresence>
           {viewingTicket && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+                style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '550px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
               >
                 <button
                   onClick={() => setViewingTicket(null)}

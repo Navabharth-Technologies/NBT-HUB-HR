@@ -279,9 +279,10 @@ export default function HRDashboard() {
         const quizRes = await fetch(`${BASE_URL}/api/fun-quizzes`, {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
-        const leaderboardRes = await fetch(`${BASE_URL}/api/fun-quizzes/leaderboard`, {
-          headers: { 'Authorization': `Bearer ${user.token}` }
-        });
+        const [leaderboardRes, rewHistoryRes] = await Promise.all([
+          fetch(`${BASE_URL}/api/employees/leaderboard/all`, { headers: { 'Authorization': `Bearer ${user.token}` } }),
+          fetch(API_ENDPOINTS.REWARDS_HISTORY || `${BASE_URL}/api/admin/rewards/history`, { headers: { 'Authorization': `Bearer ${user.token}` } })
+        ]);
 
         let title = 'Tech Champions';
         let participants = 0;
@@ -297,26 +298,44 @@ export default function HRDashboard() {
           }
         }
 
-        if (leaderboardRes.ok) {
+        if (leaderboardRes.ok && rewHistoryRes.ok) {
           const lbData = await leaderboardRes.json();
-          const list = Array.isArray(lbData) ? lbData : (lbData.data || []);
-          participants = list.length;
-          topParticipants = list.slice(0, 3).map(p => {
-            const empId = String(p.employee_id || p.user_id || p.empId || p.userId || p.id || '').trim();
-            const resolvedName = (empId && userLookup[empId]) || p.name || p.employee_name || 'User';
-            return {
-              name: resolvedName,
-              pic: p.profile_pic || p.profile_picture || null
-            };
+          const rewData = await rewHistoryRes.json();
+          const employeesList = lbData.data || [];
+          const rewardSums = {};
+          rewData.forEach(r => {
+            const empId = String(r.employee_id || '');
+            if (empId) {
+              rewardSums[empId] = (rewardSums[empId] || 0) + Number(r.points || 0);
+            }
           });
-          if (list.length > 0) {
-            const firstItem = list[0];
-            const empId = String(firstItem.employee_id || firstItem.user_id || firstItem.empId || firstItem.userId || firstItem.id || '').trim();
-            const resolvedName = (empId && userLookup[empId]) || firstItem.name || firstItem.employee_name || 'User';
-            topPointsHolder = {
+
+          const scoreList = employeesList.map(emp => {
+            const empId = String(emp.id || emp.employee_id || '');
+            const totalPoints = emp.totalPointsNum || emp.totalRepNum || Number(String(emp.total_points || emp.total_rep || 0).replace(/,/g, ''));
+            const rewardPoints = rewardSums[empId] || 0;
+            const quizPoints = Math.max(0, totalPoints - rewardPoints);
+            const resolvedName = (empId && userLookup[empId]) || emp.name || emp.employee_name || 'User';
+            return {
+              employee_id: empId,
               name: resolvedName,
-              score: firstItem.total_score || firstItem.points || firstItem.score || 0,
-              pic: firstItem.profile_pic || firstItem.profile_picture || null
+              score: quizPoints,
+              pic: emp.profile_pic || emp.profile_picture || null
+            };
+          }).filter(item => item.employee_id && item.score > 0)
+            .sort((a, b) => b.score - a.score);
+
+          participants = scoreList.length;
+          topParticipants = scoreList.slice(0, 3).map(p => ({
+            name: p.name,
+            pic: p.pic
+          }));
+
+          if (scoreList.length > 0) {
+            topPointsHolder = {
+              name: scoreList[0].name,
+              score: scoreList[0].score,
+              pic: scoreList[0].pic
             };
           }
         }
@@ -714,14 +733,7 @@ export default function HRDashboard() {
                 <h3 style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Clock size={16} color="#7e22ce" /> Late Logins ({lateLogins.length})
                 </h3>
-                {lateLogins.length > 0 && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }} 
-                    style={{ background: 'transparent', border: 'none', color: '#3863a8', fontSize: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-                  >
-                    View All <ChevronRight size={14} />
-                  </button>
-                )}
+
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -763,8 +775,7 @@ export default function HRDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Sparkles size={20} color="#3863a8" /> Fun and Quiz</h2>
               <button
-                className="btn-ghost"
-                style={{ fontSize: '14px', padding: '8px 12px' }}
+                className="btn-view-all btn-blue"
                 onClick={(e) => { e.stopPropagation(); navigate('/fun-quiz'); }}
               >
                 Create Quiz

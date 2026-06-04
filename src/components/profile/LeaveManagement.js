@@ -210,7 +210,7 @@ export default function LeaveManagement() {
           <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'flex-start', marginBottom: winWidth < 768 ? '24px' : '32px', gap: '20px' }}>
             <div style={{ textAlign: winWidth < 768 ? 'center' : 'left' }}>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-0.8px' }}>Leave Management</h1>
-              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '600' }}>Review and manage employee leave applications.</p>
+              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '13px' : '15px', fontWeight: '600' }}></p>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: winWidth < 768 ? 'center' : 'flex-end' }}>
               <button onClick={() => navigate('/my-leaves')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: 'white', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)' }}>
@@ -289,7 +289,7 @@ export default function LeaveManagement() {
                                 <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '950', overflow: 'hidden' }}>
                                   {(() => {
                                     const pic = emp.profile_picture || emp.profile_pic || emp.photo || emp.ProfilePic || emp.Profile_Picture;
-                                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : null;
+                                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${emp.id}/photo`;
 
                                     return (
                                       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -422,24 +422,57 @@ export default function LeaveManagement() {
             <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
               {leaveRequests.length > 0 ? (
                 leaveRequests.map(req => {
-                  const rawStatus = String(req.status || 'PENDING').toUpperCase();
-                  const statusMatch = rawStatus.split(',')[0].trim();
+                const cleanId = (val) => String(val || '').replace(/[^0-9]/g, '').trim();
+                const empId = cleanId(req.user_id || req.emp_id || req.employee_id || req.id);
+                const emp = allEmployees.find(e => {
+                  const eid = cleanId(e.id || e.EmpID || e.employee_id || e.userId || e.emp_id);
+                  if (eid && empId && eid === empId) return true;
+                  const eName = String(e.name || e.user_name || '').toLowerCase().trim();
+                  const rName = String(req.employee_name || req.name || req.full_name || '').toLowerCase().trim();
+                  return eName && rName && eName === rName;
+                });
+                const reqRole = String(emp?.designation || emp?.role || req.user_role || req.role || '').toUpperCase();
+                const isPMReq = reqRole.includes('PROJECT MANAGER') || reqRole === 'PM';
+                const resolvedRole = reqRole;
 
-                  let sColor = '#f59e0b'; // Orange for Pending
-                  let sBg = '#fffbeb';
-                  let displayStatus = 'PENDING';
+                // Determine overall status based on individual approval fields
+                const isLeadOrAbove = resolvedRole && (resolvedRole.includes('LEAD') || resolvedRole.includes('MANAGER') || resolvedRole.includes('CEO') || resolvedRole.includes('ADMIN') || resolvedRole.includes('PRINCIPAL') || resolvedRole.includes('PM') || resolvedRole.includes('HR'));
+                const isHRRequest = resolvedRole && (resolvedRole === 'HR' || resolvedRole.includes('HUMAN RESOURCE'));
 
-                  if (statusMatch.includes('APPROVED')) {
-                    sColor = '#10b981'; // Green for Approved
-                    sBg = '#ecfdf5';
-                    displayStatus = 'APPROVED';
-                  } else if (statusMatch.includes('REJECTED')) {
-                    sColor = '#ef4444'; // Red for Rejected
-                    sBg = '#fef2f2';
-                    displayStatus = 'REJECTED';
-                  }
+                // Gather individual status values (fallback to 'PENDING' if missing)
+                const l1 = isPMReq ? 'APPROVED' : (req.l1_status || req.rm_status || 'PENDING').toUpperCase();
+                const l2 = isPMReq ? 'APPROVED' : (req.l2_status || req.hr_status || 'PENDING').toUpperCase();
+                const l3 = isPMReq ? 'APPROVED' : (req.l3_status || req.pm_status || req.manager_status || 'PENDING').toUpperCase();
 
-                  const displayDate = req.start_date ? new Date(req.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+                // Determine which stages are required
+                const requiresL1 = !isLeadOrAbove; // lead/above bypass L1
+                const requiresL2 = true; // HR approval always required for non‑PM
+                const requiresL3 = !isHRRequest; // PM approval not required for HR requester
+
+                const requiredStatuses = [
+                  ...(requiresL1 ? [l1] : []),
+                  ...(requiresL2 ? [l2] : []),
+                  ...(requiresL3 ? [l3] : [])
+                ];
+
+                let overall = 'PENDING';
+                if (requiredStatuses.some(s => s.includes('REJECTED'))) {
+                  overall = 'REJECTED';
+                } else if (requiredStatuses.every(s => s.includes('APPROVED'))) {
+                  overall = 'APPROVED';
+                }
+
+                // Set visual variables based on overall status
+                let sColor = '#f59e0b'; // orange (pending)
+                let sBg = '#fffbeb';
+                let displayStatus = 'PENDING';
+                if (overall.includes('APPROVED')) {
+                  sColor = '#10b981'; sBg = '#ecfdf5'; displayStatus = 'APPROVED';
+                } else if (overall.includes('REJECTED')) {
+                  sColor = '#ef4444'; sBg = '#fef2f2'; displayStatus = 'REJECTED';
+                }
+
+                const displayDate = req.start_date ? new Date(req.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
                   return (
                     <div key={req.id} onClick={() => navigate(`/attendance/leave/${req.id}`)} style={{ background: 'white', borderRadius: '24px', padding: '24px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', minHeight: '220px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -457,7 +490,7 @@ export default function LeaveManagement() {
                               });
 
                               const rawPic = emp?.profile_picture || emp?.profile_pic || emp?.ProfilePic || emp?.Profile_Picture || emp?.photo || req.profile_pic || req.profilePic;
-                              const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : null;
+                              const photoUrl = rawPic ? (rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic}`) : (empId ? `${BASE_URL}/api/users/${empId}/photo` : null);
 
                               return (
                                 <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -489,7 +522,7 @@ export default function LeaveManagement() {
                         <span style={{ fontSize: '9px', fontWeight: '950', color: sColor, background: sBg, padding: '4px 10px', borderRadius: '100px', textTransform: 'uppercase' }}>{displayStatus}</span>
                       </div>
                       <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: '#1e293b', fontSize: '13.5px', fontWeight: '800' }}><Calendar size={14} color="#1d4ed8" /> {displayDate}</div>
-                      <div style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '750', fontStyle: 'italic', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', flex: 1 }}>"{req.reason || 'No reason provided'}"</div>
+                      <div style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '750', fontStyle: 'italic', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>"{req.reason || 'No reason provided'}"</div>
                     </div>
                   );
                 })
@@ -603,8 +636,8 @@ export default function LeaveManagement() {
                 lineHeight: '1.5',
                 fontWeight: '700'
               }}>
-                {modalState.type === 'SUCCESS' 
-                  ? 'The employee leave ledger adjustments have been successfully saved.' 
+                {modalState.type === 'SUCCESS'
+                  ? 'The employee leave ledger adjustments have been successfully saved.'
                   : 'Failed to update employee leave ledger statistics. Please check your network connection.'}
               </p>
               <div style={{ display: 'flex', justifyContent: 'center' }}>

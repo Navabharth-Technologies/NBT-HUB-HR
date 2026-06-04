@@ -96,29 +96,48 @@ const FunQuiz = ({ onBack }) => {
       if (!token) return;
       const uid = user?.employee_id || user?.userId || user?.id;
       const headers = { 'Authorization': `Bearer ${token}` };
-      const [reRes, subRes, scoreRes] = await Promise.all([
-        fetch(API_ENDPOINTS.REWARDS_LEADERBOARD || `${BASE_URL}/api/rewards/leaderboard`, { headers }),
-        fetch(typeof API_ENDPOINTS.SUBORDINATES === 'function' ? API_ENDPOINTS.SUBORDINATES(uid) : `${BASE_URL}/api/subordinates/${uid}`, { headers }),
-        fetch(`${BASE_URL}/api/fun-quizzes/leaderboard?employee_id=${uid}`, { headers })
+      const [allRes, rewHistoryRes, subRes] = await Promise.all([
+        fetch(API_ENDPOINTS.LEADERBOARD_ALL || `${BASE_URL}/api/employees/leaderboard/all`, { headers }),
+        fetch(API_ENDPOINTS.REWARDS_HISTORY || `${BASE_URL}/api/admin/rewards/history`, { headers }),
+        fetch(typeof API_ENDPOINTS.SUBORDINATES === 'function' ? API_ENDPOINTS.SUBORDINATES(uid) : `${BASE_URL}/api/subordinates/${uid}`, { headers })
       ]);
 
-      const reData = reRes.ok ? await reRes.json() : [];
+      const allData = allRes.ok ? await allRes.json() : { success: false, data: [] };
+      const rewHistoryData = rewHistoryRes.ok ? await rewHistoryRes.json() : [];
       const subData = subRes.ok ? await subRes.json() : [];
-      
+
+      const employeesList = allData.data || [];
+      const rewardSums = {};
+      rewHistoryData.forEach(r => {
+        const empId = String(r.employee_id || '');
+        if (empId) {
+          rewardSums[empId] = (rewardSums[empId] || 0) + Number(r.points || 0);
+        }
+      });
+
       let scoreList = [];
       let fetchSuccess = false;
-      if (scoreRes.ok) {
+      if (allRes.ok && rewHistoryRes.ok) {
         try {
-          const scoreData = await scoreRes.json();
-          scoreList = Array.isArray(scoreData) ? scoreData : (scoreData.data || []);
+          scoreList = employeesList.map(emp => {
+            const empId = String(emp.id || emp.employee_id || '');
+            const totalPoints = emp.totalPointsNum || emp.totalRepNum || Number(String(emp.total_points || emp.total_rep || 0).replace(/,/g, ''));
+            const rewardPoints = rewardSums[empId] || 0;
+            const quizPoints = Math.max(0, totalPoints - rewardPoints);
+            return {
+              employee_id: empId,
+              points: quizPoints,
+              created_at: null
+            };
+          }).filter(item => item.employee_id && item.points > 0);
           fetchSuccess = true;
         } catch (e) {
-          console.error("Error parsing scoreData", e);
+          console.error("Error parsing scoreData from employees leaderboard", e);
         }
       }
 
       const userList = [
-        ...(Array.isArray(reData) ? reData : (reData.data || [])).map(u => ({ id: u.employee_id || u.id, name: u.employee_name || u.name })),
+        ...employeesList.map(u => ({ id: u.id || u.employee_id, name: u.name || u.employee_name })),
         ...(Array.isArray(subData) ? subData : (subData.data || [])).map(u => ({ id: u.employee_id || u.id, name: u.employee_name || u.name }))
       ];
 
@@ -228,30 +247,57 @@ const FunQuiz = ({ onBack }) => {
         const targetName = s.employee_name || s.name;
         return (targetId && targetId === uidStr) || (myName && targetName && targetName.toLowerCase() === myName.toLowerCase());
       });
-      const myExistingScore = myScores.reduce((sum, s) => sum + Number(s.quiz_score || s.score || s.total_score || s.points || 0), 0);
+
+      const myDated = new Map();
+      let myCumulative = 0;
+      myScores.forEach(s => {
+        const score = Number(s.quiz_score || s.score || s.total_score || s.points || 0);
+        const dateStr = s.created_at || s.completion_date || s.date || null;
+        if (dateStr) {
+          const dateKey = dateStr.split('T')[0];
+          myDated.set(dateKey, Math.max(myDated.get(dateKey) || 0, score));
+        } else {
+          myCumulative = Math.max(myCumulative, score);
+        }
+      });
+      const myDatedSum = Array.from(myDated.values()).reduce((sum, val) => sum + val, 0);
+      const myExistingScore = Math.max(myCumulative, myDatedSum);
       setExistingScore(myExistingScore);
 
       // 2. Map and Deduplicate precise quiz scores to exact employee name strings
-      const deduplicatedMap = new Map();
-
+      const userGroup = {}; // name -> { dated: Map, cumulative: 0 }
       scoreList.forEach(s => {
         const targetId = s.employee_id || s.user_id || s.id;
         const userInfo = userList.find(u => String(u.id) === String(targetId));
-
         const name = userInfo?.name || s.employee_name || s.name || `Employee ${targetId || 'Resource'}`;
         const score = Number(s.quiz_score || s.score || s.total_score || s.points || 0);
+        const dateStr = s.created_at || s.completion_date || s.date || null;
 
-        if (deduplicatedMap.has(name)) {
-          deduplicatedMap.set(name, deduplicatedMap.get(name) + score);
-        } else {
-          deduplicatedMap.set(name, score);
+        if (!userGroup[name]) {
+          userGroup[name] = { dated: new Map(), cumulative: 0 };
         }
+
+        const group = userGroup[name];
+        if (dateStr) {
+          const dateKey = dateStr.split('T')[0];
+          group.dated.set(dateKey, Math.max(group.dated.get(dateKey) || 0, score));
+        } else {
+          group.cumulative = Math.max(group.cumulative, score);
+        }
+      });
+
+      const deduplicatedMap = new Map();
+      Object.keys(userGroup).forEach(name => {
+        const group = userGroup[name];
+        const datedSum = Array.from(group.dated.values()).reduce((sum, val) => sum + val, 0);
+        const finalScore = Math.max(group.cumulative, datedSum);
+        deduplicatedMap.set(name, finalScore);
       });
 
       const merged = Array.from(deduplicatedMap, ([name, score]) => ({ name, score }));
       const sorted = merged.sort((a, b) => b.score - a.score);
 
-      const list = sorted.slice(0, 5).map((u, i) => ({
+      const list = sorted.map((u, i) => ({
         name: u.name,
         score: u.score,
         rank: i + 1,
@@ -710,7 +756,7 @@ const FunQuiz = ({ onBack }) => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Trophy size={18} color="#0d676c" />
-                  <h3 style={{ fontSize: '15px', fontWeight: '900', color: '#0B1E3F', margin: 0 }}>Daily Scores</h3>
+                  <h3 style={{ fontSize: '15px', fontWeight: '900', color: '#0B1E3F', margin: 0 }}>All-Time Scores</h3>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>Attended Users: {leaderboard.length}</div>
