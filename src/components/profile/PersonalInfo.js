@@ -25,7 +25,7 @@ const SECTIONS = [
     fields: [
       { key: 'emp_name', label: 'Employee Name', placeholder: 'Full Name', type: 'text', required: true },
       { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'], required: true },
-      { key: 'dob', label: 'Date of Birth', type: 'text', placeholder: 'DD/MM/YYYY', required: true },
+      { key: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'DD/MM/YYYY', required: true },
       { key: 'age', label: 'Age', type: 'text', placeholder: 'Age' },
       { key: 'religion', label: 'Religion', type: 'text' },
       { key: 'blood_group', label: 'Blood Group', type: 'text', required: true },
@@ -148,7 +148,7 @@ export default function PersonalInfo({ onBack }) {
   const isSelfMode = searchParams.get('self') === 'true';
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
-    emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
+    emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
     pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
     designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
     contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
@@ -246,7 +246,7 @@ export default function PersonalInfo({ onBack }) {
         if (!uid) return;
 
         const emptyForm = {
-          emp_name: '', gender: '', dob: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
+          emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
           pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
           designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
           contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
@@ -311,8 +311,8 @@ export default function PersonalInfo({ onBack }) {
             }
             if (lowerKey === 'profile_picture' || lowerKey === 'profile_pic') targetKey = 'profile_pic';
 
-            // Format date fields to DD-MM-YYYY
-            if ((targetKey === 'dob' || targetKey === 'separation' || targetKey === 'doj') && normalizedVal) {
+            // Format date fields to DD/MM/YYYY or DD-MM-YYYY
+            if ((targetKey === 'dob' || targetKey === 'date_of_birth' || targetKey === 'separation' || targetKey === 'doj' || targetKey === 'lwd') && normalizedVal) {
               const dateStr = String(normalizedVal);
               let d;
               if (dateStr.includes('T')) {
@@ -343,11 +343,16 @@ export default function PersonalInfo({ onBack }) {
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const year = d.getFullYear();
-                normalizedVal = targetKey === 'dob' ? `${day}/${month}/${year}` : `${day}-${month}-${year}`;
+                normalizedVal = (targetKey === 'dob' || targetKey === 'date_of_birth' || targetKey === 'lwd') ? `${day}/${month}/${year}` : `${day}-${month}-${year}`;
               }
             }
 
-            cleanData[targetKey] = normalizedVal;
+            if (targetKey === 'dob' || targetKey === 'date_of_birth') {
+              cleanData['dob'] = normalizedVal;
+              cleanData['date_of_birth'] = normalizedVal;
+            } else {
+              cleanData[targetKey] = normalizedVal;
+            }
           });
 
           setForm(prev => ({ ...prev, ...cleanData }));
@@ -519,8 +524,8 @@ export default function PersonalInfo({ onBack }) {
   const handleChange = (key, value) => {
     let sanitizedValue = value;
 
-    if (key === 'dob') {
-      const prevValue = form.dob || '';
+    if (key === 'dob' || key === 'date_of_birth') {
+      const prevValue = form.dob || form.date_of_birth || '';
       const isDeleting = prevValue.length > value.length;
       let clean = value.replace(/\D/g, '');
 
@@ -605,21 +610,96 @@ export default function PersonalInfo({ onBack }) {
         const m = today.getMonth() - birthDate.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
         if (age >= 0 && age < 120) {
-          setForm(prev => ({ ...prev, dob: sanitizedValue, age: String(age) }));
+          setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: String(age) }));
           setIsEditing(true);
           return;
         }
       } else if (sanitizedValue === '' || dobClean.length === 0) {
         // Clear age when DOB is cleared
-        setForm(prev => ({ ...prev, dob: sanitizedValue, age: '' }));
+        setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: '' }));
         setIsEditing(true);
         return;
       } else {
         // Incomplete DOB - clear age
-        setForm(prev => ({ ...prev, dob: sanitizedValue, age: '' }));
+        setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: '' }));
         setIsEditing(true);
         return;
       }
+    }
+
+    if (key === 'lwd') {
+      const prevValue = form.lwd || '';
+      const isDeleting = prevValue.length > value.length;
+      let clean = value.replace(/\D/g, '');
+
+      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
+        if (clean.length > 0) {
+          clean = clean.slice(0, -1);
+        }
+      }
+
+      // Max 8 digits
+      if (clean.length > 8) {
+        clean = clean.slice(0, 8);
+      }
+
+      // Restrict day (dd)
+      if (clean.length >= 1) {
+        const d1 = parseInt(clean.charAt(0), 10);
+        if (d1 > 3) {
+          clean = '0' + clean;
+        }
+      }
+      if (clean.length >= 2) {
+        let dd = clean.slice(0, 2);
+        const ddVal = parseInt(dd, 10);
+        if (ddVal > 31) {
+          dd = '31';
+        } else if (ddVal === 0) {
+          dd = '01';
+        }
+        clean = dd + clean.slice(2);
+      }
+
+      // Restrict month (mm)
+      if (clean.length >= 3) {
+        const m1 = parseInt(clean.charAt(2), 10);
+        if (m1 > 1) {
+          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+        }
+      }
+      if (clean.length >= 4) {
+        let mm = clean.slice(2, 4);
+        const mmVal = parseInt(mm, 10);
+        if (mmVal > 12) {
+          mm = '12';
+        } else if (mmVal === 0) {
+          mm = '01';
+        }
+        clean = clean.slice(0, 2) + mm + clean.slice(4);
+      }
+
+      // Restrict year (yyyy) max 4 digits, <= 2099
+      if (clean.length >= 8) {
+        let yyyy = clean.slice(4, 8);
+        const yyyyVal = parseInt(yyyy, 10);
+        if (yyyyVal > 2099) {
+          yyyy = '2099';
+        }
+        clean = clean.slice(0, 4) + yyyy;
+      }
+
+      // Reconstruct with slashes
+      let formatted = '';
+      if (clean.length > 4) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+      } else if (clean.length > 2) {
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      } else {
+        formatted = clean;
+      }
+
+      sanitizedValue = formatted;
     }
 
     if (key === 'separation') {
@@ -945,9 +1025,18 @@ export default function PersonalInfo({ onBack }) {
       return s ? ` (${s.label} section)` : '';
     };
 
-    if (activeSectionFields.includes('dob') && form.dob) {
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.dob) && !/^\d{2}-\d{2}-\d{4}$/.test(form.dob)) {
-        setToast({ type: 'error', msg: `Please enter a complete Date of Birth (DD/MM/YYYY)${getSection('dob')}` });
+    const dobFieldKey = activeSectionFields.includes('date_of_birth') ? 'date_of_birth' : 'dob';
+    const dobVal = form[dobFieldKey];
+    if ((activeSectionFields.includes('dob') || activeSectionFields.includes('date_of_birth')) && dobVal) {
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dobVal) && !/^\d{2}-\d{2}-\d{4}$/.test(dobVal)) {
+        setToast({ type: 'error', msg: `Please enter a complete Date of Birth (DD/MM/YYYY)${getSection(dobFieldKey)}` });
+        return;
+      }
+    }
+
+    if (activeSectionFields.includes('lwd') && form.lwd) {
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.lwd)) {
+        setToast({ type: 'error', msg: `Please enter a complete Last Working Day (DD/MM/YYYY)${getSection('lwd')}` });
         return;
       }
     }
@@ -1015,14 +1104,23 @@ export default function PersonalInfo({ onBack }) {
       const payload = { employee_id: uid, id: uid };
       activeSectionFields.forEach(k => {
         let val = form[k];
-        if (['doj', 'separation'].includes(k) && val && val.includes('-')) {
-          const parts = val.split('-');
-          if (parts.length === 3 && parts[0].length === 2) {
-            val = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        if (['doj', 'separation', 'lwd', 'dob', 'date_of_birth'].includes(k) && val) {
+          if (val.includes('-')) {
+            const parts = val.split('-');
+            if (parts.length === 3 && parts[0].length === 2) {
+              val = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+          } else if (val.includes('/')) {
+            const parts = val.split('/');
+            if (parts.length === 3 && parts[0].length === 2) {
+              val = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
           }
         }
         payload[k] = val;
       });
+      if (payload.dob) payload.date_of_birth = payload.dob;
+      if (payload.date_of_birth) payload.dob = payload.date_of_birth;
 
       const res = await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
         method: 'POST',
@@ -1191,7 +1289,7 @@ export default function PersonalInfo({ onBack }) {
                     </div>
                   )}
                 </div>
-                
+
                 <div style={{ textAlign: 'center', flexShrink: 0, padding: '5px 0' }}>
                   <a
                     href={previewDoc.url}
