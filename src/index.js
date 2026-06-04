@@ -145,7 +145,7 @@ window.fetch = async (...args) => {
     if (error.name === 'TypeError' || error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
       window.dispatchEvent(new Event('offline'));
       showSessionExpiredModal(
-        "Could not connect to the server. Please check your internet connection and try again.",
+        "Please check your internet connection and try again.",
         null,
         "Network Error",
         "🔌"
