@@ -305,46 +305,46 @@ export default function ResignationUserScreen() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: winWidth < 500 ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Resignation Date</label>
-                                    <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Resignation Date</label>
+                                    <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '14px 18px', fontSize: '13px', fontWeight: '800', color: '#0f172a', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                                         {new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Proposed LWD <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Proposed LWD <span style={{ color: '#ef4444' }}>*</span></label>
                                     <input
                                         type="date"
                                         value={formData.last_working_day}
                                         onChange={(e) => setFormData({ ...formData, last_working_day: e.target.value })}
-                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', color: '#0f172a', fontWeight: '700', fontSize: '13px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: 'white', color: '#0f172a', fontWeight: '700', fontSize: '13px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
                                     />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '24px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Reason to Resign <span style={{ color: '#ef4444' }}>*</span></label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Reason to Resign <span style={{ color: '#ef4444' }}>*</span></label>
                                 <select
                                     value={formData.primary_reason}
                                     onChange={(e) => setFormData({ ...formData, primary_reason: e.target.value })}
-                                    style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', color: '#0f172a', fontWeight: '800', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer', appearance: 'none' }}
+                                    style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: 'white', color: formData.primary_reason ? '#0f172a' : '#94a3b8', fontWeight: '800', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer', appearance: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
                                 >
-                                    <option value="">Select a reason</option>
-                                    <option value="Better Career Opportunity">Better Career Opportunity</option>
-                                    <option value="Personal Reasons">Personal Reasons</option>
-                                    <option value="Higher Education">Higher Education</option>
-                                    <option value="Other">Other</option>
+                                    <option value="" disabled style={{ color: '#94a3b8' }}>Select a reason</option>
+                                    <option value="Better Career Opportunity" style={{ color: '#0f172a' }}>Better Career Opportunity</option>
+                                    <option value="Personal Reasons" style={{ color: '#0f172a' }}>Personal Reasons</option>
+                                    <option value="Higher Education" style={{ color: '#0f172a' }}>Higher Education</option>
+                                    <option value="Other" style={{ color: '#0f172a' }}>Other</option>
                                 </select>
                             </div>
                             <div style={{ marginBottom: '32px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Formal Letter Content</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Formal Letter Content</label>
                                 <textarea
                                     placeholder="Write your formal letter..."
                                     value={formData.letter_content}
                                     onChange={(e) => setFormData({ ...formData, letter_content: e.target.value })}
                                     style={{
-                                        width: '100%', padding: '18px', borderRadius: '14px', border: '1.5px solid #e2e8f0',
+                                        width: '100%', padding: '18px', borderRadius: '14px', border: '1.5px solid #cbd5e1',
                                         background: 'white', color: '#1e293b', fontWeight: '500', fontSize: '14px',
                                         outline: 'none', minHeight: '180px', resize: 'none', fontFamily: 'inherit',
-                                        lineHeight: '1.7', boxSizing: 'border-box'
+                                        lineHeight: '1.7', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                                     }}
                                 />
                             </div>
