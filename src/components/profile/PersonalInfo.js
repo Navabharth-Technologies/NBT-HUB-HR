@@ -102,7 +102,7 @@ const SECTIONS = [
     color: '#ef4444',
     fields: [
       { key: 'separation', label: 'Separation Date', type: 'text', placeholder: 'DD-MM-YYYY' },
-      { key: 'lwd', label: 'Last Working Day (LWD)', type: 'text' },
+      { key: 'lwd', label: 'Last Working Day (LWD)', type: 'text', placeholder: 'DD/MM/YYYY' },
       { key: 'attrition_bucket', label: 'Attrition Bucket', type: 'select', options: ['N/A', 'Resignation', 'Performance', 'Behavioral', 'Medical'] },
       { key: 'reason', label: 'Reason of Separation', type: 'text' },
       { key: 'experience_letter', label: 'Experience Letter', type: 'file' },
@@ -281,6 +281,7 @@ export default function PersonalInfo({ onBack }) {
             let targetKey = Object.keys(emptyForm).find(formKey => formKey.toLowerCase() === lowerKey) || apiKey;
 
             // Aggressive mapping for backend column variations
+            if (lowerKey === 'last_working_day' || lowerKey === 'lastworkingday' || lowerKey === 'last_working_date' || lowerKey === 'lwd') targetKey = 'lwd';
             if (lowerKey.includes('pan_card') || lowerKey === 'pancard') targetKey = 'pancard_photo';
             if (lowerKey.includes('aadhar_card') || lowerKey.includes('adhar_card') || lowerKey === 'adharcard') targetKey = 'adharcard_photo';
             // Map all voter card/id photo columns to voter_id_photo (the key the UI uses)
@@ -1121,6 +1122,10 @@ export default function PersonalInfo({ onBack }) {
       });
       if (payload.dob) payload.date_of_birth = payload.dob;
       if (payload.date_of_birth) payload.dob = payload.date_of_birth;
+      if (payload.lwd) {
+        payload.last_working_day = payload.lwd;
+        payload.last_working_date = payload.lwd;
+      }
 
       const res = await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
         method: 'POST',
