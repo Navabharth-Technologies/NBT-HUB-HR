@@ -1103,9 +1103,10 @@ export default function PersonalInfo({ onBack }) {
 
       // Format dates to YYYY-MM-DD and only include fields from the active section
       const payload = { employee_id: uid, id: uid };
+      const dateFields = ['dob', 'doj', 'separation', 'lwd', 'date_of_birth', 'joining_date', 'date_of_joining'];
       activeSectionFields.forEach(k => {
         let val = form[k];
-        if (['doj', 'separation', 'lwd', 'dob', 'date_of_birth'].includes(k) && val) {
+        if (['doj', 'separation', 'lwd', 'dob', 'date_of_birth', 'joining_date', 'date_of_joining'].includes(k) && val && typeof val === 'string') {
           if (val.includes('-')) {
             const parts = val.split('-');
             if (parts.length === 3 && parts[0].length === 2) {
@@ -1596,14 +1597,16 @@ export default function PersonalInfo({ onBack }) {
                             >
                               VIEW PROOF
                             </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, [field.key]: '' })); }}
-                              style={{
-                                border: 'none', background: '#ef444415', color: '#ef4444',
-                                fontSize: '11px', fontWeight: '900', cursor: 'pointer',
-                                padding: '4px 10px', borderRadius: '8px', marginTop: '2px'
-                              }}
-                            >REMOVE</button>
+                            {isEditing && !isDisabled && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, [field.key]: '' })); }}
+                                style={{
+                                  border: 'none', background: '#ef444415', color: '#ef4444',
+                                  fontSize: '11px', fontWeight: '900', cursor: 'pointer',
+                                  padding: '4px 10px', borderRadius: '8px', marginTop: '2px'
+                                }}
+                              >REMOVE</button>
+                            )}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
