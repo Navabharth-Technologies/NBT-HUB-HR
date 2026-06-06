@@ -5,7 +5,7 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import {
-    ChevronLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink
+    ArrowLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink
 } from 'lucide-react';
 
 export default function ResignationUserScreen() {
@@ -38,6 +38,20 @@ export default function ResignationUserScreen() {
         if (!user) { navigate('/login'); return; }
         fetchMyRequests();
     }, [user]);
+
+    useEffect(() => {
+        if (selectedRequest) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+        }
+        return () => {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+        };
+    }, [selectedRequest]);
 
     const fetchMyRequests = async () => {
         if (!user?.token) return;
@@ -203,9 +217,9 @@ export default function ResignationUserScreen() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
                     <button
                         onClick={() => navigate(-1)}
-                        style={{ background: 'white', border: 'none', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+                        style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                        <ChevronLeft size={20} color="#0f172a" />
+                        <ArrowLeft size={18} color="#64748b" />
                     </button>
                     <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Exit Management</h1>
                 </div>
@@ -450,7 +464,7 @@ export default function ResignationUserScreen() {
                 {selectedRequest && (
                     <div
                         className="no-scrollbar"
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: winWidth < 768 ? '10px 10px 100px' : '50px 20px 140px', overflowY: 'auto' }}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}
                         onClick={() => setSelectedRequest(null)}
                     >
                         <div

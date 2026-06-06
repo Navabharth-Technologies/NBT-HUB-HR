@@ -379,10 +379,10 @@ export default function HRDashboard() {
             const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
             const status = String(l?.status || l?.Status || '').toUpperCase();
             const isPresent = hasValidPunchIn || status.includes('PRESENT') || status.includes('IN OFFICE') || status.includes('HALF') || status.includes('LATE') || status === 'P';
-            
+
             if (isPresent && !status.includes('ABSENT')) {
-               const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
-               if (pid) presentIds.add(pid);
+              const pid = String(l?.user_id || l?.Empcode || l?.EmpID || '').trim();
+              if (pid) presentIds.add(pid);
             }
           });
 
@@ -526,7 +526,7 @@ export default function HRDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>Ravikumar's Dashboard</h1>
-              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale • {teamsCount} Active Teams</p>
+              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale</p>
             </div>
           </div>
         </header>
@@ -643,8 +643,8 @@ export default function HRDashboard() {
 
         <div style={{ display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Leave/Attendance Management */}
-          <section 
-            className="dashboard-section animate-fade-in" 
+          <section
+            className="dashboard-section animate-fade-in"
             style={{ animationDelay: '0.2s' }}
           >
             <div style={{
@@ -656,7 +656,7 @@ export default function HRDashboard() {
               gap: '12px'
             }}>
               <h2 className="section-title" style={{ margin: 0 }}><Calendar size={20} color="#3863a8" />Attendance Management</h2>
-              <button 
+              <button
                 className="btn-view-all btn-blue"
                 onClick={(e) => { e.stopPropagation(); navigate('/attendance'); }}
               >
@@ -767,8 +767,8 @@ export default function HRDashboard() {
           </section>
 
           {/* Fun & Engagement Hub */}
-          <section 
-            className="dashboard-section animate-fade-in" 
+          <section
+            className="dashboard-section animate-fade-in"
             style={{ animationDelay: '0.3s', cursor: 'pointer' }}
             onClick={() => navigate('/fun-quiz')}
           >
@@ -844,7 +844,7 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer' }} onClick={() => navigate('/holidays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
-              <button 
+              <button
                 className="btn-view-all btn-teal"
                 onClick={(e) => { e.stopPropagation(); navigate('/holidays'); }}
               >
@@ -890,7 +890,7 @@ export default function HRDashboard() {
           <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer' }} onClick={() => navigate('/birthdays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
-              <button 
+              <button
                 className="btn-view-all btn-pink"
                 onClick={(e) => { e.stopPropagation(); navigate('/birthdays'); }}
               >
@@ -962,7 +962,7 @@ export default function HRDashboard() {
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               Review Suggestions
             </button>

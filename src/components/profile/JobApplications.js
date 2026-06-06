@@ -15,33 +15,33 @@ const getGoogleDriveFileId = (url) => {
   if (!url) return null;
   const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch) return fileDMatch[1];
-  
+
   const docDMatch = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
   if (docDMatch) return docDMatch[1];
-  
+
   const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (idMatch) return idMatch[1];
-  
+
   if (/^[a-zA-Z0-9_-]{25,50}$/.test(url)) {
     return url;
   }
-  
+
   return null;
 };
 
 const resolveResumeUrl = (link) => {
   if (!link) return '';
   const base = (BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
-  
+
   if (link.startsWith('http://') || link.startsWith('https://')) {
     return link;
   }
-  
+
   if (link.includes('api/drive/stream/') || link.startsWith('/')) {
     const cleanLink = link.startsWith('/') ? link : `/${link}`;
     return `${base}${cleanLink}`;
   }
-  
+
   const fileId = getGoogleDriveFileId(link);
   if (fileId) {
     return `${base}/api/drive/stream/${fileId}`;
@@ -85,19 +85,19 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        style={{ 
-          width: '100%', 
-          padding: '16px 20px', 
-          borderRadius: '18px', 
-          border: '1.5px solid #e2e8f0', 
-          background: '#ffffff', 
-          fontWeight: '600', 
-          fontSize: '15px', 
-          minHeight: '110px', 
-          resize: 'none', 
-          outline: 'none', 
-          fontFamily: 'inherit', 
-          boxSizing: 'border-box', 
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          borderRadius: '18px',
+          border: '1.5px solid #e2e8f0',
+          background: '#ffffff',
+          fontWeight: '600',
+          fontSize: '15px',
+          minHeight: '110px',
+          resize: 'none',
+          outline: 'none',
+          fontFamily: 'inherit',
+          boxSizing: 'border-box',
           transition: 'all 0.3s',
           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
         }}
@@ -109,17 +109,17 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
         <select
           value={value}
           onChange={(e) => onChange(name, e.target.value)}
-          style={{ 
-            width: '100%', 
-            padding: '16px 20px', 
-            borderRadius: '18px', 
-            border: '1.5px solid #e2e8f0', 
-            background: '#ffffff', 
-            fontWeight: '600', 
-            fontSize: '15px', 
-            outline: 'none', 
-            cursor: 'pointer', 
-            boxSizing: 'border-box', 
+          style={{
+            width: '100%',
+            padding: '16px 20px',
+            borderRadius: '18px',
+            border: '1.5px solid #e2e8f0',
+            background: '#ffffff',
+            fontWeight: '600',
+            fontSize: '15px',
+            outline: 'none',
+            cursor: 'pointer',
+            boxSizing: 'border-box',
             appearance: 'none',
             transition: 'all 0.3s',
             boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
@@ -143,16 +143,16 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        style={{ 
-          width: '100%', 
-          padding: '16px 20px', 
-          borderRadius: '18px', 
-          border: '1.5px solid #e2e8f0', 
-          background: '#ffffff', 
-          fontWeight: '600', 
-          fontSize: '15px', 
-          outline: 'none', 
-          boxSizing: 'border-box', 
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          borderRadius: '18px',
+          border: '1.5px solid #e2e8f0',
+          background: '#ffffff',
+          fontWeight: '600',
+          fontSize: '15px',
+          outline: 'none',
+          boxSizing: 'border-box',
           transition: 'all 0.3s',
           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
         }}
@@ -325,12 +325,12 @@ export default function JobApplications() {
       showNotification('Please fill in Applicant Name and Position', 'error');
       return;
     }
-    
+
     if (!form.resume_link) {
       showNotification('Please upload or enter a resume link (this field is mandatory)', 'error');
       return;
     }
-    
+
     // Name validation: alphabets and spaces
     const nameRegex = /^[a-zA-Z\s]+$/;
     if (!nameRegex.test(form.applicant_name)) {
@@ -540,12 +540,12 @@ export default function JobApplications() {
         paddingBottom: '100px',
         boxSizing: 'border-box'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          gap: winWidth < 640 ? '15px' : '20px', 
-          width: '100%', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: winWidth < 640 ? '15px' : '20px',
+          width: '100%',
           flexDirection: winWidth < 640 ? 'column' : 'row',
           textAlign: winWidth < 640 ? 'center' : 'left',
           marginBottom: winWidth < 768 ? '20px' : '35px',
@@ -557,23 +557,12 @@ export default function JobApplications() {
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', flexDirection: winWidth < 480 ? 'column' : 'row', gap: winWidth < 480 ? '10px' : '18px' }}>
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ArrowLeft size={18} color="#64748b" />
             </button>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', 
-              padding: winWidth < 768 ? '10px' : '14px', 
-              borderRadius: '16px', 
-              boxShadow: '0 8px 16px rgba(13, 148, 136, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Briefcase size={winWidth < 768 ? 22 : 28} color="white" />
-            </div>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '20px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>New Hirings</h1>
               <p style={{ fontSize: winWidth < 768 ? '11px' : '14px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>Manage talent pipeline and flow</p>
@@ -582,22 +571,22 @@ export default function JobApplications() {
           <div style={{ display: 'flex', gap: '8px', width: winWidth < 640 ? '100%' : 'auto' }}>
             <button
               onClick={() => { resetForm(); setShowAddModal(true); }}
-              style={{ 
+              style={{
                 flex: winWidth < 640 ? 1 : 'none',
-                background: '#0d9488', 
-                color: 'white', 
-                border: 'none', 
-                padding: winWidth < 768 ? '10px 16px' : '14px 28px', 
-                borderRadius: '14px', 
-                fontWeight: '800', 
-                fontSize: winWidth < 768 ? '12px' : '14px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
+                background: '#0d9488',
+                color: 'white',
+                border: 'none',
+                padding: winWidth < 768 ? '10px 16px' : '14px 28px',
+                borderRadius: '14px',
+                fontWeight: '800',
+                fontSize: winWidth < 768 ? '12px' : '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px', 
-                boxShadow: '0 10px 20px rgba(13, 148, 136, 0.2)', 
-                transition: '0.3s transform, 0.3s box-shadow' 
+                gap: '6px',
+                boxShadow: '0 10px 20px rgba(13, 148, 136, 0.2)',
+                transition: '0.3s transform, 0.3s box-shadow'
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 25px rgba(13, 148, 136, 0.3)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(13, 148, 136, 0.2)'; }}
@@ -608,12 +597,12 @@ export default function JobApplications() {
           </div>
         </div>
 
-        <div className="custom-scroll" style={{ 
-          display: 'flex', 
+        <div className="custom-scroll" style={{
+          display: 'flex',
           background: 'rgba(255, 255, 255, 0.5)',
           padding: '4px',
           borderRadius: '20px',
-          marginBottom: '25px', 
+          marginBottom: '25px',
           width: '100%',
           maxWidth: 'fit-content',
           border: '1px solid #e2e8f0',
@@ -628,29 +617,29 @@ export default function JobApplications() {
               key={status}
               onClick={() => setFilterStatus(status)}
               style={{
-                padding: winWidth < 768 ? '8px 14px' : '10px 20px', 
-                borderRadius: '16px', 
+                padding: winWidth < 768 ? '8px 14px' : '10px 20px',
+                borderRadius: '16px',
                 border: 'none',
-                background: filterStatus === status ? '#ffffff' : 'transparent',
-                color: filterStatus === status ? '#0d9488' : '#64748b',
-                fontWeight: '800', 
-                fontSize: winWidth < 768 ? '12px' : '13px', 
+                background: filterStatus === status ? '#514e4eff' : 'transparent',
+                color: filterStatus === status ? '#f2fbfaff' : '#64748b',
+                fontWeight: '800',
+                fontSize: winWidth < 768 ? '12px' : '13px',
                 cursor: 'pointer',
                 boxShadow: filterStatus === status ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-                transition: '0.3s all', 
-                display: 'flex', 
-                alignItems: 'center', 
+                transition: '0.3s all',
+                display: 'flex',
+                alignItems: 'center',
                 gap: '6px',
                 flexShrink: 0
               }}
             >
               {status}
               <span style={{
-                background: filterStatus === status ? '#0d948815' : '#f1f5f9',
-                color: filterStatus === status ? '#0d9488' : '#64748b',
-                padding: '1px 6px', 
-                borderRadius: '8px', 
-                fontSize: '10px', 
+                background: filterStatus === status ? '#2f7b7615' : '#f1f5f9',
+                color: filterStatus === status ? '#f2e6e6ff' : '#64748b',
+                padding: '1px 6px',
+                borderRadius: '8px',
+                fontSize: '10px',
                 fontWeight: '900'
               }}>{count}</span>
             </button>
@@ -665,21 +654,21 @@ export default function JobApplications() {
               placeholder="Search by name, position or department..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '16px 20px 16px 52px', 
-                borderRadius: '18px', 
-                border: '1.5px solid #e2e8f0', 
-                outline: 'none', 
-                background: 'white', 
-                fontSize: '15px', 
+              style={{
+                width: '100%',
+                padding: '16px 20px 16px 52px',
+                borderRadius: '18px',
+                border: '1.5px solid #e2e8f0',
+                outline: 'none',
+                background: 'white',
+                fontSize: '15px',
                 fontWeight: '600',
                 boxSizing: 'border-box',
                 transition: '0.3s all',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}
               onFocus={(e) => { e.currentTarget.style.borderColor = '#0d9488'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#1e1f1fff'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
             />
           </div>
         </div>
@@ -698,28 +687,28 @@ export default function JobApplications() {
                   key={app.id || i}
                   onClick={() => setShowDetailModal({ show: true, app })}
                   style={{
-                    background: '#ffffff', 
-                    borderRadius: '24px', 
+                    background: '#ffffff',
+                    borderRadius: '24px',
                     padding: winWidth < 768 ? '18px' : '25px',
-                    border: '1px solid #f1f5f9', 
+                    border: '1px solid #f1f5f9',
                     cursor: 'pointer',
                     boxShadow: '0 10px 20px -5px rgba(0,0,0,0.03)',
                     transition: '0.3s all',
-                    position: 'relative', 
+                    position: 'relative',
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: winWidth < 768 ? '12px' : '20px'
                   }}
-                  onMouseEnter={(e) => { 
+                  onMouseEnter={(e) => {
                     if (winWidth >= 1024) {
-                      e.currentTarget.style.transform = 'translateY(-5px)'; 
+                      e.currentTarget.style.transform = 'translateY(-5px)';
                       e.currentTarget.style.boxShadow = '0 25px 35px -10px rgba(0,0,0,0.08)';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.borderColor = '#252543ff';
                     }
                   }}
-                  onMouseLeave={(e) => { 
-                    e.currentTarget.style.transform = 'translateY(0)'; 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(0,0,0,0.03)';
                     e.currentTarget.style.borderColor = '#f1f5f9';
                   }}
@@ -728,7 +717,7 @@ export default function JobApplications() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '10px' : '14px' }}>
                       <div style={{
                         width: winWidth < 768 ? '44px' : '54px', height: winWidth < 768 ? '44px' : '54px', borderRadius: '14px',
-                        background: `linear-gradient(135deg, ${config.color}20 0%, ${config.color}10 100%)`, 
+                        background: `linear-gradient(135deg, ${config.color}20 0%, ${config.color}10 100%)`,
                         color: config.color,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: '950', fontSize: winWidth < 768 ? '16px' : '20px',
@@ -826,10 +815,10 @@ export default function JobApplications() {
                           <Eye size={12} /> Resume
                         </button>
                       )}
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: '#0d9488', 
-                        fontWeight: '900', 
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#787c7bff',
+                        fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -848,30 +837,30 @@ export default function JobApplications() {
 
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="animate-slide-up" style={{ 
-              background: '#ffffff', 
-              width: '100%', 
-              maxWidth: winWidth < 768 ? '100%' : '750px', 
-              borderRadius: winWidth < 768 ? '24px' : '32px', 
-              maxHeight: winWidth < 768 ? '95vh' : '90vh', 
-              overflow: 'hidden', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
-              position: 'relative'
-            }}>
-              <div style={{ padding: winWidth < 768 ? '20px 25px' : '30px 40px', background: '#ffffff', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ width: winWidth < 768 ? '40px' : '50px', height: winWidth < 768 ? '40px' : '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(13, 148, 136, 0.2)' }}>
-                    <Plus size={winWidth < 768 ? 20 : 24} strokeWidth={3} />
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize: winWidth < 768 ? '17px' : '20px', fontWeight: '950', color: '#0f172a', margin: 0 }}>Add Application</h2>
-                    <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>New talent entry</p>
-                  </div>
+          <div className="animate-slide-up" style={{
+            background: '#ffffff',
+            width: '100%',
+            maxWidth: winWidth < 768 ? '100%' : '750px',
+            borderRadius: winWidth < 768 ? '24px' : '32px',
+            maxHeight: winWidth < 768 ? '95vh' : '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <div style={{ padding: winWidth < 768 ? '20px 25px' : '30px 40px', background: '#ffffff', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: winWidth < 768 ? '40px' : '50px', height: winWidth < 768 ? '40px' : '50px', borderRadius: '14px', background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(13, 148, 136, 0.2)' }}>
+                  <Plus size={winWidth < 768 ? 20 : 24} strokeWidth={3} />
                 </div>
-              <button 
-                onClick={() => setShowAddModal(false)} 
+                <div>
+                  <h2 style={{ fontSize: winWidth < 768 ? '17px' : '20px', fontWeight: '950', color: '#0f172a', margin: 0 }}>Add Application</h2>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>New talent entry</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
                 style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                 onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
@@ -890,78 +879,78 @@ export default function JobApplications() {
                 <FormField label="Exp" icon={<FileText size={14} />} name="experience" placeholder="e.g. 3" value={form.experience} onChange={handleFormChange} />
                 <FormField label="Location" icon={<MapPin size={14} />} name="location" placeholder="e.g. Bangalore" value={form.location} onChange={handleFormChange} />
                 <FormField label="Date" icon={<Calendar size={14} />} type="date" name="applied_date" value={form.applied_date} onChange={handleFormChange} />
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '10px', paddingLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                  <span style={{ color: '#0d9488' }}><Download size={14} /></span> Resume <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <input
-                      type="text"
-                      placeholder="https://... or uploaded file path"
-                      value={form.resume_link}
-                      onChange={(e) => handleFormChange('resume_link', e.target.value)}
-                      style={{ 
-                        width: '100%', 
-                        padding: '16px 20px', 
-                        borderRadius: '18px', 
-                        border: '1.5px solid #e2e8f0', 
-                        background: '#ffffff', 
-                        fontWeight: '600', 
-                        fontSize: '15px', 
-                        outline: 'none', 
-                        boxSizing: 'border-box', 
-                        transition: 'all 0.3s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = '#0d9488'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
-                    />
-                  </div>
-                  
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleResumeUpload}
-                      id="resume-upload-input"
-                      style={{ display: 'none' }}
-                    />
-                    <label
-                      htmlFor="resume-upload-input"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '16px 24px',
-                        borderRadius: '18px',
-                        background: uploadingResume ? '#e2e8f0' : '#0d9488',
-                        color: uploadingResume ? '#94a3b8' : 'white',
-                        fontWeight: '800',
-                        fontSize: '14px',
-                        cursor: uploadingResume ? 'not-allowed' : 'pointer',
-                        border: 'none',
-                        transition: 'all 0.2s',
-                        boxShadow: uploadingResume ? 'none' : '0 4px 10px rgba(13, 148, 136, 0.25)',
-                        whiteSpace: 'nowrap',
-                        boxSizing: 'border-box'
-                      }}
-                      onMouseEnter={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                      onMouseLeave={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      {uploadingResume ? (
-                        <span>Uploading...</span>
-                      ) : (
-                        <>
-                          <Upload size={16} />
-                          <span>Upload PDF</span>
-                        </>
-                      )}
-                    </label>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '10px', paddingLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    <span style={{ color: '#0d9488' }}><Download size={14} /></span> Resume <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder="https://... or uploaded file path"
+                        value={form.resume_link}
+                        onChange={(e) => handleFormChange('resume_link', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '16px 20px',
+                          borderRadius: '18px',
+                          border: '1.5px solid #e2e8f0',
+                          background: '#ffffff',
+                          fontWeight: '600',
+                          fontSize: '15px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          transition: 'all 0.3s',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = '#0d9488'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
+                      />
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleResumeUpload}
+                        id="resume-upload-input"
+                        style={{ display: 'none' }}
+                      />
+                      <label
+                        htmlFor="resume-upload-input"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          padding: '16px 24px',
+                          borderRadius: '18px',
+                          background: uploadingResume ? '#e2e8f0' : '#0d9488',
+                          color: uploadingResume ? '#94a3b8' : 'white',
+                          fontWeight: '800',
+                          fontSize: '14px',
+                          cursor: uploadingResume ? 'not-allowed' : 'pointer',
+                          border: 'none',
+                          transition: 'all 0.2s',
+                          boxShadow: uploadingResume ? 'none' : '0 4px 10px rgba(13, 148, 136, 0.25)',
+                          whiteSpace: 'nowrap',
+                          boxSizing: 'border-box'
+                        }}
+                        onMouseEnter={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { if (!uploadingResume) e.currentTarget.style.transform = 'translateY(0)'; }}
+                      >
+                        {uploadingResume ? (
+                          <span>Uploading...</span>
+                        ) : (
+                          <>
+                            <Upload size={16} />
+                            <span>Upload PDF</span>
+                          </>
+                        )}
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
                 <FormField label="Notes" icon={<FileText size={14} />} type="textarea" name="notes" placeholder="Feedback..." value={form.notes} onChange={handleFormChange} fullWidth />
               </div>
             </div>
@@ -978,20 +967,20 @@ export default function JobApplications() {
               <button
                 onClick={handleSubmit}
                 disabled={saving}
-                style={{ 
-                  flex: 2, 
-                  padding: winWidth < 768 ? '12px' : '16px', 
-                  borderRadius: '50px', 
-                  border: 'none', 
-                  background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', 
-                  color: 'white', 
-                  fontSize: winWidth < 768 ? '13px' : '15px', 
-                  fontWeight: '950', 
-                  cursor: saving ? 'not-allowed' : 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '10px', 
+                style={{
+                  flex: 2,
+                  padding: winWidth < 768 ? '12px' : '16px',
+                  borderRadius: '50px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                  color: 'white',
+                  fontSize: winWidth < 768 ? '13px' : '15px',
+                  fontWeight: '950',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
                   boxShadow: '0 10px 20px rgba(13, 148, 136, 0.25)',
                   transition: '0.3s transform'
                 }}
@@ -1011,15 +1000,15 @@ export default function JobApplications() {
         const config = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
         return (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <div className="animate-slide-up" style={{ 
-              background: 'white', 
-              width: '100%', 
-              maxWidth: winWidth < 768 ? '100%' : '600px', 
-              borderRadius: winWidth < 768 ? '24px' : '32px', 
-              maxHeight: winWidth < 768 ? '95vh' : '90vh', 
-              overflow: 'hidden', 
-              display: 'flex', 
-              flexDirection: 'column', 
+            <div className="animate-slide-up" style={{
+              background: 'white',
+              width: '100%',
+              maxWidth: winWidth < 768 ? '100%' : '600px',
+              borderRadius: winWidth < 768 ? '24px' : '32px',
+              maxHeight: winWidth < 768 ? '95vh' : '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: '0 30px 60px -12px rgba(0,0,0,0.3)',
               position: 'relative'
             }}>
@@ -1027,7 +1016,7 @@ export default function JobApplications() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <div style={{
                     width: winWidth < 768 ? '44px' : '56px', height: winWidth < 768 ? '44px' : '56px', borderRadius: '16px',
-                    background: `linear-gradient(135deg, ${config.color}20 0%, ${config.color}10 100%)`, 
+                    background: `linear-gradient(135deg, ${config.color}20 0%, ${config.color}10 100%)`,
                     color: config.color,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: '950', fontSize: winWidth < 768 ? '18px' : '22px',
@@ -1040,8 +1029,8 @@ export default function JobApplications() {
                     <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '600' }}>{app.position || app.role || app.jobTitle || app.job_title || 'No position'}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowDetailModal({ show: false, app: null })} 
+                <button
+                  onClick={() => setShowDetailModal({ show: false, app: null })}
                   style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <X size={18} strokeWidth={3} />
@@ -1087,10 +1076,10 @@ export default function JobApplications() {
                       >
                         <Eye size={18} strokeWidth={2.5} /> Preview Resume PDF
                       </button>
-                      <a 
-                        href={resolvedUrl} 
-                        target="_blank" 
-                        rel="noreferrer" 
+                      <a
+                        href={resolvedUrl}
+                        target="_blank"
+                        rel="noreferrer"
                         style={{
                           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '18px',
                           background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', textDecoration: 'none',
@@ -1107,44 +1096,44 @@ export default function JobApplications() {
 
 
                 <div style={{ padding: '25px', background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-                   <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                     <Edit3 size={14} color="#0d9488" /> Update Status & Feedback
-                   </div>
-                   <textarea 
+                  <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Edit3 size={14} color="#0d9488" /> Update Status & Feedback
+                  </div>
+                  <textarea
                     placeholder="Add a detailed note or interview feedback..."
                     value={statusNote}
                     onChange={(e) => setStatusNote(e.target.value)}
                     style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: '600', minHeight: '100px', marginBottom: '20px', outline: 'none', resize: 'none', transition: '0.3s all' }}
                     onFocus={(e) => e.currentTarget.style.borderColor = '#0d9488'}
                     onBlur={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
-                   />
-                    <div style={{ position: 'relative' }}>
-                      <select 
-                        value={status} 
-                        onChange={(e) => handleStatusUpdate(app.id || app._id, e.target.value, statusNote)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '16px 20px', 
-                          borderRadius: '16px', 
-                          border: `2px solid ${config.border}`, 
-                          background: 'white', 
-                          fontWeight: '800', 
-                          fontSize: '15px', 
-                          outline: 'none',
-                          cursor: 'pointer',
-                          color: config.color,
-                          appearance: 'none',
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.02)'
-                        }}
-                      >
-                        {JOB_STATUS_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value} style={{ color: '#000' }}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={20} color={config.color} style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                    </div>
+                  />
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={status}
+                      onChange={(e) => handleStatusUpdate(app.id || app._id, e.target.value, statusNote)}
+                      style={{
+                        width: '100%',
+                        padding: '16px 20px',
+                        borderRadius: '16px',
+                        border: `2px solid ${config.border}`,
+                        background: 'white',
+                        fontWeight: '800',
+                        fontSize: '15px',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        color: config.color,
+                        appearance: 'none',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      {JOB_STATUS_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value} style={{ color: '#000' }}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={20} color={config.color} style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  </div>
                 </div>
               </div>
 
@@ -1164,7 +1153,7 @@ export default function JobApplications() {
       })()}
 
       {previewResumeUrl && (
-        <div 
+        <div
           onClick={() => setPreviewResumeUrl(null)}
           style={{
             position: 'fixed',
@@ -1178,7 +1167,7 @@ export default function JobApplications() {
             padding: '20px'
           }}
         >
-          <div 
+          <div
             onClick={e => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
@@ -1200,10 +1189,10 @@ export default function JobApplications() {
                 <span style={{ fontWeight: '850', color: '#1e293b', fontSize: '15px' }}>Resume Document Viewer</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <a 
-                  href={previewResumeUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
+                <a
+                  href={previewResumeUrl}
+                  target="_blank"
+                  rel="noreferrer"
                   style={{
                     marginRight: '15px',
                     fontSize: '13px',

@@ -5,7 +5,7 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import {
-    ChevronLeft, FileText,
+    ArrowLeft, FileText,
     Search, AlertCircle,
     LogOut
 } from 'lucide-react';
@@ -36,6 +36,20 @@ export default function ResignationManagement() {
         }
         fetchRequests();
     }, [user]);
+
+    useEffect(() => {
+        if (selectedRequest) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+        }
+        return () => {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+        };
+    }, [selectedRequest]);
 
     const fetchRequests = async () => {
         if (!user?.token) return;
@@ -145,9 +159,9 @@ export default function ResignationManagement() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                         <button
                             onClick={() => navigate(-1)}
-                            style={{ background: 'white', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex' }}
+                            style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                            <ChevronLeft size={20} color="#64748b" />
+                            <ArrowLeft size={18} color="#64748b" />
                         </button>
                         <div>
                             <h1 style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>Resignation Notices</h1>

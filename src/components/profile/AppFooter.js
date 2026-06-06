@@ -139,14 +139,11 @@ export default function AppFooter({ onCreateTeam }) {
     const showFooterOnScroll = () => {
       setIsVisible(true);
       if (timeout) clearTimeout(timeout);
-
-      // Hide after 6 seconds of no scrolling
       timeout = setTimeout(() => {
         setIsVisible(false);
       }, 6000);
     };
 
-    // Listen to all scrolling behaviors universally
     window.addEventListener('scroll', showFooterOnScroll, { passive: true });
     window.addEventListener('wheel', showFooterOnScroll, { passive: true });
     window.addEventListener('touchmove', showFooterOnScroll, { passive: true });
@@ -158,6 +155,7 @@ export default function AppFooter({ onCreateTeam }) {
       if (timeout) clearTimeout(timeout);
     };
   }, []);
+
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <Home size={22} /> },
@@ -206,6 +204,7 @@ export default function AppFooter({ onCreateTeam }) {
       )}
       <div
         className={`app-footer-wrapper ${!isVisible && !showAddMenu ? 'app-footer-hidden' : ''}`}
+        style={showAddMenu ? { zIndex: 3002 } : {}}
         onMouseEnter={() => setIsVisible(true)}
       >
         {showAddMenu && (

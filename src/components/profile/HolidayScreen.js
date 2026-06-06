@@ -17,6 +17,7 @@ export default function HolidayScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
   const [editingHoliday, setEditingHoliday] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Selection Mode States
   const [mode, setMode] = useState('view'); // 'view', 'edit_select', 'delete_select'
@@ -28,6 +29,27 @@ export default function HolidayScreen() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const hasActiveModal = showAddModal || showEditModal || showDeleteConfirm;
+    if (hasActiveModal) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    };
+  }, [showAddModal, showEditModal, showDeleteConfirm]);
 
   const fetchHolidays = async () => {
     if (!user?.token) return;
@@ -178,8 +200,6 @@ export default function HolidayScreen() {
 
   const handleDeleteHoliday = async () => {
     if (!selectedId) return;
-    if (!window.confirm('Are you sure you want to delete this holiday?')) return;
-    
     setSubmitting(true);
     try {
       const res = await fetch(API_ENDPOINTS.HOLIDAYS_DELETE(selectedId), {
@@ -187,10 +207,12 @@ export default function HolidayScreen() {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
       if (res.ok) {
+        setShowDeleteConfirm(false);
         setMode('view');
         setSelectedId(null);
         fetchHolidays();
       } else {
+        setShowDeleteConfirm(false);
         alert('Failed to delete holiday.');
       }
     } catch (err) {
@@ -316,7 +338,7 @@ export default function HolidayScreen() {
             <div style={{ display: 'flex', gap: '12px' }}>
               {selectedId && (
                 <button 
-                  onClick={mode === 'edit_select' ? startEdit : handleDeleteHoliday}
+                  onClick={mode === 'edit_select' ? startEdit : () => setShowDeleteConfirm(true)}
                   style={{ background: mode === 'edit_select' ? '#10b981' : '#ef4444', color: 'white', border: 'none', padding: '6px 16px', borderRadius: '50px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
                 >
                   {mode === 'edit_select' ? 'Proceed with Edit' : 'Confirm Delete'}
@@ -505,6 +527,45 @@ export default function HolidayScreen() {
                 {submitting ? <RefreshCw size={18} className="spin" /> : 'Save Changes'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Center-Aligned Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="animate-slide-up" style={{ background: '#ffffff', borderRadius: '30px', padding: '40px', width: '90%', maxWidth: '400px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+            <button 
+              onClick={() => setShowDeleteConfirm(false)} 
+              style={{ position: 'absolute', top: '25px', right: '25px', background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
+              <Trash2 size={24} />
+            </div>
+            
+            <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' }}>Delete Holiday</h2>
+            <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 24px 0', fontWeight: '600', lineHeight: '1.5' }}>
+              Are you sure you want to delete this holiday?
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{ flex: 1, padding: '14px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '50px', fontWeight: '900', fontSize: '14px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteHoliday}
+                disabled={submitting}
+                style={{ flex: 1, padding: '14px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '900', fontSize: '14px', cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: '0 10px 20px rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {submitting ? <RefreshCw size={16} className="spin" /> : 'OK'}
+              </button>
+            </div>
           </div>
         </div>
       )}

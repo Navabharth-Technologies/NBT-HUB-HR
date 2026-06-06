@@ -36,6 +36,26 @@ export default function TicketManagement() {
   }, []);
 
   useEffect(() => {
+    if (isManaging || viewingTicket) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    };
+  }, [isManaging, viewingTicket]);
+
+  useEffect(() => {
     fetchTickets();
   }, [user]);
 
@@ -125,14 +145,37 @@ export default function TicketManagement() {
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text('OFFICIAL TICKET PERFORMANCE REPORT', 14, 28);
+    doc.text('TICKETS REPORT', 14, 28);
     doc.text(`Generated on: ${today}`, 14, 34);
 
     const tableColumn = ["Ticket ID", "Subject", "Requester", "Priority", "Status", "Created At"];
     const tableRows = filteredTickets.map((t, index) => {
       const requesterName = t.creatorName || t.name || t.user_name || 'Anonymous';
       const createdAtVal = Array.isArray(t.created_at) ? t.created_at[0] : t.created_at;
-      const createdAt = createdAtVal ? new Date(createdAtVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown';
+
+      const formatToDDMMYYYY = (dateVal) => {
+        if (!dateVal) return 'Unknown';
+        try {
+          let clean = String(dateVal).trim();
+          if (clean.includes('Z20')) {
+            clean = clean.split('Z')[0] + 'Z';
+          }
+          const d = new Date(clean);
+          if (isNaN(d.getTime())) {
+            const match = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+            return clean.split('T')[0];
+          }
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}/${month}/${year}`;
+        } catch (e) {
+          return 'Unknown';
+        }
+      };
+
+      const createdAt = formatToDDMMYYYY(createdAtVal);
       const statusStr = String(t.status || '').toUpperCase() === 'OPEN' ? 'Pending' : (t.status || 'Pending');
       const priorityStr = (t.priority || 'NORMAL').toUpperCase();
 
@@ -142,7 +185,7 @@ export default function TicketManagement() {
         requesterName,
         priorityStr,
         statusStr,
-        createdAt === 'Invalid Date' ? (createdAtVal ? String(createdAtVal).split('T')[0] : 'Unknown') : createdAt
+        createdAt
       ];
     });
 
@@ -265,7 +308,7 @@ export default function TicketManagement() {
             </button>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '26px' : '32px', fontWeight: '950', color: '#1e293b', margin: '0 0 8px 0', letterSpacing: '-1px' }}>Ticket Management</h1>
-              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '600', lineHeight: '1.5' }}>Manage Organization-Wide Support Requests and Resolutions</p>
+              <p style={{ color: '#64748b', margin: 0, fontSize: winWidth < 768 ? '14px' : '15px', fontWeight: '600', lineHeight: '1.5' }}></p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: winWidth < 768 ? '100%' : 'auto' }}>
@@ -373,7 +416,28 @@ export default function TicketManagement() {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontWeight: '700', fontSize: '12px' }}>
                             <Clock size={12} />
-                            {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
+                            {(() => {
+                              if (!createdAt) return 'Unknown';
+                              let clean = String(createdAt).trim();
+                              if (clean.includes('Z20')) clean = clean.split('Z')[0] + 'Z';
+                              if (clean.includes('-') && clean.length === 10) {
+                                const parts = clean.split('-');
+                                if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                              }
+                              if (clean.includes('T') && clean.includes('-')) {
+                                const datePart = clean.split('T')[0];
+                                if (datePart.length === 10) {
+                                  const parts = datePart.split('-');
+                                  if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                }
+                              }
+                              const d = new Date(clean);
+                              if (isNaN(d.getTime())) return clean;
+                              const day = String(d.getDate()).padStart(2, '0');
+                              const month = String(d.getMonth() + 1).padStart(2, '0');
+                              const year = d.getFullYear();
+                              return `${day}-${month}-${year}`;
+                            })()}
                           </div>
                         </div>
                         <button
@@ -453,7 +517,28 @@ export default function TicketManagement() {
                             </div>
                           </td>
                           <td style={{ padding: '20px 25px', color: '#64748b', fontWeight: '600', fontSize: '12px' }}>
-                            {createdAt ? new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
+                            {(() => {
+                              if (!createdAt) return 'Unknown';
+                              let clean = String(createdAt).trim();
+                              if (clean.includes('Z20')) clean = clean.split('Z')[0] + 'Z';
+                              if (clean.includes('-') && clean.length === 10) {
+                                const parts = clean.split('-');
+                                if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                              }
+                              if (clean.includes('T') && clean.includes('-')) {
+                                const datePart = clean.split('T')[0];
+                                if (datePart.length === 10) {
+                                  const parts = datePart.split('-');
+                                  if (parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                }
+                              }
+                              const d = new Date(clean);
+                              if (isNaN(d.getTime())) return clean;
+                              const day = String(d.getDate()).padStart(2, '0');
+                              const month = String(d.getMonth() + 1).padStart(2, '0');
+                              const year = d.getFullYear();
+                              return `${day}-${month}-${year}`;
+                            })()}
                           </td>
                           <td style={{ padding: '20px 25px' }}>
                             <span style={{

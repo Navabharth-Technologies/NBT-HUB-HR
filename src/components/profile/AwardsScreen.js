@@ -98,7 +98,7 @@ export default function AwardsScreen() {
     const [showGrantModal, setShowGrantModal] = React.useState(false);
     const [showEditModal, setShowEditModal] = React.useState(false);
     const [selectedReward, setSelectedReward] = React.useState(null);
-    
+
     const [employees, setEmployees] = React.useState([]);
     // Fix for React Router getting stuck when using browser's back button
     React.useEffect(() => {
@@ -203,7 +203,7 @@ export default function AwardsScreen() {
                     const allJson = await allRes.json();
                     const employeesList = allJson.data || [];
                     const rewHistoryData = await rewHistoryRes.json();
-                    
+
                     const rewardSums = {};
                     rewHistoryData.forEach(r => {
                         const empId = String(r.employee_id || '');
@@ -345,33 +345,33 @@ export default function AwardsScreen() {
     const isSameEmployee = (id1, id2) => {
         if (!id1 || !id2) return false;
         if (String(id1) === String(id2)) return true;
-        
+
         const emp1 = employees.find(e =>
             String(e.id) === String(id1) ||
             String(e.employee_id) === String(id1) ||
             String(e.userId) === String(id1) ||
             String(e.emp_id) === String(id1)
         );
-        
+
         const emp2 = employees.find(e =>
             String(e.id) === String(id2) ||
             String(e.employee_id) === String(id2) ||
             String(e.userId) === String(id2) ||
             String(e.emp_id) === String(id2)
         );
-        
+
         if (emp1 && emp2) {
             const uid1 = String(emp1.id || emp1.employee_id || emp1.userId || emp1.emp_id);
             const uid2 = String(emp2.id || emp2.employee_id || emp2.userId || emp2.emp_id);
             if (uid1 === uid2) return true;
         }
-        
+
         const s1 = String(id1);
         const s2 = String(id2);
         if (s1.endsWith(s2) || s2.endsWith(s1)) {
             return true;
         }
-        
+
         return false;
     };
 
@@ -643,7 +643,7 @@ export default function AwardsScreen() {
                     {/* ── Header Controls ── */}
                     <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', gap: '20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <button 
+                            <button
                                 type="button"
                                 onClick={(e) => {
                                     e.preventDefault();
@@ -661,7 +661,7 @@ export default function AwardsScreen() {
                             </button>
                             <div>
                                 <h1 style={{ margin: 0, fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.5px' }}>Awards &amp; Recognition</h1>
-                                <p style={{ margin: 0, fontSize: winWidth < 768 ? '11px' : '13px', color: '#94a3b8', fontWeight: '600' }}>Live achievements at NBT Hub</p>
+                                <p style={{ margin: 0, fontSize: winWidth < 768 ? '11px' : '13px', color: '#94a3b8', fontWeight: '600' }}>Achievements at NBT HUB</p>
                             </div>
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', width: winWidth < 768 ? '100%' : 'auto', alignItems: 'center' }}>
@@ -954,7 +954,7 @@ export default function AwardsScreen() {
                                                                 <div>
                                                                     <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{empName || resolveEmployeeName(empId)}</div>
                                                                     <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>
-                                                                        {userRewards.length} recognition{userRewards.length !== 1 ? 's' : ''} Â· {latest?.reward_name || 'Excellence'}
+                                                                        {userRewards.length} recognition{userRewards.length !== 1 ? 's' : ''}{" \u00B7 "}{latest?.reward_name || 'Excellence'}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -979,7 +979,7 @@ export default function AwardsScreen() {
                                         {(() => {
                                             // Show ALL filtered rewards (reward points + quiz points) for the selected user
                                             const allUserHistory = filteredRewards.filter(r => isSameEmployee(r.employee_id, selectedHistoryUser));
-                                            
+
                                             allUserHistory.sort((a, b) => {
                                                 const dA = parseToDate(a.created_at || a.date);
                                                 const dB = parseToDate(b.created_at || b.date);
@@ -993,7 +993,7 @@ export default function AwardsScreen() {
                                                     <div>
                                                         <div style={{ fontWeight: '900', fontSize: '14px', color: '#0f172a' }}>{r.reward_name || 'Excellence'}</div>
                                                         <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', marginTop: '3px' }}>
-                                                            {r.note || ''} · {(() => {
+                                                            {r.note || ''}{" \u00B7 "}{(() => {
                                                                 const d = parseToDate(r.created_at || r.date);
                                                                 return d ? d.toLocaleDateString() : 'N/A';
                                                             })()}

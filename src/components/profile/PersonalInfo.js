@@ -1,4 +1,4 @@
-import React, { useState, useEffect, cloneElement, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, cloneElement, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -43,6 +43,7 @@ const SECTIONS = [
     color: '#8b5cf6',
     fields: [
       { key: 'designation', label: 'Designation', type: 'text', required: true },
+      { key: 'department', label: 'Department', type: 'text', required: true },
       { key: 'supervisor_l1', label: 'Supervisor L1 (Reporting Person)', type: 'text' },
       { key: 'supervisor_l2', label: 'Supervisor L2', type: 'text' },
       { key: 'doj', label: 'Date of Joining', type: 'text', placeholder: 'DD-MM-YYYY', required: true },
@@ -83,7 +84,7 @@ const SECTIONS = [
       { key: 'edu_completion_year', label: 'EDU Completion Year', type: 'text', required: true },
       { key: 'college', label: 'College', type: 'text', required: true },
       { key: 'university', label: 'University', type: 'text', required: true },
-      { key: 'previous_org', label: 'Previous Organization', type: 'text' },
+      { key: 'previous_organization', label: 'Previous Organization', type: 'text' },
       { key: 'source', label: 'Source', type: 'text' },
       { key: 'languages_known', label: 'Languages Known', type: 'text' },
     ]
@@ -136,18 +137,34 @@ const SECTIONS = [
 
 export default function PersonalInfo({ onBack }) {
   const navigate = useNavigate();
+  const caretRef = useRef({ target: null, selectionStart: 0, oldValLen: 0 });
+
+  useLayoutEffect(() => {
+    const { target, selectionStart, oldValLen } = caretRef.current;
+    if (target) {
+      try {
+        let newPos = selectionStart;
+        if (target.value.length !== oldValLen) {
+          const diff = target.value.length - oldValLen;
+          newPos = Math.max(0, selectionStart + diff);
+        }
+        target.setSelectionRange(newPos, newPos);
+      } catch (err) { }
+      caretRef.current = { target: null, selectionStart: 0, oldValLen: 0 };
+    }
+  });
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isSelfMode = searchParams.get('self') === 'true';
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
-    emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', blood_group: '', marital_status: 'Single', father_husband_name: '', pan_number: '', aadhar_number: '',
-    pancard_photo: '', adharcard_photo: '',
+    emp_name: '', gender: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
+    pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
     designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
     contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
     sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
     ug_pg_percentage: '', ug_pg_markscard: '',
-    qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
+    qualification: '', edu_completion_year: '', college: '', university: '', previous_organization: '', previous_exp: '', source: '', languages_known: '',
     separation: '', lwd: '', attrition_bucket: '', reason: '',
     experience_letter: '', previous_company_payslip: '',
     bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
@@ -156,6 +173,7 @@ export default function PersonalInfo({ onBack }) {
   });
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [saving, setSaving] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [toast, setToast] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -239,20 +257,30 @@ export default function PersonalInfo({ onBack }) {
         if (!uid) return;
 
         const emptyForm = {
-          emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
+          emp_name: '', gender: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
           pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
           designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
           contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
           sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
           ug_pg_percentage: '', ug_pg_markscard: '',
-          qualification: '', edu_completion_year: '', college: '', university: '', previous_org: '', previous_exp: '', source: '', languages_known: '',
+          qualification: '', edu_completion_year: '', college: '', university: '', previous_organization: '', previous_exp: '', source: '', languages_known: '',
           separation: '', lwd: '', attrition_bucket: '', reason: '',
           experience_letter: '', previous_company_payslip: '',
           bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
           bgv_status: '', appointment_letter: '', approved_by_ceo: '', onboarding_doc_completed: '', id_card: '', onboarding_link: '',
           profile_pic: ''
         };
-        setForm(emptyForm);
+
+        // Load from sessionStorage cache instantly (no blank flash)
+        const cacheKey = `profile_cache_hr_${uid}`;
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            setForm(prev => ({ ...prev, ...JSON.parse(cached) }));
+          }
+        } catch (e) { /* ignore parse errors */ }
+
+        setLoadingProfile(true);
 
         const token = localStorage.getItem('token');
         const res = await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_GET(uid), {
@@ -274,6 +302,7 @@ export default function PersonalInfo({ onBack }) {
             let targetKey = Object.keys(emptyForm).find(formKey => formKey.toLowerCase() === lowerKey) || apiKey;
 
             // Aggressive mapping for backend column variations
+            if (lowerKey === 'dob' || lowerKey === 'date_of_birth') targetKey = 'date_of_birth';
             if (lowerKey === 'last_working_day' || lowerKey === 'lastworkingday' || lowerKey === 'last_working_date' || lowerKey === 'lwd') targetKey = 'lwd';
             if (lowerKey.includes('pan_card') || lowerKey === 'pancard') targetKey = 'pancard_photo';
             if (lowerKey.includes('aadhar_card') || lowerKey.includes('adhar_card') || lowerKey === 'adharcard') targetKey = 'adharcard_photo';
@@ -306,7 +335,7 @@ export default function PersonalInfo({ onBack }) {
             if (lowerKey === 'profile_picture' || lowerKey === 'profile_pic') targetKey = 'profile_pic';
 
             // Format date fields to DD/MM/YYYY or DD-MM-YYYY
-            if ((targetKey === 'dob' || targetKey === 'date_of_birth' || targetKey === 'separation' || targetKey === 'doj' || targetKey === 'lwd') && normalizedVal) {
+            if ((targetKey === 'date_of_birth' || targetKey === 'separation' || targetKey === 'doj' || targetKey === 'lwd') && normalizedVal) {
               const dateStr = String(normalizedVal);
               let d;
               if (dateStr.includes('T')) {
@@ -337,22 +366,23 @@ export default function PersonalInfo({ onBack }) {
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const year = d.getFullYear();
-                normalizedVal = (targetKey === 'dob' || targetKey === 'date_of_birth' || targetKey === 'lwd') ? `${day}/${month}/${year}` : `${day}-${month}-${year}`;
+                normalizedVal = (targetKey === 'date_of_birth' || targetKey === 'lwd') ? `${day}/${month}/${year}` : `${day}-${month}-${year}`;
               }
             }
 
-            if (targetKey === 'dob' || targetKey === 'date_of_birth') {
-              cleanData['dob'] = normalizedVal;
-              cleanData['date_of_birth'] = normalizedVal;
-            } else {
+            if (normalizedVal !== '' || cleanData[targetKey] === undefined) {
               cleanData[targetKey] = normalizedVal;
             }
           });
 
           setForm(prev => ({ ...prev, ...cleanData }));
+          // Cache for instant load on revisit
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(cleanData)); } catch (e) { /* ignore */ }
         }
       } catch (err) {
         console.error("Failed to sync profile info:", err);
+      } finally {
+        setLoadingProfile(false);
       }
     };
     loadDocs();
@@ -515,79 +545,135 @@ export default function PersonalInfo({ onBack }) {
     }
   };
 
-  const handleChange = (key, value) => {
+  const handleChange = (key, value, target) => {
     let sanitizedValue = value;
 
-    if (key === 'dob' || key === 'date_of_birth') {
-      const prevValue = form.dob || form.date_of_birth || '';
+    if (key === 'date_of_birth') {
+      const prevValue = form.date_of_birth || '';
       const isDeleting = prevValue.length > value.length;
-      let clean = value.replace(/\D/g, '');
 
-      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
-        if (clean.length > 0) {
-          clean = clean.slice(0, -1);
-        }
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        caretRef.current = {
+          target,
+          selectionStart: target.selectionStart,
+          oldValLen: target.value.length
+        };
       }
 
-      // Max 8 digits
-      if (clean.length > 8) {
-        clean = clean.slice(0, 8);
+      // Collapse multiple trailing slashes (e.g. "10//" -> "10/")
+      let cleanedValue = value;
+      if (value.endsWith('//')) {
+        cleanedValue = value.replace(/\/+$/, '/');
+      }
+
+      // Split the input value by slashes
+      const parts = cleanedValue.split('/');
+      // Keep only digits in each part
+      let cleanParts = parts.map(p => p.replace(/\D/g, ''));
+
+      // If there are more than 3 parts, truncate
+      if (cleanParts.length > 3) {
+        cleanParts = cleanParts.slice(0, 3);
+      }
+
+      let dayStr = '';
+      let monthStr = '';
+      let yearStr = '';
+
+      if (cleanParts.length === 1) {
+        const p0 = cleanParts[0] || '';
+        if (p0.length > 2) {
+          yearStr = p0;
+        } else {
+          dayStr = p0;
+        }
+      } else if (cleanParts.length === 2) {
+        const p0 = cleanParts[0] || '';
+        const p1 = cleanParts[1] || '';
+        if (p0.length > 2) {
+          yearStr = p0;
+          monthStr = p1;
+        } else if (p1.length > 2) {
+          dayStr = p0;
+          yearStr = p1;
+        } else {
+          dayStr = p0;
+          monthStr = p1;
+        }
+      } else if (cleanParts.length === 3) {
+        dayStr = cleanParts[0] || '';
+        monthStr = cleanParts[1] || '';
+        yearStr = cleanParts[2] || '';
       }
 
       // Restrict day (dd)
-      if (clean.length >= 1) {
-        const d1 = parseInt(clean.charAt(0), 10);
-        if (d1 > 3) {
-          clean = '0' + clean;
+      if (dayStr) {
+        if (dayStr.length > 2) dayStr = dayStr.slice(0, 2);
+        // If first digit is > 3, auto prepend '0'
+        if (dayStr.length === 1 && parseInt(dayStr, 10) > 3) {
+          dayStr = '0' + dayStr;
         }
-      }
-      if (clean.length >= 2) {
-        let dd = clean.slice(0, 2);
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 31) {
-          dd = '31';
-        } else if (ddVal === 0) {
-          dd = '01';
+        const ddVal = parseInt(dayStr, 10);
+        if (!isNaN(ddVal)) {
+          if (ddVal > 31) dayStr = '31';
+          else if (ddVal === 0 && dayStr.length === 2) dayStr = '01';
         }
-        clean = dd + clean.slice(2);
       }
 
       // Restrict month (mm)
-      if (clean.length >= 3) {
-        const m1 = parseInt(clean.charAt(2), 10);
-        if (m1 > 1) {
-          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+      if (monthStr) {
+        if (monthStr.length > 2) monthStr = monthStr.slice(0, 2);
+        // If first digit is > 1, auto prepend '0'
+        if (monthStr.length === 1 && parseInt(monthStr, 10) > 1) {
+          monthStr = '0' + monthStr;
         }
-      }
-      if (clean.length >= 4) {
-        let mm = clean.slice(2, 4);
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 12) {
-          mm = '12';
-        } else if (mmVal === 0) {
-          mm = '01';
+        const mmVal = parseInt(monthStr, 10);
+        if (!isNaN(mmVal)) {
+          if (mmVal > 12) monthStr = '12';
+          else if (mmVal === 0 && monthStr.length === 2) monthStr = '01';
         }
-        clean = clean.slice(0, 2) + mm + clean.slice(4);
       }
 
       // Restrict year (yyyy)
-      if (clean.length >= 8) {
-        let yyyy = clean.slice(4, 8);
-        const yyyyVal = parseInt(yyyy, 10);
-        if (yyyyVal > 2090) {
-          yyyy = '2090';
+      if (yearStr) {
+        if (yearStr.length > 4) yearStr = yearStr.slice(0, 4);
+        const yyyyVal = parseInt(yearStr, 10);
+        if (!isNaN(yyyyVal) && yearStr.length === 4) {
+          if (yyyyVal > 2099) yearStr = '2099';
         }
-        clean = clean.slice(0, 4) + yyyy;
       }
 
-      // Reconstruct with slashes
+      // Reconstruct formatted string
       let formatted = '';
-      if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
-      } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      if (!dayStr && !monthStr && !yearStr) {
+        formatted = '';
+      } else if (parts.length === 1) {
+        // Only day part typed, unless it was a year
+        if (cleanParts[0] && cleanParts[0].length > 2) {
+          formatted = `//${yearStr}`;
+        } else {
+          formatted = dayStr;
+          if (dayStr.length === 2 && !isDeleting) {
+            formatted += '/';
+          }
+        }
+      } else if (parts.length === 2) {
+        // Day and month parts, or day/month and year
+        const p1 = cleanParts[1] || '';
+        const p0 = cleanParts[0] || '';
+        if (p0.length > 2) {
+          formatted = `${yearStr}/${monthStr}`;
+        } else if (p1.length > 2) {
+          formatted = `${dayStr}//${yearStr}`;
+        } else {
+          formatted = `${dayStr}/${monthStr}`;
+          if (monthStr.length === 2 && !isDeleting) {
+            formatted += '/';
+          }
+        }
       } else {
-        formatted = clean;
+        // Day, month, and year parts
+        formatted = `${dayStr}/${monthStr}/${yearStr}`;
       }
 
       sanitizedValue = formatted;
@@ -604,18 +690,18 @@ export default function PersonalInfo({ onBack }) {
         const m = today.getMonth() - birthDate.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
         if (age >= 0 && age < 120) {
-          setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: String(age) }));
+          setForm(prev => ({ ...prev, date_of_birth: sanitizedValue, age: String(age) }));
           setIsEditing(true);
           return;
         }
       } else if (sanitizedValue === '' || dobClean.length === 0) {
         // Clear age when DOB is cleared
-        setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: '' }));
+        setForm(prev => ({ ...prev, date_of_birth: sanitizedValue, age: '' }));
         setIsEditing(true);
         return;
       } else {
         // Incomplete DOB - clear age
-        setForm(prev => ({ ...prev, dob: sanitizedValue, date_of_birth: sanitizedValue, age: '' }));
+        setForm(prev => ({ ...prev, date_of_birth: sanitizedValue, age: '' }));
         setIsEditing(true);
         return;
       }
@@ -776,7 +862,7 @@ export default function PersonalInfo({ onBack }) {
       const isDeleting = prevValue.length > value.length;
       let clean = value.replace(/\D/g, '');
 
-      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
+      if (isDeleting && (prevValue.endsWith('-') || prevValue.endsWith('/')) && !value.endsWith('-') && !value.endsWith('/')) {
         if (clean.length > 0) {
           clean = clean.slice(0, -1);
         }
@@ -833,12 +919,12 @@ export default function PersonalInfo({ onBack }) {
         clean = clean.slice(0, 4) + yyyy;
       }
 
-      // Reconstruct with slashes dd/mm/yyyy
+      // Reconstruct with dashes dd-mm-yyyy (matches placeholder DD-MM-YYYY)
       let formatted = '';
       if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
+        formatted = clean.slice(0, 2) + '-' + clean.slice(2, 4) + '-' + clean.slice(4);
       } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+        formatted = clean.slice(0, 2) + '-' + clean.slice(2);
       } else {
         formatted = clean;
       }
@@ -859,9 +945,9 @@ export default function PersonalInfo({ onBack }) {
 
     // Strict validation logic
     const alphaFields = [
-      'emp_name', 'religion', 'nationality', 'father_husband_name', 'designation',
+      'emp_name', 'father_husband_name', 'designation',
       'department', 'process', 'supervisor_l1', 'supervisor_l2', 'place', 'moved',
-      'state', 'qualification', 'college', 'university', 'previous_org', 'source',
+      'state', 'qualification', 'college', 'university', 'previous_organization', 'source',
       'bank_name', 'bank_branch', 'languages_known', 'blood_group'
     ];
 
@@ -924,7 +1010,7 @@ export default function PersonalInfo({ onBack }) {
     let updates = { [key]: sanitizedValue };
 
     // Auto-calculate Age from DOB
-    if (key === 'dob' && sanitizedValue && sanitizedValue.length === 10) {
+    if (key === 'date_of_birth' && sanitizedValue && sanitizedValue.length === 10) {
       // Support both DD-MM-YYYY and DD/MM/YYYY
       const parts = sanitizedValue.includes('-') ? sanitizedValue.split('-') : sanitizedValue.split('/');
       if (parts.length === 3) {
@@ -965,13 +1051,14 @@ export default function PersonalInfo({ onBack }) {
     const mandatoryFields = [
       { key: 'emp_name', label: 'Employee Name' },
       { key: 'gender', label: 'Gender' },
-      { key: 'dob', label: 'Date of Birth' },
+      { key: 'date_of_birth', label: 'Date of Birth' },
       { key: 'blood_group', label: 'Blood Group' },
       { key: 'pan_number', label: 'PAN Number' },
       { key: 'aadhar_number', label: 'Aadhar Number' },
       { key: 'pancard_photo', label: 'PAN Card Proof' },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof' },
       { key: 'designation', label: 'Designation' },
+      { key: 'department', label: 'Department' },
       { key: 'doj', label: 'Date of Joining' },
       { key: 'official_email', label: 'Official Email ID' },
       { key: 'contact_no', label: 'Contact No' },
@@ -1017,11 +1104,10 @@ export default function PersonalInfo({ onBack }) {
       return s ? ` (${s.label} section)` : '';
     };
 
-    const dobFieldKey = activeSectionFields.includes('date_of_birth') ? 'date_of_birth' : 'dob';
-    const dobVal = form[dobFieldKey];
-    if ((activeSectionFields.includes('dob') || activeSectionFields.includes('date_of_birth')) && dobVal) {
+    const dobVal = form.date_of_birth;
+    if (activeSectionFields.includes('date_of_birth') && dobVal) {
       if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dobVal) && !/^\d{2}-\d{2}-\d{4}$/.test(dobVal)) {
-        setToast({ type: 'error', msg: `Please enter a complete Date of Birth (DD/MM/YYYY)${getSection(dobFieldKey)}` });
+        setToast({ type: 'error', msg: `Please enter a complete Date of Birth (DD/MM/YYYY)${getSection('date_of_birth')}` });
         return;
       }
     }
@@ -1092,12 +1178,21 @@ export default function PersonalInfo({ onBack }) {
       const uid = selectedEmpId;
       const token = localStorage.getItem('token');
 
-      // Format dates to YYYY-MM-DD and only include fields from the active section
+      // Format dates - date_of_birth stays DD/MM/YYYY; other dates convert to YYYY-MM-DD
       const payload = { employee_id: uid, id: uid };
-      const dateFields = ['dob', 'doj', 'separation', 'lwd', 'date_of_birth', 'joining_date', 'date_of_joining'];
       activeSectionFields.forEach(k => {
         let val = form[k];
-        if (['doj', 'separation', 'lwd', 'dob', 'date_of_birth', 'joining_date', 'date_of_joining'].includes(k) && val && typeof val === 'string') {
+        if (k === 'date_of_birth' && val && typeof val === 'string') {
+          // Normalise to DD/MM/YYYY (handle if stored with dashes)
+          if (val.includes('-')) {
+            const parts = val.split('-');
+            if (parts.length === 3 && parts[0].length === 2) {
+              val = `${parts[0]}/${parts[1]}/${parts[2]}`;
+            } else if (parts.length === 3 && parts[0].length === 4) {
+              val = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+          }
+        } else if (['doj', 'separation', 'lwd', 'joining_date', 'date_of_joining'].includes(k) && val && typeof val === 'string') {
           if (val.includes('-')) {
             const parts = val.split('-');
             if (parts.length === 3 && parts[0].length === 2) {
@@ -1112,11 +1207,36 @@ export default function PersonalInfo({ onBack }) {
         }
         payload[k] = val;
       });
-      if (payload.dob) payload.date_of_birth = payload.dob;
       if (payload.date_of_birth) payload.dob = payload.date_of_birth;
       if (payload.lwd) {
         payload.last_working_day = payload.lwd;
         payload.last_working_date = payload.lwd;
+      }
+
+      // Fix key mismatches between SECTIONS field keys and backend column names
+      // official_email_id (SECTIONS key) vs official_email (form state key)
+      if (!payload.official_email && form.official_email) payload.official_email = form.official_email;
+      if (!payload.official_email_id && form.official_email) payload.official_email_id = form.official_email;
+
+      // Send ft_pt with all common backend column name variants
+      if (payload.ft_pt) {
+        payload.full_time_part_time = payload.ft_pt;
+        payload.employment_type = payload.ft_pt;
+        payload.ft_pt = payload.ft_pt;
+      } else if (form.ft_pt) {
+        payload.ft_pt = form.ft_pt;
+        payload.full_time_part_time = form.ft_pt;
+        payload.employment_type = form.ft_pt;
+      }
+
+      // Send status with all common backend column name variants
+      if (payload.status) {
+        payload.employee_status = payload.status;
+        payload.emp_status = payload.status;
+      } else if (form.status) {
+        payload.status = form.status;
+        payload.employee_status = form.status;
+        payload.emp_status = form.status;
       }
 
       const res = await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
@@ -1373,453 +1493,435 @@ export default function PersonalInfo({ onBack }) {
           )}
         </AnimatePresence>
 
-        <div style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', marginBottom: '32px', flexDirection: isMobile ? 'column' : 'row', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => onBack ? onBack() : navigate(-1)}
-              style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
-            >
-              <ArrowLeft size={18} color="#64748b" />
-            </button>
-            <div>
-              <h1 style={{ fontSize: isMobile ? '22px' : '32px', fontWeight: '900', color: '#0B1E3F', margin: 0, marginTop: '8px' }}>Profile Info</h1>
+        {/* Top loading progress bar */}
+        {loadingProfile && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9998, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', width: '40%',
+              background: 'linear-gradient(90deg, #315A9E, #3b82f6, #315A9E)',
+              backgroundSize: '200% 100%',
+              animation: 'profileLoadBar 1.2s linear infinite',
+              borderRadius: '0 2px 2px 0'
+            }} />
+            <style>{`@keyframes profileLoadBar { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
+          </div>
+        )}
+
+        {/* Loading skeleton - only when no data loaded yet */}
+        {loadingProfile && !form.emp_name && (
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <style>{`@keyframes shimmer{0%{background-position:-800px 0}100%{background-position:800px 0}}.shimmer{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:800px 100%;animation:shimmer 1.5s infinite}`}</style>
+            {/* Header skeleton */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="shimmer" style={{ width: 38, height: 38, borderRadius: 12 }} />
+                <div className="shimmer" style={{ width: 160, height: 32, borderRadius: 8 }} />
+              </div>
+              <div className="shimmer" style={{ width: 220, height: 44, borderRadius: 16 }} />
+            </div>
+            {/* Section tabs skeleton */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[120, 180, 140, 160, 110, 150, 140].map((w, i) => (
+                <div key={i} className="shimmer" style={{ width: w, height: 40, borderRadius: 12 }} />
+              ))}
+            </div>
+            {/* Card skeleton */}
+            <div style={{ background: 'white', borderRadius: 24, padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+              <div className="shimmer" style={{ width: 200, height: 24, borderRadius: 8, marginBottom: 24 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i}>
+                    <div className="shimmer" style={{ width: 100, height: 14, borderRadius: 6, marginBottom: 8 }} />
+                    <div className="shimmer" style={{ width: '100%', height: 48, borderRadius: 14 }} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+        )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexDirection: isMobile ? 'column' : 'row' }}>
-            <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '240px' }}>
-              <Users size={16} color="#64748b" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
-              <select
-                value={selectedEmpId}
-                onChange={(e) => {
-                  const newId = e.target.value;
-                  setSelectedEmpId(newId);
-                  localStorage.setItem('last_selected_emp_id', newId);
-                  setIsEditing(true);
-                }}
-                disabled={isSelfMode}
+        <div style={{ display: (loadingProfile && !form.emp_name) ? 'none' : 'block' }}>
+          <div style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', marginBottom: '32px', flexDirection: isMobile ? 'column' : 'row', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button
+                onClick={() => onBack ? onBack() : navigate(-1)}
+                style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+              >
+                <ArrowLeft size={18} color="#64748b" />
+              </button>
+              <div>
+                <h1 style={{ fontSize: isMobile ? '22px' : '32px', fontWeight: '900', color: '#0B1E3F', margin: 0, marginTop: '8px' }}>Profile Info</h1>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexDirection: isMobile ? 'column' : 'row' }}>
+              <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '240px' }}>
+                <Users size={16} color="#64748b" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
+                <select
+                  value={selectedEmpId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedEmpId(newId);
+                    localStorage.setItem('last_selected_emp_id', newId);
+                    setIsEditing(true);
+                  }}
+                  disabled={isSelfMode}
+                  style={{
+                    width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                    backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none',
+                    cursor: isSelfMode ? 'default' : 'pointer'
+                  }}
+                >
+                  {isSelfMode && (
+                    <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
+                      My Profile ({user?.name || 'Self'})
+                    </option>
+                  )}
+                  {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                    <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
+                      {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
+                    </option>
+                  ))}
+                </select>
+                {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+              </div>
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setIsEditing(prev => !prev)}
                 style={{
-                  width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
-                  backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none',
-                  cursor: isSelfMode ? 'default' : 'pointer'
+                  padding: '14px 28px', backgroundColor: isEditing ? '#ef4444' : 'white', color: isEditing ? 'white' : '#0B1E3F',
+                  border: '3px solid #cbd5e1', outline: 'none', boxSizing: 'border-box', borderRadius: '16px', fontWeight: '900', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px'
                 }}
               >
-                {isSelfMode && (
-                  <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
-                    My Profile ({user?.name || 'Self'})
-                  </option>
-                )}
-                {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
-                  <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
-                    {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
-                  </option>
-                ))}
-              </select>
-              {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                {isEditing ? <X size={16} /> : <Pencil size={16} />}
+                {isEditing ? 'Cancel' : 'Edit Profile'}
+              </motion.button>
             </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setIsEditing(prev => !prev)}
-              style={{
-                padding: '14px 28px', backgroundColor: isEditing ? '#ef4444' : 'white', color: isEditing ? 'white' : '#0B1E3F',
-                border: '3px solid #cbd5e1', outline: 'none', boxSizing: 'border-box', borderRadius: '16px', fontWeight: '900', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: '8px'
-              }}
-            >
-              {isEditing ? <X size={16} /> : <Pencil size={16} />}
-              {isEditing ? 'Cancel' : 'Edit Profile'}
-            </motion.button>
           </div>
-        </div>
 
-        <div style={{ display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : 'row', gridTemplateColumns: isMobile ? 'none' : '280px 1fr', gap: isMobile ? '20px' : '24px', alignItems: 'start', width: '100%', boxSizing: 'border-box' }}>
-          <div style={{ width: '100%', margin: '0', boxSizing: 'border-box', flexShrink: 0 }}>
-            {isMobile ? (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 20px', borderRadius: '20px', backgroundColor: '#0B1E3F',
-                color: 'white', marginBottom: '10px', boxShadow: '0 10px 15px -3px rgba(11, 30, 63, 0.2)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    const idx = SECTIONS.findIndex(s => s.id === activeSection);
-                    const prevIdx = (idx - 1 + SECTIONS.length) % SECTIONS.length;
-                    setActiveSection(SECTIONS[prevIdx].id);
-                  }}
-                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px', borderRadius: '12px', cursor: 'pointer' }}
-                >
-                  <ChevronLeft size={20} />
-                </motion.button>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>Section {SECTIONS.findIndex(s => s.id === activeSection) + 1} of {SECTIONS.length}</div>
-                  <div style={{ fontWeight: '900', fontSize: '14px', letterSpacing: '-0.2px' }}>{SECTIONS.find(s => s.id === activeSection)?.label}</div>
+          <div style={{ display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : 'row', gridTemplateColumns: isMobile ? 'none' : '280px 1fr', gap: isMobile ? '20px' : '24px', alignItems: 'start', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', margin: '0', boxSizing: 'border-box', flexShrink: 0 }}>
+              {isMobile ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '16px 20px', borderRadius: '20px', backgroundColor: '#0B1E3F',
+                  color: 'white', marginBottom: '10px', boxShadow: '0 10px 15px -3px rgba(11, 30, 63, 0.2)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      const idx = SECTIONS.findIndex(s => s.id === activeSection);
+                      const prevIdx = (idx - 1 + SECTIONS.length) % SECTIONS.length;
+                      setActiveSection(SECTIONS[prevIdx].id);
+                    }}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px', borderRadius: '12px', cursor: 'pointer' }}
+                  >
+                    <ChevronLeft size={20} />
+                  </motion.button>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>Section {SECTIONS.findIndex(s => s.id === activeSection) + 1} of {SECTIONS.length}</div>
+                    <div style={{ fontWeight: '900', fontSize: '14px', letterSpacing: '-0.2px' }}>{SECTIONS.find(s => s.id === activeSection)?.label}</div>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      const idx = SECTIONS.findIndex(s => s.id === activeSection);
+                      const nextIdx = (idx + 1) % SECTIONS.length;
+                      setActiveSection(SECTIONS[nextIdx].id);
+                    }}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px', borderRadius: '12px', cursor: 'pointer' }}
+                  >
+                    <ChevronRight size={20} />
+                  </motion.button>
                 </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    const idx = SECTIONS.findIndex(s => s.id === activeSection);
-                    const nextIdx = (idx + 1) % SECTIONS.length;
-                    setActiveSection(SECTIONS[nextIdx].id);
-                  }}
-                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px', borderRadius: '12px', cursor: 'pointer' }}
-                >
-                  <ChevronRight size={20} />
-                </motion.button>
-              </div>
-            ) : (
-              <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'row' : 'column',
-                gap: '10px',
-                overflowX: isMobile ? 'auto' : 'visible',
-                paddingBottom: isMobile ? '15px' : '0',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch',
-                scrollSnapType: isMobile ? 'x mandatory' : 'none'
-              }}>
-                {SECTIONS.map(sec => {
-                  const isActive = activeSection === sec.id;
-                  return (
-                    <motion.button
-                      key={sec.id}
-                      whileHover={!isMobile ? { x: 4 } : {}}
-                      onClick={() => setActiveSection(sec.id)}
-                      style={{
-                        padding: isMobile ? '10px 18px' : '16px 20px',
-                        borderRadius: isMobile ? '12px' : '18px',
-                        cursor: 'pointer',
-                        backgroundColor: isActive ? '#0B1E3F' : 'white',
-                        color: isActive ? 'white' : '#475569',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: isMobile ? '10px' : '14px',
-                        fontWeight: '800',
-                        fontSize: isMobile ? '12px' : '15px',
-                        textAlign: 'left',
-                        border: `3px solid ${isActive ? '#0B1E3F' : '#cbd5e1'}`,
-                        transition: 'all 0.2s',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                        scrollSnapAlign: isMobile ? 'start' : 'none',
-                        fontFamily: 'inherit'
-                      }}
-                    >
-                      <div style={{ color: isActive ? 'white' : sec.color }}>{cloneElement(sec.icon, { size: isMobile ? 16 : 20 })}</div>
-                      <div>{sec.label}</div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <motion.div
-            key={activeSection}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            style={{ backgroundColor: 'white', borderRadius: '28px', padding: isMobile ? '24px' : '40px', border: '1.5px solid #e2e8f0' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
-              <div style={{ padding: '12px', borderRadius: '16px', backgroundColor: `${currentSection.color}15`, color: currentSection.color }}>
-                {currentSection.icon}
-              </div>
-              <div>
-                <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#0B1E3F', margin: 0 }}>{currentSection.label}</h2>
-                <p style={{ fontSize: '14px', color: '#94a3b8', margin: '4px 0 0 0', fontWeight: '600' }}>Official employee metadata records</p>
-              </div>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'row' : 'column',
+                  gap: '10px',
+                  overflowX: isMobile ? 'auto' : 'visible',
+                  paddingBottom: isMobile ? '15px' : '0',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollSnapType: isMobile ? 'x mandatory' : 'none'
+                }}>
+                  {SECTIONS.map(sec => {
+                    const isActive = activeSection === sec.id;
+                    return (
+                      <motion.button
+                        key={sec.id}
+                        whileHover={!isMobile ? { x: 4 } : {}}
+                        onClick={() => setActiveSection(sec.id)}
+                        style={{
+                          padding: isMobile ? '10px 18px' : '16px 20px',
+                          borderRadius: isMobile ? '12px' : '18px',
+                          cursor: 'pointer',
+                          backgroundColor: isActive ? '#0B1E3F' : 'white',
+                          color: isActive ? 'white' : '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: isMobile ? '10px' : '14px',
+                          fontWeight: '800',
+                          fontSize: isMobile ? '12px' : '15px',
+                          textAlign: 'left',
+                          border: `3px solid ${isActive ? '#0B1E3F' : '#cbd5e1'}`,
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          scrollSnapAlign: isMobile ? 'start' : 'none',
+                          fontFamily: 'inherit'
+                        }}
+                      >
+                        <div style={{ color: isActive ? 'white' : sec.color }}>{cloneElement(sec.icon, { size: isMobile ? 16 : 20 })}</div>
+                        <div>{sec.label}</div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              style={{ backgroundColor: 'white', borderRadius: '28px', padding: isMobile ? '24px' : '40px', border: '1.5px solid #e2e8f0' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
+                <div style={{ padding: '12px', borderRadius: '16px', backgroundColor: `${currentSection.color}15`, color: currentSection.color }}>
+                  {currentSection.icon}
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#0B1E3F', margin: 0 }}>{currentSection.label}</h2>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: '4px 0 0 0', fontWeight: '600' }}>Official employee metadata records</p>
+                </div>
+              </div>
 
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '20px' : '24px' }}>
-              {currentSection.fields.map(field => {
-                if (field.key === 'father_husband_name') {
-                  return null;
-                }
 
-                if (field.key === 'marital_status') {
-                  const fatherField = currentSection.fields.find(f => f.key === 'father_husband_name');
-                  const isDisabledMS = !isEditing || (LOCKED_FIELDS.includes('marital_status') && !isAdmin);
-                  const isDisabledFather = !isEditing || (fatherField && LOCKED_FIELDS.includes('father_husband_name') && !isAdmin);
-                  const fatherLabel = form.marital_status === 'Married' ? "Spouse Name" : "Father's Name";
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '20px' : '24px' }}>
+                {currentSection.fields.map(field => {
+                  const isDisabled = !isEditing || (LOCKED_FIELDS.includes(field.key) && !isAdmin);
                   return (
-                    <div key="marital_status_row" style={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                      gap: isMobile ? '20px' : '24px',
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}>
-                      {/* Marital Status */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
-                          {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
-                        </label>
-                        <select
-                          value={form.marital_status}
-                          disabled={isDisabledMS}
-                          onChange={e => handleChange('marital_status', e.target.value)}
+                    <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
+                        {field.key === 'father_husband_name'
+                          ? (form.marital_status === 'Married' ? 'Spouse Name' : 'Father Name')
+                          : field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                      </label>
+                      {field.type === 'file' ? (
+                        <div
                           style={{
-                            width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900',
-                            color: form.marital_status ? '#0B1E3F' : '#94a3b8',
-                            WebkitTextFillColor: form.marital_status ? '#0B1E3F' : '#94a3b8',
-                            border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
-                            backgroundColor: isDisabledMS ? '#f1f5f9' : 'white',
-                            boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px'
+                            border: isMobile ? '2px dashed #cbd5e1' : '3px dashed #cbd5e1', borderRadius: '16px', padding: '20px',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                            background: '#f8fafc', position: 'relative', transition: 'all 0.3s ease',
+                            cursor: isDisabled ? 'not-allowed' : 'pointer', width: '100%', boxSizing: 'border-box'
+                          }}
+                          onMouseEnter={e => {
+                            if (!isDisabled) {
+                              e.currentTarget.style.borderColor = '#315A9E';
+                              e.currentTarget.style.transform = 'translateY(-5px)';
+                              e.currentTarget.style.boxShadow = '0 10px 20px rgba(49, 90, 158, 0.1)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
                           }}
                         >
-                          {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      </div>
+                          {form[field.key] ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                              <FileCheck size={24} color="#10b981" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rawUrl = form[field.key];
+                                  if (!rawUrl) return;
 
-                      {/* Father / Spouse Name */}
-                      {fatherField && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-                          <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
-                            {fatherLabel} {fatherField.required && <span style={{ color: '#ef4444' }}>*</span>}
-                          </label>
+                                  let url = rawUrl;
+                                  // Fix case where backend mistakenly prepends BASE_URL to base64 string
+                                  if (typeof url === 'string' && url.includes('data:') && url.includes('base64')) {
+                                    url = url.substring(url.indexOf('data:'));
+                                  } else if (typeof url === 'string' && !url.startsWith('http') && !url.startsWith('data:')) {
+                                    url = `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+                                  }
+                                  setPreviewDoc({ url, label: field.label });
+                                }}
+                                style={{
+                                  border: 'none', background: 'transparent', fontSize: '12px',
+                                  color: '#315A9E', fontWeight: '900', cursor: 'pointer',
+                                  padding: '4px 8px', borderRadius: '8px'
+                                }}
+                              >
+                                VIEW PROOF
+                              </button>
+                              {((isEditing && !isDisabled) || (!isEditing)) && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setForm(prev => ({ ...prev, [field.key]: '' }));
+                                    if (!isEditing) {
+                                      try {
+                                        const token = localStorage.getItem('token');
+                                        let docType = field.key;
+                                        if (field.key === 'pancard_photo') docType = 'pan_card';
+                                        if (field.key === 'adharcard_photo') docType = 'aadhar_card';
+                                        if (field.key === 'voter_id_photo') docType = 'voter_id_proof';
+                                        if (field.key === 'passport_photo') docType = 'passport_proof';
+                                        if (field.key === 'sslc_markscard') docType = 'sslc_markscard';
+                                        if (field.key === 'puc_markscard') docType = 'puc_markscard';
+                                        if (field.key === 'ug_pg_markscard') docType = 'ug_pg_markscard';
+                                        if (field.key === 'passbook_photo') docType = 'bank_passbook';
+                                        if (field.key === 'experience_letter') docType = 'experience_letter';
+                                        if (field.key === 'previous_company_payslip') docType = 'previous_payslip';
+
+                                        const updatePayload = {
+                                          employee_id: selectedEmpId,
+                                          id: selectedEmpId,
+                                          [field.key]: '',
+                                          [docType]: '',
+                                          experience_letter_photo: field.key === 'experience_letter' ? '' : undefined,
+                                          previous_payslip_photo: field.key === 'previous_company_payslip' ? '' : undefined
+                                        };
+                                        Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
+
+                                        await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                          body: JSON.stringify(updatePayload)
+                                        });
+                                        setToast({ type: 'success', msg: `${field.label} removed successfully` });
+                                      } catch (err) {
+                                        console.error("Failed to remove file:", err);
+                                      }
+                                    }
+                                  }}
+                                  style={{
+                                    border: 'none', background: '#ef444415', color: '#ef4444',
+                                    fontSize: '11px', fontWeight: '900', cursor: 'pointer',
+                                    padding: '4px 10px', borderRadius: '8px', marginTop: '2px'
+                                  }}
+                                >REMOVE</button>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', opacity: isDisabled ? 0.5 : 1 }}>
+                              <Upload size={24} color="#315A9E" />
+                              <div style={{ fontSize: '12px', fontWeight: '900', color: '#0B1E3F' }}>UPLOAD DOCUMENT</div>
+                              {!isDisabled && <input type="file" onChange={e => handleFileSelect(field.key, e.target.files[0])} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />}
+                            </div>
+                          )}
+                          {uploadingFiles[field.key] && (
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}>
+                              <RefreshCw size={24} className="spin" color="#315A9E" />
+                            </div>
+                          )}
+                        </div>
+                      ) : field.type === 'select' ? (
+                        <select
+                          value={form[field.key] || ''}
+                          disabled={isDisabled}
+                          onChange={e => handleChange(field.key, e.target.value)}
+                          style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', WebkitTextFillColor: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
+                        >
+                          <option value="" disabled style={{ color: '#94a3b8', fontWeight: '900', WebkitTextFillColor: '#94a3b8' }}>
+                            {field.key === 'gender' ? 'Choose gender' : field.key === 'category' ? 'Choose category' : `Choose ${field.label}`}
+                          </option>
+                          {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F' }}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <>
                           <input
                             type="text"
-                            value={form.father_husband_name}
-                            readOnly={isDisabledFather}
-                            placeholder={fatherField.placeholder || `Enter ${fatherLabel}`}
-                            onChange={e => handleChange('father_husband_name', e.target.value)}
-                            style={{ 
-                              width: '100%', 
-                              padding: '16px 20px', 
-                              borderRadius: '16px', 
-                              fontWeight: '900', 
+                            value={form[field.key]}
+                            placeholder={field.placeholder || ''}
+                            readOnly={isDisabled}
+                            onChange={e => handleChange(field.key, e.target.value, e.target)}
+                            style={{
+                              width: '100%',
+                              padding: '16px 20px',
+                              borderRadius: '16px',
+                              fontWeight: '900',
                               color: '#0B1E3F',
                               WebkitTextFillColor: '#0B1E3F',
-                              border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', 
-                              backgroundColor: isDisabledFather ? '#f1f5f9' : 'white', 
-                              boxSizing: 'border-box', 
-                              fontFamily: 'inherit', 
-                              fontSize: '16px'
+                              border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
+                              backgroundColor: isDisabled ? '#f1f5f9' : 'white',
+                              boxSizing: 'border-box',
+                              fontFamily: 'inherit',
+                              fontSize: '16px',
+                              textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
                             }}
                           />
-                        </div>
+                          {field.key === 'pan_number' && (() => {
+                            const val = form[field.key] || '';
+                            if (!val || /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val)) return null;
+                            return (
+                              <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                                Enter valid format! (ABCDE1234F)
+                              </div>
+                            );
+                          })()}
+                          {field.key === 'aadhar_number' && (() => {
+                            const val = form[field.key] || '';
+                            if (!val || /^[0-9]{12}$/.test(val)) return null;
+                            return (
+                              <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
+                                Enter valid format! (1234 5678 9012)
+                              </div>
+                            );
+                          })()}
+                        </>
                       )}
                     </div>
                   );
-                }
+                })}
+              </div>
 
-                const isDisabled = !isEditing || (LOCKED_FIELDS.includes(field.key) && !isAdmin);
-                return (
-                  <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
-                      {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
-                    </label>
-                    {field.type === 'file' ? (
-                      <div
-                        style={{
-                          border: isMobile ? '2px dashed #cbd5e1' : '3px dashed #cbd5e1', borderRadius: '16px', padding: '20px',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center',
-                          background: '#f8fafc', position: 'relative', transition: 'all 0.3s ease',
-                          cursor: 'pointer', width: '100%', boxSizing: 'border-box'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = '#315A9E';
-                          e.currentTarget.style.transform = 'translateY(-5px)';
-                          e.currentTarget.style.boxShadow = '0 10px 20px rgba(49, 90, 158, 0.1)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = '#cbd5e1';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      >
-                        {form[field.key] ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <FileCheck size={24} color="#10b981" />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const rawUrl = form[field.key];
-                                if (!rawUrl) return;
-
-                                let url = rawUrl;
-                                // Fix case where backend mistakenly prepends BASE_URL to base64 string
-                                if (typeof url === 'string' && url.includes('data:') && url.includes('base64')) {
-                                  url = url.substring(url.indexOf('data:'));
-                                } else if (typeof url === 'string' && !url.startsWith('http') && !url.startsWith('data:')) {
-                                  url = `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-                                }
-                                setPreviewDoc({ url, label: field.label });
-                              }}
-                              style={{
-                                border: 'none', background: 'transparent', fontSize: '12px',
-                                color: '#315A9E', fontWeight: '900', cursor: 'pointer',
-                                padding: '4px 8px', borderRadius: '8px'
-                              }}
-                            >
-                              VIEW PROOF
-                            </button>
-                            {isEditing && !isDisabled && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, [field.key]: '' })); }}
-                                style={{
-                                  border: 'none', background: '#ef444415', color: '#ef4444',
-                                  fontSize: '11px', fontWeight: '900', cursor: 'pointer',
-                                  padding: '4px 10px', borderRadius: '8px', marginTop: '2px'
-                                }}
-                              >REMOVE</button>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <Upload size={24} color="#315A9E" />
-                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#0B1E3F' }}>UPLOAD DOCUMENT</div>
-                            <input type="file" onChange={e => handleFileSelect(field.key, e.target.files[0])} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                          </div>
-                        )}
-                        {uploadingFiles[field.key] && (
-                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px' }}>
-                            <RefreshCw size={24} className="spin" color="#315A9E" />
-                          </div>
-                        )}
-                      </div>
-                    ) : field.type === 'select' ? (
-                      <select
-                        value={form[field.key] || ''}
-                        disabled={isDisabled}
-                        onChange={e => handleChange(field.key, e.target.value)}
-                        style={{ width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900', color: form[field.key] ? '#0B1E3F' : '#94a3b8', WebkitTextFillColor: form[field.key] ? '#0B1E3F' : '#94a3b8', border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', backgroundColor: isDisabled ? '#f1f5f9' : 'white', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px' }}
-                      >
-                        <option value="" disabled style={{ color: '#94a3b8', fontWeight: '900', WebkitTextFillColor: '#94a3b8' }}>
-                          {field.key === 'gender' ? 'Choose gender' : field.key === 'category' ? 'Choose category' : `Choose ${field.label}`}
-                        </option>
-                        {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F' }}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <>
-                        <input
-                          type="text"
-                          value={form[field.key]}
-                          placeholder=""
-                          readOnly={isDisabled}
-                          onChange={e => handleChange(field.key, e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '16px 20px',
-                            borderRadius: '16px',
-                            fontWeight: '900',
-                            color: '#0B1E3F',
-                            WebkitTextFillColor: '#0B1E3F',
-                            border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
-                            backgroundColor: isDisabled ? '#f1f5f9' : 'white',
-                            boxSizing: 'border-box',
-                            fontFamily: 'inherit',
-                            fontSize: '16px',
-                            textTransform: (field.key === 'pan_number' || field.key === 'passport_no' || field.key === 'voter_id' || field.key === 'ifsc_code' || field.key === 'blood_group') ? 'uppercase' : 'none'
-                          }}
-                        />
-                        {field.placeholder && (() => {
-                          const val = form[field.key] || '';
-                          if (field.key === 'pan_number') {
-                            if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val)) {
-                              return null;
-                            }
-                            const isInvalid = val.length > 0;
-                            return (
-                              <div style={{ fontSize: '13px', color: isInvalid ? '#ef4444' : '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
-                                {isInvalid ? 'Enter valid format! (ABCDE1234F)' : field.placeholder}
-                              </div>
-                            );
-                          }
-                          if (field.key === 'aadhar_number') {
-                            if (/^[0-9]{12}$/.test(val)) {
-                              return null;
-                            }
-                            const isInvalid = val.length > 0;
-                            return (
-                              <div style={{ fontSize: '13px', color: isInvalid ? '#ef4444' : '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
-                                {isInvalid ? 'Enter valid format! (1234 5678 9012)' : field.placeholder}
-                              </div>
-                            );
-                          }
-                          return (
-                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginTop: '-2px', paddingLeft: '4px' }}>
-                              {field.placeholder}
-                            </div>
-                          );
-                        })()}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Save & Next / Next Button at the bottom of the section */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '16px',
-              marginTop: '40px',
-              paddingTop: '24px',
-              borderTop: '1.5px solid #f1f5f9'
-            }}>
-              {currentSectionIndex > 0 && (
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handlePrevious}
-                  type="button"
-                  style={{
-                    padding: '14px 28px',
-                    backgroundColor: 'white',
-                    color: '#315A9E',
-                    border: '3px solid #cbd5e1',
-                    borderRadius: '16px',
-                    fontWeight: '900',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '15px'
-                  }}
-                >
-                  <ChevronLeft size={16} />
-                  Previous
-                </motion.button>
-              )}
-              {currentSectionIndex < SECTIONS.length - 1 ? (
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleSave(true)}
-                  disabled={saving}
-                  style={{
-                    padding: '14px 28px',
-                    backgroundColor: '#315A9E',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '16px',
-                    fontWeight: '900',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 8px 20px rgba(49, 90, 158, 0.25)',
-                    fontSize: '15px'
-                  }}
-                >
-                  {saving ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
-                  {isEditing ? 'Save & Next' : 'Next'}
-                </motion.button>
-              ) : (
-                isEditing && (
+              {/* Save & Next / Next Button at the bottom of the section */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '16px',
+                marginTop: '40px',
+                paddingTop: '24px',
+                borderTop: '1.5px solid #f1f5f9'
+              }}>
+                {currentSectionIndex > 0 && (
                   <motion.button
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => handleSave(false)}
+                    onClick={handlePrevious}
+                    type="button"
+                    style={{
+                      padding: '14px 28px',
+                      backgroundColor: 'white',
+                      color: '#315A9E',
+                      border: '3px solid #cbd5e1',
+                      borderRadius: '16px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '15px'
+                    }}
+                  >
+                    <ChevronLeft size={16} />
+                    Previous
+                  </motion.button>
+                )}
+                {currentSectionIndex < SECTIONS.length - 1 ? (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleSave(true)}
                     disabled={saving}
                     style={{
                       padding: '14px 28px',
-                      backgroundColor: '#10b981',
+                      backgroundColor: '#315A9E',
                       color: 'white',
                       border: 'none',
                       borderRadius: '16px',
@@ -1828,18 +1930,43 @@ export default function PersonalInfo({ onBack }) {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)',
+                      boxShadow: '0 8px 20px rgba(49, 90, 158, 0.25)',
                       fontSize: '15px'
                     }}
                   >
                     {saving ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
-                    Save & Finish
+                    {isEditing ? 'Save & Next' : 'Next'}
                   </motion.button>
-                )
-              )}
-            </div>
-          </motion.div>
-        </div>
+                ) : (
+                  isEditing && (
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handleSave(false)}
+                      disabled={saving}
+                      style={{
+                        padding: '14px 28px',
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '16px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)',
+                        fontSize: '15px'
+                      }}
+                    >
+                      {saving ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+                      Save & Finish
+                    </motion.button>
+                  )
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </div>{/* end main content wrapper */}
       </div>
       <AppFooter />
       <style>{`

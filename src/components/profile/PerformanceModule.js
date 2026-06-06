@@ -68,7 +68,7 @@ export default function PerformanceModule() {
 
           setPhone(data.phone_number || user.phone_number || localStorage.getItem(`phone_${user.email}`) || 'Add Phone Number');
           setAboutMe(data.about_me || user.about_me || 'Write a short introduction about yourself');
-          setDob(data.date_of_birth || user.date_of_birth || localStorage.getItem(`dob_${user.email}`) || 'Add Date of Birth');
+          setDob(data.date_of_birth || user.date_of_birth || localStorage.getItem(`date_of_birth_${user.email}`) || 'Add Date of Birth');
 
           if (fetchedPic) {
             const isFullUrl = fetchedPic.startsWith('http') || fetchedPic.startsWith('data:');
@@ -464,7 +464,7 @@ export default function PerformanceModule() {
 
       // Backup in localStorage to prevent "disappearing within a second" on refresh
       if (nextPhone) localStorage.setItem(`phone_${user.email}`, nextPhone);
-      if (nextDob) localStorage.setItem(`dob_${user.email}`, nextDob);
+      if (nextDob) localStorage.setItem(`date_of_birth_${user.email}`, nextDob);
 
       // Step 2: Also update Employee Profile (hits granular metadata table)
       try {

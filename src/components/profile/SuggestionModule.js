@@ -64,7 +64,7 @@ export default function SuggestionModule() {
     doc.setFontSize(11);
     doc.setTextColor(100, 116, 139);
     doc.text(`Total Submissions: ${filteredSubmissions.length}`, 14, 30);
-    doc.text(`Report Type: Collaboration & Workflow Overview`, 14, 36);
+    doc.text(`Report Type: Suggestion Details`, 14, 36);
     doc.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, 14, 42);
 
     const cleanText = (str) => {
@@ -122,14 +122,38 @@ export default function SuggestionModule() {
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : (data.data || data.suggestions || []);
-          const mapped = list.map(s => ({
-            user: s.employee_name || s.user_name || s.user || 'Anonymous',
-            team: s.employee_id || s.department || s.team || 'N/A',
-            date: s.created_at ? new Date(s.created_at).toLocaleDateString() : (s.date || 'Today'),
-            content: s.suggestion || s.suggestion_text || s.message || s.content || 'No content provided.',
-            participation: s.requirement || s.status || s.participation || 'Active',
-            profile_pic: s.profile_pic || s.profile_picture || s.user_profile_pic || s.user_pic
-          }));
+          const mapped = list.map(s => {
+            const rawDate = s.created_at || s.date;
+            let formattedDate = 'Today';
+            if (rawDate && rawDate !== 'Today') {
+              if (typeof rawDate === 'string' && rawDate.includes('-') && rawDate.length === 10) {
+                const parts = rawDate.split('-');
+                if (parts[0].length === 4) {
+                  formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                } else {
+                  formattedDate = rawDate;
+                }
+              } else {
+                const d = new Date(rawDate);
+                if (!isNaN(d.getTime())) {
+                  const day = String(d.getDate()).padStart(2, '0');
+                  const month = String(d.getMonth() + 1).padStart(2, '0');
+                  const year = d.getFullYear();
+                  formattedDate = `${day}-${month}-${year}`;
+                } else {
+                  formattedDate = rawDate;
+                }
+              }
+            }
+            return {
+              user: s.employee_name || s.user_name || s.user || 'Anonymous',
+              team: s.employee_id || s.department || s.team || 'N/A',
+              date: formattedDate,
+              content: s.suggestion || s.suggestion_text || s.message || s.content || 'No content provided.',
+              participation: s.requirement || s.status || s.participation || 'Active',
+              profile_pic: s.profile_pic || s.profile_picture || s.user_profile_pic || s.user_pic
+            };
+          });
           setSubmissions(mapped);
         } else {
           console.error('Failed to fetch suggestions:', res.status);
@@ -144,7 +168,13 @@ export default function SuggestionModule() {
   }, [user]);
 
   return (
-    <div className="hr-dashboard-container">
+    <div className="hr-dashboard-container suggestion-screen-container">
+      <style>{`
+        .suggestion-screen-container,
+        .suggestion-screen-container * {
+          font-family: 'Outfit', sans-serif !important;
+        }
+      `}</style>
       <AppHeader />
 
       <main className="dashboard-content" style={{ paddingBottom: '100px' }}>
@@ -310,8 +340,8 @@ export default function SuggestionModule() {
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', fontWeight: '700' }}>{s.date}</span>
                   </div>
-                  <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontStyle: 'italic' }}>
-                    "{s.content}"
+                  <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: '600' }}>
+                    {s.content}
                   </p>
                   <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

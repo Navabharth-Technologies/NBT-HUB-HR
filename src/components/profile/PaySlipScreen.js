@@ -75,6 +75,43 @@ export default function PaySlipScreen() {
 
     const yearsList = ['2025', '2026', '2027', '2028', '2029', '2030'];
 
+    const originalPayslip = isEditMode ? payslipsList.find(p => (p._id || p.id) === editingPayslipId) : null;
+    const initialMonth = originalPayslip ? String(originalPayslip.month) : null;
+    const initialYear = originalPayslip ? String(originalPayslip.year) : null;
+
+    const isMonthDisabled = (monthValue, selectedYear) => {
+        if (originalPayslip && String(monthValue) === String(initialMonth) && String(selectedYear) === String(initialYear)) {
+            return false;
+        }
+
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+
+        const mVal = parseInt(monthValue, 10);
+        const yVal = selectedYear ? parseInt(selectedYear, 10) : currentYear;
+
+        // Check if upcoming/future (only future months/years are disabled)
+        if (yVal > currentYear) return true;
+        if (yVal === currentYear && mVal > currentMonth) return true;
+
+        return false;
+    };
+
+    const isYearDisabled = (yearValue) => {
+        if (originalPayslip && String(yearValue) === String(initialYear)) {
+            return false;
+        }
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const yVal = parseInt(yearValue, 10);
+
+        // Only future years are disabled
+        if (yVal > currentYear) return true;
+        return false;
+    };
+
     const formatCurrency = (val) => {
         if (val === undefined || val === null || val === '') return '0';
         const num = parseFloat(val);
@@ -711,6 +748,10 @@ export default function PaySlipScreen() {
 
     const handleAddPayslip = async (e) => {
         e.preventDefault();
+        if (isMonthDisabled(formData.month, formData.year) || isYearDisabled(formData.year)) {
+            alert('The selected Month or Year is not selectable. Only the previous month and present month/year are allowed.');
+            return;
+        }
         try {
             const idsToDelete = [];
 
@@ -1377,6 +1418,37 @@ export default function PaySlipScreen() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedPayslips = filteredPayslips.slice(startIndex, startIndex + itemsPerPage);
 
+    const nowForDropdown = new Date();
+    const currentMonthForDropdown = nowForDropdown.getMonth() + 1;
+    const currentYearForDropdown = nowForDropdown.getFullYear();
+    const selectedYearVal = formData.year ? parseInt(formData.year, 10) : currentYearForDropdown;
+
+    const monthOptions = monthsList.map(m => {
+        const mVal = parseInt(m.value, 10);
+        const isUpcoming = selectedYearVal > currentYearForDropdown || (selectedYearVal === currentYearForDropdown && mVal > currentMonthForDropdown);
+        const disabled = isMonthDisabled(m.value, formData.year);
+        const labelText = isUpcoming ? `● ${m.label}` : m.label;
+
+        return {
+            value: m.value,
+            label: labelText,
+            disabled: disabled
+        };
+    });
+
+    const yearOptions = yearsList.map(y => {
+        const yVal = parseInt(y, 10);
+        const isUpcoming = yVal > currentYearForDropdown;
+        const disabled = isYearDisabled(y);
+        const labelText = isUpcoming ? `● ${y}` : y;
+
+        return {
+            value: y,
+            label: labelText,
+            disabled: disabled
+        };
+    });
+
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column', fontFamily: "'Outfit', sans-serif" }}>
             <div className="no-print">
@@ -1412,21 +1484,47 @@ export default function PaySlipScreen() {
                                 >
                                     <Filter size={18} /> Filter
                                     {(selectedEmployeeFilter || selectedMonthFilter) && (
-                                        <span style={{
-                                            background: '#1e40af',
-                                            color: 'white',
-                                            borderRadius: '50%',
-                                            width: '18px',
-                                            height: '18px',
-                                            fontSize: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontWeight: '900',
-                                            marginLeft: '4px'
-                                        }}>
-                                            {(selectedEmployeeFilter && selectedMonthFilter) ? 2 : 1}
-                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                                            <span style={{
+                                                background: '#1e40af',
+                                                color: 'white',
+                                                borderRadius: '50%',
+                                                width: '18px',
+                                                height: '18px',
+                                                fontSize: '10px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: '900'
+                                            }}>
+                                                {(selectedEmployeeFilter && selectedMonthFilter) ? 2 : 1}
+                                            </span>
+                                            <span
+                                                title="Clear Filters"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedEmployeeFilter('');
+                                                    setSelectedMonthFilter('');
+                                                    setCurrentPage(1);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: '#ef4444',
+                                                    color: 'white',
+                                                    borderRadius: '50%',
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
+                                            >
+                                                <X size={10} strokeWidth={3} />
+                                            </span>
+                                        </div>
                                     )}
                                 </button>
 
@@ -1558,10 +1656,10 @@ export default function PaySlipScreen() {
                     </div>
 
                     {/* Employee Payslips List Table */}
-                    <div style={{ background: 'white', borderRadius: '20px', boxShadow: '0 4px 24px rgba(15, 23, 42, 0.06)', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
+                    <div className="payslip-table-card" style={{ background: 'white', borderRadius: '20px', boxShadow: '0 4px 24px rgba(15, 23, 42, 0.06)', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
                         {/* Table Header Row */}
-                        <div style={{ overflowX: 'auto' }}>
-                            <div style={{ minWidth: '880px' }}>
+                        <div className="payslip-table-scroll" style={{ overflowX: 'auto' }}>
+                            <div className="payslip-table-wrapper" style={{ minWidth: '880px' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '0.5fr 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr 0.5fr 0.5fr 0.5fr', padding: '14px 20px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', gap: '8px', alignItems: 'center' }}>
                                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>S.No</span>
                                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Employee ID</span>
@@ -1816,8 +1914,8 @@ export default function PaySlipScreen() {
                                 <FormSelect label="Employee Name" name="emp_name" icon={<User size={16} />} value={formData.employee_id} onChange={handleUserSelect} options={usersList.map(u => ({ value: u.employee_id || u.id, label: u.name }))} />
                                 <FormField label="Department" name="department" icon={<Building2 size={16} />} value={formData.department} onChange={handleInputChange} />
                                 <FormSelect label="Designation" name="designation" icon={<Briefcase size={16} />} value={formData.designation} onChange={handleInputChange} options={Array.from(new Set(usersList.map(u => u.role || u.designation))).filter(Boolean).map(role => ({ value: role, label: role }))} />
-                                <FormSelect label="Month" name="month" icon={<Calendar size={16} />} value={formData.month} onChange={handleInputChange} options={monthsList.map(m => ({ value: m.value, label: m.label }))} />
-                                <FormSelect label="Year" name="year" icon={<Clock size={16} />} value={formData.year} onChange={handleInputChange} options={yearsList.map(y => ({ value: y, label: y }))} />
+                                <FormSelect label="Month" name="month" icon={<Calendar size={16} />} value={formData.month} onChange={handleInputChange} options={monthOptions} />
+                                <FormSelect label="Year" name="year" icon={<Clock size={16} />} value={formData.year} onChange={handleInputChange} options={yearOptions} />
 
                                 <FormField label="Basic Salary" name="basic_salary" type="number" value={formData.basic_salary} onChange={handleInputChange} />
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', display: 'flex', justifyContent: 'center', marginTop: '10px', borderTop: '1px dashed #e2e8f0', paddingTop: '20px' }}>
@@ -2154,22 +2252,37 @@ export default function PaySlipScreen() {
                     /* Ensure action/delete/download columns are hidden in print */
                     .payslip-row button, 
                     .payslip-row svg,
-                    .payslip-row > *:nth-child(9),
                     .payslip-row > *:nth-child(10),
-                    .payslip-row > *:nth-child(11) {
+                    .payslip-row > *:nth-child(11),
+                    .payslip-row > *:nth-child(12) {
                         display: none !important;
                         visibility: hidden !important;
                     }
                     /* Hide header's last 3 labels */
-                    div[style*="gridTemplateColumns"] > span:nth-child(9),
                     div[style*="gridTemplateColumns"] > span:nth-child(10),
-                    div[style*="gridTemplateColumns"] > span:nth-child(11) {
+                    div[style*="gridTemplateColumns"] > span:nth-child(11),
+                    div[style*="gridTemplateColumns"] > span:nth-child(12) {
                         display: none !important;
                     }
-                    /* Adjust grid layout header/body column templates to span only the 8 visible columns */
+                    /* Adjust grid layout header/body column templates to span only the 9 visible columns */
                     .payslip-row, 
                     div[style*="gridTemplateColumns"] {
-                        grid-template-columns: 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr !important;
+                        grid-template-columns: 0.5fr 1fr 1.5fr 0.8fr 1fr 0.8fr 0.6fr 1fr 1.1fr !important;
+                    }
+                    /* Prevent horizontal scroll/cutoff of table in print preview */
+                    .payslip-table-card {
+                        box-shadow: none !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        background: transparent !important;
+                    }
+                    .payslip-table-scroll {
+                        overflow: visible !important;
+                        overflow-x: visible !important;
+                    }
+                    .payslip-table-wrapper {
+                        min-width: auto !important;
+                        width: 100% !important;
                     }
                 }
             `}</style>
@@ -2185,7 +2298,14 @@ const FormSelect = ({ label, name, value, onChange, options, icon }) => (
             <select name={name} value={value} onChange={onChange} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
                 <option value="">Select {label}</option>
                 {options.map((opt, i) => (
-                    <option key={i} value={opt.value}>{opt.label}</option>
+                    <option 
+                        key={i} 
+                        value={opt.value} 
+                        disabled={opt.disabled}
+                        style={{ color: opt.disabled ? '#cbd5e1' : '#0f172a' }}
+                    >
+                        {opt.label}
+                    </option>
                 ))}
             </select>
             <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}><ChevronDown size={14} /></div>

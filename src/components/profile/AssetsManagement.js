@@ -114,6 +114,20 @@ export default function AssetsManagement() {
     return () => clearTimeout(handler);
   }, [form.laptop_details, user?.token]);
 
+  useEffect(() => {
+    if (editModal.show || availableAssetsModal || availableStockModal) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+      document.documentElement.style.overflow = 'auto';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.documentElement.style.overflow = 'auto';
+    };
+  }, [editModal.show, availableAssetsModal, availableStockModal]);
+
   const fetchData = async () => {
     if (!user?.token) return;
     setLoading(true);
@@ -401,7 +415,7 @@ export default function AssetsManagement() {
     setEditModal({
       show: true,
       employee: emp,
-      isReadOnly: false, // Allow editing for all by default as requested
+      isReadOnly: isReadOnlyMode,
       assetId: currentAsset.id || currentAsset.EmpID || currentAsset.employee_id,
       isCertificate: !!currentAsset.is_from_certificate,
       certificateData: currentAsset.is_from_certificate ? currentAsset : null
@@ -748,7 +762,7 @@ export default function AssetsManagement() {
               <ArrowLeft size={18} color="#64748b" />
             </button>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Administration Hub</h1>
+              <h1 style={{ fontSize: winWidth < 768 ? '20px' : '24px', fontWeight: '900', color: '#1e293b', margin: 0 }}>Asset Management Hub</h1>
               <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}></p>
             </div>
           </div>
@@ -800,7 +814,7 @@ export default function AssetsManagement() {
           width: '100%'
         }}>
           {/* Left Side: Stock Inventory / Available Assets */}
-          <div ref={stockRef} style={{ flex: winWidth < 1024 ? '1' : '1', width: '100%', background: 'white', borderRadius: '24px', padding: '24px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box' }}>
+          <div ref={stockRef} className="dashboard-section" style={{ flex: winWidth < 1024 ? '1' : '1', width: '100%', background: 'white', borderRadius: '24px', padding: '24px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s' }}>
             {stockCategory === null ? (
               <>
                 {/* Stock Title */}
@@ -973,9 +987,8 @@ export default function AssetsManagement() {
                 {/* Stock list grid */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
                   {stockList.filter(item => {
-                    const matchesSearch = item.name.toLowerCase().includes(stockSearch.toLowerCase()) ||
-                      item.specs.toLowerCase().includes(stockSearch.toLowerCase()) ||
-                      item.id.toLowerCase().includes(stockSearch.toLowerCase());
+                    const matchesSearch = item.name.toLowerCase().startsWith(stockSearch.toLowerCase()) ||
+                      item.id.toLowerCase().startsWith(stockSearch.toLowerCase());
 
                     if (!matchesSearch) return false;
                     if (stockCategory === 'all') return true;
@@ -1341,7 +1354,30 @@ export default function AssetsManagement() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setEditModal({ show: false, employee: null })} style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {editModal.isReadOnly && (
+                  <button
+                    onClick={() => setEditModal(prev => ({ ...prev, isReadOnly: false }))}
+                    style={{
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      color: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      fontSize: '12px',
+                      fontWeight: '800'
+                    }}
+                  >
+                    <Edit3 size={14} /> Edit
+                  </button>
+                )}
+                <button onClick={() => setEditModal({ show: false, employee: null })} style={{ background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
+              </div>
             </div>
 
             <div style={{ padding: '40px', overflowY: 'auto', flex: 1, position: 'relative', background: '#fcfdfe' }}>
@@ -1632,21 +1668,30 @@ export default function AssetsManagement() {
                 </>
               ) : (
                 /* Standard Footer */
-                <>
+                editModal.isReadOnly ? (
                   <button
                     onClick={() => setEditModal({ show: false, employee: null })}
-                    style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1.5px solid #1e3a8a', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
+                    style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1.5px solid #cbd5e1', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
                   >
-                    Discard Changes
+                    Close
                   </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    style={{ flex: 2, padding: '16px', borderRadius: '50px', border: 'none', background: '#3163aa', color: 'white', fontSize: '14px', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 10px 15px -3px rgba(49, 99, 170, 0.2)' }}
-                  >
-                    {saving ? 'Syncing...' : <><Save size={18} /> {assets[editModal.employee?.id || editModal.employee?.EmpID] ? 'Save Changes' : 'Submit details'}</>}
-                  </button>
-                </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setEditModal({ show: false, employee: null })}
+                      style={{ flex: 1, padding: '16px', borderRadius: '50px', border: '1.5px solid #1e3a8a', background: 'white', color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer' }}
+                    >
+                      Discard Changes
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      style={{ flex: 2, padding: '16px', borderRadius: '50px', border: 'none', background: '#3163aa', color: 'white', fontSize: '14px', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 10px 15px -3px rgba(49, 99, 170, 0.2)' }}
+                    >
+                      {saving ? 'Syncing...' : <><Save size={18} /> {assets[editModal.employee?.id || editModal.employee?.EmpID] ? 'Save Changes' : 'Submit details'}</>}
+                    </button>
+                  </>
+                )
               )}
             </div>
           </div>
