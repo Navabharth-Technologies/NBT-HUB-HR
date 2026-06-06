@@ -27,18 +27,13 @@ const SECTIONS = [
       { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'], required: true },
       { key: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'DD/MM/YYYY', required: true },
       { key: 'age', label: 'Age', type: 'text', placeholder: 'Age' },
-      { key: 'religion', label: 'Religion', type: 'text' },
       { key: 'blood_group', label: 'Blood Group', type: 'text', required: true },
-      { key: 'marital_status', label: 'Marital Status', type: 'select', options: ['Single', 'Married', 'Divorced', 'Widowed'] },
-      { key: 'nationality', label: 'Nationality', type: 'text', placeholder: 'e.g. Indian', required: true },
+      { key: 'marital_status', label: 'Marital Status', type: 'select', options: ['Single', 'Married'] },
       { key: 'father_husband_name', label: "Father/Husband's Name", type: 'text' },
-      { key: 'category', label: 'Category', type: 'select', options: ['General', 'OBC', 'SC', 'ST', 'Other'] },
       { key: 'pan_number', label: 'PAN Number', type: 'text', placeholder: 'Enter valid Pan Number(ABCDE1234F)', required: true },
       { key: 'pancard_photo', label: 'PAN Card Proof', type: 'file', required: true },
       { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: 'Enter valid Aadhar Number(1234 5678 9012)', required: true },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof', type: 'file', required: true },
-      { key: 'voter_id', label: 'Voter ID Number', type: 'text' },
-      { key: 'voter_id_photo', label: 'Voter ID', type: 'file' },
     ]
   },
   {
@@ -48,8 +43,6 @@ const SECTIONS = [
     color: '#8b5cf6',
     fields: [
       { key: 'designation', label: 'Designation', type: 'text', required: true },
-      { key: 'department', label: 'Department', type: 'text', required: true },
-      { key: 'process', label: 'Process', type: 'text' },
       { key: 'supervisor_l1', label: 'Supervisor L1 (Reporting Person)', type: 'text' },
       { key: 'supervisor_l2', label: 'Supervisor L2', type: 'text' },
       { key: 'doj', label: 'Date of Joining', type: 'text', placeholder: 'DD-MM-YYYY', required: true },
@@ -148,8 +141,8 @@ export default function PersonalInfo({ onBack }) {
   const isSelfMode = searchParams.get('self') === 'true';
   const { user, updateUser } = useAuth();
   const [form, setForm] = useState({
-    emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', religion: '', blood_group: '', marital_status: 'Single', nationality: 'Indian', father_husband_name: '', pan_number: '', aadhar_number: '', category: '',
-    pancard_photo: '', adharcard_photo: '', voter_id: '', voter_id_photo: '', passport_no: '', passport_photo: '',
+    emp_name: '', gender: '', dob: '', date_of_birth: '', age: '', blood_group: '', marital_status: 'Single', father_husband_name: '', pan_number: '', aadhar_number: '',
+    pancard_photo: '', adharcard_photo: '',
     designation: '', department: '', process: '', supervisor_l1: '', supervisor_l2: '', doj: '', ft_pt: '', status: '', place: '', moved: '', official_email: '',
     contact_no: '', emergency_contact_no: '', personal_email: '', present_address: '', permanent_address: '', state: '',
     sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
@@ -974,13 +967,11 @@ export default function PersonalInfo({ onBack }) {
       { key: 'gender', label: 'Gender' },
       { key: 'dob', label: 'Date of Birth' },
       { key: 'blood_group', label: 'Blood Group' },
-      { key: 'nationality', label: 'Nationality' },
       { key: 'pan_number', label: 'PAN Number' },
       { key: 'aadhar_number', label: 'Aadhar Number' },
       { key: 'pancard_photo', label: 'PAN Card Proof' },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof' },
       { key: 'designation', label: 'Designation' },
-      { key: 'department', label: 'Department' },
       { key: 'doj', label: 'Date of Joining' },
       { key: 'official_email', label: 'Official Email ID' },
       { key: 'contact_no', label: 'Contact No' },
@@ -1546,6 +1537,78 @@ export default function PersonalInfo({ onBack }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '20px' : '24px' }}>
               {currentSection.fields.map(field => {
+                if (field.key === 'father_husband_name') {
+                  return null;
+                }
+
+                if (field.key === 'marital_status') {
+                  const fatherField = currentSection.fields.find(f => f.key === 'father_husband_name');
+                  const isDisabledMS = !isEditing || (LOCKED_FIELDS.includes('marital_status') && !isAdmin);
+                  const isDisabledFather = !isEditing || (fatherField && LOCKED_FIELDS.includes('father_husband_name') && !isAdmin);
+                  const fatherLabel = form.marital_status === 'Married' ? "Spouse Name" : "Father's Name";
+
+                  return (
+                    <div key="marital_status_row" style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                      gap: isMobile ? '20px' : '24px',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}>
+                      {/* Marital Status */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
+                          {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                        </label>
+                        <select
+                          value={form.marital_status}
+                          disabled={isDisabledMS}
+                          onChange={e => handleChange('marital_status', e.target.value)}
+                          style={{
+                            width: '100%', padding: '16px 20px', borderRadius: '16px', fontWeight: '900',
+                            color: form.marital_status ? '#0B1E3F' : '#94a3b8',
+                            WebkitTextFillColor: form.marital_status ? '#0B1E3F' : '#94a3b8',
+                            border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
+                            backgroundColor: isDisabledMS ? '#f1f5f9' : 'white',
+                            boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '16px'
+                          }}
+                        >
+                          {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Father / Spouse Name */}
+                      {fatherField && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+                          <label style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>
+                            {fatherLabel} {fatherField.required && <span style={{ color: '#ef4444' }}>*</span>}
+                          </label>
+                          <input
+                            type="text"
+                            value={form.father_husband_name}
+                            readOnly={isDisabledFather}
+                            placeholder={fatherField.placeholder || `Enter ${fatherLabel}`}
+                            onChange={e => handleChange('father_husband_name', e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              padding: '16px 20px', 
+                              borderRadius: '16px', 
+                              fontWeight: '900', 
+                              color: '#0B1E3F',
+                              WebkitTextFillColor: '#0B1E3F',
+                              border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1', 
+                              backgroundColor: isDisabledFather ? '#f1f5f9' : 'white', 
+                              boxSizing: 'border-box', 
+                              fontFamily: 'inherit', 
+                              fontSize: '16px'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 const isDisabled = !isEditing || (LOCKED_FIELDS.includes(field.key) && !isAdmin);
                 return (
                   <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
