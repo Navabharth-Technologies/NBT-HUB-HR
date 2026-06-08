@@ -247,8 +247,8 @@ export default function EmployeeAttendanceManagement() {
       
       return [
         empName,
-        id,
-        pDate ? String(pDate).split('T')[0].split(' ')[0] : 'N/A',
+        "'" + id,
+        pDate ? "'" + String(pDate).split('T')[0].split(' ')[0] : 'N/A',
         pIn || '----',
         pOut || '----',
         resolveWorkHrs(log),
