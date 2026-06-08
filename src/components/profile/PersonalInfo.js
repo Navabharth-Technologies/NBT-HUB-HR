@@ -785,73 +785,129 @@ export default function PersonalInfo({ onBack }) {
     if (key === 'separation') {
       const prevValue = form.separation || '';
       const isDeleting = prevValue.length > value.length;
-      let clean = value.replace(/\D/g, '');
 
-      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
-        if (clean.length > 0) {
-          clean = clean.slice(0, -1);
-        }
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        caretRef.current = {
+          target,
+          selectionStart: target.selectionStart,
+          oldValLen: target.value.length
+        };
       }
 
-      // Max 8 digits
-      if (clean.length > 8) {
-        clean = clean.slice(0, 8);
+      // Collapse multiple trailing slashes (e.g. "10//" -> "10/")
+      let cleanedValue = value;
+      if (value.endsWith('//')) {
+        cleanedValue = value.replace(/\/+$/, '/');
+      }
+
+      // Split the input value by slashes
+      const parts = cleanedValue.split('/');
+      // Keep only digits in each part
+      let cleanParts = parts.map(p => p.replace(/\D/g, ''));
+
+      // If there are more than 3 parts, truncate
+      if (cleanParts.length > 3) {
+        cleanParts = cleanParts.slice(0, 3);
+      }
+
+      let dayStr = '';
+      let monthStr = '';
+      let yearStr = '';
+
+      if (cleanParts.length === 1) {
+        const p0 = cleanParts[0] || '';
+        if (p0.length > 2) {
+          yearStr = p0;
+        } else {
+          dayStr = p0;
+        }
+      } else if (cleanParts.length === 2) {
+        const p0 = cleanParts[0] || '';
+        const p1 = cleanParts[1] || '';
+        if (p0.length > 2) {
+          yearStr = p0;
+          monthStr = p1;
+        } else if (p1.length > 2) {
+          dayStr = p0;
+          yearStr = p1;
+        } else {
+          dayStr = p0;
+          monthStr = p1;
+        }
+      } else if (cleanParts.length === 3) {
+        dayStr = cleanParts[0] || '';
+        monthStr = cleanParts[1] || '';
+        yearStr = cleanParts[2] || '';
       }
 
       // Restrict day (dd)
-      if (clean.length >= 1) {
-        const d1 = parseInt(clean.charAt(0), 10);
-        if (d1 > 3) {
-          clean = '0' + clean;
+      if (dayStr) {
+        if (dayStr.length > 2) dayStr = dayStr.slice(0, 2);
+        // If first digit is > 3, auto prepend '0'
+        if (dayStr.length === 1 && parseInt(dayStr, 10) > 3) {
+          dayStr = '0' + dayStr;
         }
-      }
-      if (clean.length >= 2) {
-        let dd = clean.slice(0, 2);
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 31) {
-          dd = '31';
-        } else if (ddVal === 0) {
-          dd = '01';
+        const ddVal = parseInt(dayStr, 10);
+        if (!isNaN(ddVal)) {
+          if (ddVal > 31) dayStr = '31';
+          else if (ddVal === 0 && dayStr.length === 2) dayStr = '01';
         }
-        clean = dd + clean.slice(2);
       }
 
       // Restrict month (mm)
-      if (clean.length >= 3) {
-        const m1 = parseInt(clean.charAt(2), 10);
-        if (m1 > 1) {
-          clean = clean.slice(0, 2) + '0' + clean.slice(2);
+      if (monthStr) {
+        if (monthStr.length > 2) monthStr = monthStr.slice(0, 2);
+        // If first digit is > 1, auto prepend '0'
+        if (monthStr.length === 1 && parseInt(monthStr, 10) > 1) {
+          monthStr = '0' + monthStr;
         }
-      }
-      if (clean.length >= 4) {
-        let mm = clean.slice(2, 4);
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 12) {
-          mm = '12';
-        } else if (mmVal === 0) {
-          mm = '01';
+        const mmVal = parseInt(monthStr, 10);
+        if (!isNaN(mmVal)) {
+          if (mmVal > 12) monthStr = '12';
+          else if (mmVal === 0 && monthStr.length === 2) monthStr = '01';
         }
-        clean = clean.slice(0, 2) + mm + clean.slice(4);
       }
 
-      // Restrict year (yyyy) max 4 digits, ≤ 2090
-      if (clean.length >= 8) {
-        let yyyy = clean.slice(4, 8);
-        const yyyyVal = parseInt(yyyy, 10);
-        if (yyyyVal > 2090) {
-          yyyy = '2090';
+      // Restrict year (yyyy)
+      if (yearStr) {
+        if (yearStr.length > 4) yearStr = yearStr.slice(0, 4);
+        const yyyyVal = parseInt(yearStr, 10);
+        if (!isNaN(yyyyVal) && yearStr.length === 4) {
+          if (yyyyVal > 2099) yearStr = '2099';
         }
-        clean = clean.slice(0, 4) + yyyy;
       }
 
-      // Reconstruct with slashes dd/mm/yyyy
+      // Reconstruct formatted string
       let formatted = '';
-      if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
-      } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
+      if (!dayStr && !monthStr && !yearStr) {
+        formatted = '';
+      } else if (parts.length === 1) {
+        // Only day part typed, unless it was a year
+        if (cleanParts[0] && cleanParts[0].length > 2) {
+          formatted = `//${yearStr}`;
+        } else {
+          formatted = dayStr;
+          if (dayStr.length === 2 && !isDeleting) {
+            formatted += '/';
+          }
+        }
+      } else if (parts.length === 2) {
+        // Day and month parts, or day/month and year
+        const p1 = cleanParts[1] || '';
+        const p0 = cleanParts[0] || '';
+        if (p0.length > 2) {
+          formatted = `${yearStr}/${monthStr}`;
+        } else if (p1.length > 2) {
+          formatted = `${dayStr}//${yearStr}`;
+        } else {
+          formatted = `${dayStr}/${monthStr}`;
+          if (monthStr.length === 2 && !isDeleting) {
+            formatted += '/';
+          }
+        }
       } else {
-        formatted = clean;
+        // Day, month, and year parts
+        formatted = `${dayStr}/${monthStr}/${yearStr}`;
       }
 
       sanitizedValue = formatted;
