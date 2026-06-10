@@ -237,7 +237,7 @@ export default function TicketManagement() {
       });
 
       if (res.ok) {
-        triggerToast('Action stored and response sent!');
+        triggerToast('Action submitted successfully');
         setIsManaging(false);
         setActionText('');
         // Update locally for immediate feedback
@@ -251,7 +251,7 @@ export default function TicketManagement() {
           body: JSON.stringify(updatePayload)
         });
         if (res2.ok) {
-          triggerToast('Action stored and response sent!');
+          triggerToast('Action submitted successfully');
           setIsManaging(false);
           setActionText('');
           setTickets(prev => prev.map(t => (t.id === (selectedTicket.id || selectedTicket.ticket_id) || t.ticket_id === (selectedTicket.id || selectedTicket.ticket_id)) ? { ...t, action: actionText, status: 'Resolved' } : t));

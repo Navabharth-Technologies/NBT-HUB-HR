@@ -296,7 +296,7 @@ export default function ResignationUserScreen() {
                             </div>
                             <div style={{ textAlign: winWidth < 768 ? 'left' : 'right' }}>
                                 <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Submission Date</div>
-                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                                <div style={{ fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>{`${String(new Date().getDate()).padStart(2, '0')}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date().getFullYear()}`}</div>
                             </div>
                         </div>
                         <div style={{ padding: winWidth < 768 ? '25px 20px 40px' : '30px 50px 50px' }}>
@@ -321,7 +321,7 @@ export default function ResignationUserScreen() {
                                 <div>
                                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Resignation Date</label>
                                     <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '14px 18px', fontSize: '13px', fontWeight: '800', color: '#0f172a', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                                        {new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}
+                                        {`${String(new Date().getDate()).padStart(2, '0')}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date().getFullYear()}`}
                                     </div>
                                 </div>
                                 <div>
@@ -380,7 +380,7 @@ export default function ResignationUserScreen() {
                                     opacity: submitting ? 0.7 : 1, textTransform: 'uppercase', letterSpacing: '1.5px'
                                 }}
                             >
-                                <Send size={18} /> {submitting ? 'Processing...' : 'Signature & Submit Letter'}
+                                <Send size={18} /> {submitting ? 'Processing...' : 'Submit Resignation Letter'}
                             </button>
                         </div>
                     </div>
@@ -390,12 +390,6 @@ export default function ResignationUserScreen() {
                             <h3 style={{ fontSize: '12px', fontWeight: '950', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>
                                 Team Resignation History
                             </h3>
-                            <button 
-                                onClick={fetchMyRequests}
-                                style={{ background: 'white', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-                            >
-                                <Clock size={12} /> Refresh Sync
-                            </button>
                         </div>
                         {loading ? (
                             <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', background: 'white', borderRadius: '24px' }}>Syncing history...</div>
@@ -543,31 +537,31 @@ export default function ResignationUserScreen() {
                                         Sincerely,<br />
                                         <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '14px' : '16px' }}>{selectedRequest.employee_name}</span>
                                     </p>
-                                        <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                                                <button
-                                                    disabled={updating}
-                                                    onClick={() => handleStatusUpdate(selectedRequest.id, 'Pending')}
-                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fffbeb', color: '#d97706', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
-                                                >
-                                                    Wait
-                                                </button>
-                                                <button
-                                                    disabled={updating}
-                                                    onClick={() => handleStatusUpdate(selectedRequest.id, 'Rejected')}
-                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fef2f2', color: '#dc2626', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
-                                                >
-                                                    Reject
-                                                </button>
-                                                <button
-                                                    disabled={updating}
-                                                    onClick={() => handleStatusUpdate(selectedRequest.id, 'Approved')}
-                                                    style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
-                                                >
-                                                    {updating ? '...' : 'Approved'}
-                                                </button>
-                                            </div>
+                                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                                            <button
+                                                disabled={updating}
+                                                onClick={() => handleStatusUpdate(selectedRequest.id, 'Pending')}
+                                                style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fffbeb', color: '#d97706', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                            >
+                                                Wait
+                                            </button>
+                                            <button
+                                                disabled={updating}
+                                                onClick={() => handleStatusUpdate(selectedRequest.id, 'Rejected')}
+                                                style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#fef2f2', color: '#dc2626', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                            >
+                                                Reject
+                                            </button>
+                                            <button
+                                                disabled={updating}
+                                                onClick={() => handleStatusUpdate(selectedRequest.id, 'Approved')}
+                                                style={{ padding: '12px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: '900', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase' }}
+                                            >
+                                                {updating ? '...' : 'Approved'}
+                                            </button>
                                         </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

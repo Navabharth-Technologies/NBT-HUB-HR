@@ -17,22 +17,30 @@ export default function SuggestionModule() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  // Parse a date string like "22/5/2026" or "5/22/2026" or ISO safely
+  // Parse a date string like "22/5/2026" or "5/22/2026" or "22-05-2026" safely
   const parseDate = (dateStr) => {
     if (!dateStr || dateStr === 'Today') return new Date();
-    // Try ISO first
+    
+    const parts = dateStr.includes('-') ? dateStr.split('-') : dateStr.split('/');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        const d = new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
+        if (!isNaN(d)) return d;
+      } else {
+        // Try d/m/yyyy or dd-mm-yyyy
+        const d = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+        if (!isNaN(d)) return d;
+        // Try m/d/yyyy or mm-dd-yyyy
+        const d2 = new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`);
+        if (!isNaN(d2)) return d2;
+      }
+    }
+
+    // Try ISO fallback
     const iso = new Date(dateStr);
     if (!isNaN(iso)) return iso;
-    // Try dd/mm/yyyy or m/d/yyyy
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      // Try d/m/yyyy
-      const d = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
-      if (!isNaN(d)) return d;
-      // Try m/d/yyyy
-      const d2 = new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`);
-      if (!isNaN(d2)) return d2;
-    }
+
     return null;
   };
 
@@ -67,6 +75,14 @@ export default function SuggestionModule() {
     doc.text(`Report Type: Suggestion Details`, 14, 36);
     doc.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, 14, 42);
 
+    let currentY = 50;
+    if (fromDate || toDate) {
+      const fromStr = fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : 'Start';
+      const toStr = toDate ? new Date(toDate).toLocaleDateString('en-GB') : 'Today';
+      doc.text(`Date Range: ${fromStr} to ${toStr}`, 14, 48);
+      currentY = 56;
+    }
+
     const cleanText = (str) => {
       if (!str) return 'N/A';
       return String(str)
@@ -88,7 +104,7 @@ export default function SuggestionModule() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 50,
+      startY: currentY,
       styles: {
         fontSize: 8.5,
         cellPadding: { top: 5, bottom: 5, left: 3, right: 3 },
@@ -345,7 +361,7 @@ export default function SuggestionModule() {
                   </p>
                   <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Engagement:</span>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Note:</span>
                       <span style={{ fontSize: '10px', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: '800' }}>
                         {s.participation}
                       </span>

@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, Building2,
   AlertCircle, CheckCircle2, User, Landmark, RefreshCw,
   MapPin, GraduationCap, History,
-  FileCheck, Users, Pencil, Upload, ChevronDown, ChevronLeft, ChevronRight, X
+  FileCheck, Users, Pencil, Upload, ChevronDown, ChevronLeft, ChevronRight, X, Maximize2
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../../utils/cropImage';
@@ -46,7 +46,7 @@ const SECTIONS = [
       { key: 'department', label: 'Department', type: 'text', required: true },
       { key: 'supervisor_l1', label: 'Supervisor L1 (Reporting Person)', type: 'text' },
       { key: 'supervisor_l2', label: 'Supervisor L2', type: 'text' },
-      { key: 'doj', label: 'Date of Joining', type: 'text', placeholder: 'DD-MM-YYYY', required: true },
+      { key: 'doj', label: 'Date of Joining', type: 'text', placeholder: 'DD/MM/YYYY', required: true },
       { key: 'ft_pt', label: 'FT/PT', type: 'select', options: ['Full Time', 'Part Time', 'Contract'] },
       { key: 'status', label: 'Status', type: 'select', options: ['Active', 'On Bench', 'Notice Period', 'Terminated'] },
       { key: 'place', label: 'Work Location', type: 'text' },
@@ -85,7 +85,7 @@ const SECTIONS = [
       { key: 'college', label: 'College', type: 'text', required: true },
       { key: 'university', label: 'University', type: 'text', required: true },
       { key: 'previous_organization', label: 'Previous Organization', type: 'text' },
-      { key: 'source', label: 'Source', type: 'text' },
+      { key: 'source', label: 'Source(How you heard about us)', type: 'text' },
       { key: 'languages_known', label: 'Languages Known', type: 'text' },
     ]
   },
@@ -188,6 +188,8 @@ export default function PersonalInfo({ onBack }) {
     return localStorage.getItem('personal_info_active_section') || 'primary';
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [docRemoveConfirm, setDocRemoveConfirm] = useState(null); // { fieldKey, fieldLabel, isEditingCtx }
+  const [fullscreenUrl, setFullscreenUrl] = useState(null); // fullscreen doc preview
   const [employees, setEmployees] = useState([]);
   const [selectedEmpId, setSelectedEmpId] = useState('');
 
@@ -366,7 +368,7 @@ export default function PersonalInfo({ onBack }) {
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const year = d.getFullYear();
-                 normalizedVal = (targetKey === 'date_of_birth' || targetKey === 'lwd' || targetKey === 'separation') ? `${day}/${month}/${year}` : `${day}-${month}-${year}`;
+                normalizedVal = `${day}/${month}/${year}`;
               }
             }
 
@@ -918,7 +920,7 @@ export default function PersonalInfo({ onBack }) {
       const isDeleting = prevValue.length > value.length;
       let clean = value.replace(/\D/g, '');
 
-      if (isDeleting && (prevValue.endsWith('-') || prevValue.endsWith('/')) && !value.endsWith('-') && !value.endsWith('/')) {
+      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
         if (clean.length > 0) {
           clean = clean.slice(0, -1);
         }
@@ -975,12 +977,12 @@ export default function PersonalInfo({ onBack }) {
         clean = clean.slice(0, 4) + yyyy;
       }
 
-      // Reconstruct with dashes dd-mm-yyyy (matches placeholder DD-MM-YYYY)
+      // Reconstruct with slashes
       let formatted = '';
       if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '-' + clean.slice(2, 4) + '-' + clean.slice(4);
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
       } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '-' + clean.slice(2);
+        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
       } else {
         formatted = clean;
       }
@@ -988,7 +990,7 @@ export default function PersonalInfo({ onBack }) {
       sanitizedValue = formatted;
     }
 
-    if (key === 'personal_email' || key === 'official_email') {
+    if (key === 'personal_email' || key === 'official_email' || key === 'personal_email_id' || key === 'official_email_id') {
       const atIndex = value.indexOf('@');
       if (atIndex !== -1) {
         const domainPart = value.substring(atIndex + 1);
@@ -1183,12 +1185,14 @@ export default function PersonalInfo({ onBack }) {
       }
     }
 
-    if (activeSectionFields.includes('personal_email') && form.personal_email && !emailRegex.test(form.personal_email)) {
-      setToast({ type: 'error', msg: `Invalid Personal Email format${getSection('personal_email')}` });
+    const pEmail = form.personal_email_id !== undefined && form.personal_email_id !== '' ? form.personal_email_id : form.personal_email;
+    if ((activeSectionFields.includes('personal_email') || activeSectionFields.includes('personal_email_id')) && pEmail && !emailRegex.test(pEmail)) {
+      setToast({ type: 'error', msg: `Please enter a valid Personal Email (e.g., name@gmail.com)` });
       return;
     }
-    if (activeSectionFields.includes('official_email') && form.official_email && !emailRegex.test(form.official_email)) {
-      setToast({ type: 'error', msg: `Invalid Official Email format${getSection('official_email')}` });
+    const oEmail = form.official_email_id !== undefined && form.official_email_id !== '' ? form.official_email_id : form.official_email;
+    if ((activeSectionFields.includes('official_email') || activeSectionFields.includes('official_email_id')) && oEmail && !emailRegex.test(oEmail)) {
+      setToast({ type: 'error', msg: `Please enter a valid Official Email (e.g., name@company.com)` });
       return;
     }
     if (activeSectionFields.includes('contact_no') && form.contact_no) {
@@ -1279,8 +1283,11 @@ export default function PersonalInfo({ onBack }) {
 
       // Fix key mismatches between SECTIONS field keys and backend column names
       // official_email_id (SECTIONS key) vs official_email (form state key)
-      if (!payload.official_email && form.official_email) payload.official_email = form.official_email;
-      if (!payload.official_email_id && form.official_email) payload.official_email_id = form.official_email;
+      if (!payload.official_email && (form.official_email || form.official_email_id)) payload.official_email = form.official_email || form.official_email_id;
+      if (!payload.official_email_id && (form.official_email || form.official_email_id)) payload.official_email_id = form.official_email || form.official_email_id;
+
+      if (!payload.personal_email && (form.personal_email || form.personal_email_id)) payload.personal_email = form.personal_email || form.personal_email_id;
+      if (!payload.personal_email_id && (form.personal_email || form.personal_email_id)) payload.personal_email_id = form.personal_email || form.personal_email_id;
 
       // Send ft_pt with all common backend column name variants
       if (payload.ft_pt) {
@@ -1396,8 +1403,23 @@ export default function PersonalInfo({ onBack }) {
                   overflow: 'hidden'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, paddingRight: '40px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, paddingRight: '84px' }}>
                   <h3 style={{ margin: 0, color: '#0B1E3F', fontWeight: '900', fontSize: '18px', textTransform: 'uppercase' }}>{previewDoc.label}</h3>
+                  {/* Zoom / Fullscreen button */}
+                  <button
+                    onClick={() => setFullscreenUrl(previewDoc.url)}
+                    title="View fullscreen"
+                    style={{
+                      position: 'absolute', top: '15px', right: '59px', width: '36px', height: '36px',
+                      borderRadius: '50%', backgroundColor: '#f1f5f9', border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      color: '#315A9E', transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e0f2fe'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  >
+                    <Maximize2 size={17} />
+                  </button>
                   <button
                     onClick={() => setPreviewDoc(null)}
                     style={{
@@ -1444,12 +1466,14 @@ export default function PersonalInfo({ onBack }) {
                     <img
                       src={previewDoc.url}
                       alt="Proof Preview"
+                      onClick={() => setFullscreenUrl(previewDoc.url)}
                       style={{
                         maxWidth: '100%',
                         maxHeight: '55vh',
                         display: 'block',
                         borderRadius: '20px',
-                        objectFit: 'contain'
+                        objectFit: 'contain',
+                        cursor: 'zoom-in'
                       }}
                       onError={(e) => {
                         e.target.style.display = 'none';
@@ -1478,7 +1502,7 @@ export default function PersonalInfo({ onBack }) {
                     rel="noreferrer"
                     style={{ fontSize: '13px', color: '#315A9E', fontWeight: '900', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    OPEN DOCUMENT IN NEW TAB ↗
+
                   </a>
                 </div>
               </motion.div>
@@ -1666,7 +1690,15 @@ export default function PersonalInfo({ onBack }) {
           </div>
 
           <div style={{ display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : 'row', gridTemplateColumns: isMobile ? 'none' : '280px 1fr', gap: isMobile ? '20px' : '24px', alignItems: 'start', width: '100%', boxSizing: 'border-box' }}>
-            <div style={{ width: '100%', margin: '0', boxSizing: 'border-box', flexShrink: 0 }}>
+            <div style={{
+              width: '100%',
+              margin: '0',
+              boxSizing: 'border-box',
+              flexShrink: 0,
+              position: !isMobile ? 'sticky' : 'static',
+              top: !isMobile ? '120px' : 'auto',
+              zIndex: 10
+            }}>
               {isMobile ? (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1753,7 +1785,16 @@ export default function PersonalInfo({ onBack }) {
               key={activeSection}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              style={{ backgroundColor: 'white', borderRadius: '28px', padding: isMobile ? '24px' : '40px', border: '1.5px solid #e2e8f0' }}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '28px',
+                padding: isMobile ? '24px' : '40px',
+                border: '1.5px solid #e2e8f0',
+                maxHeight: !isMobile ? 'calc(100vh - 280px)' : 'none',
+                overflowY: !isMobile ? 'auto' : 'visible',
+                position: !isMobile ? 'sticky' : 'static',
+                top: !isMobile ? '120px' : 'auto'
+              }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
                 <div style={{ padding: '12px', borderRadius: '16px', backgroundColor: `${currentSection.color}15`, color: currentSection.color }}>
@@ -1826,44 +1867,9 @@ export default function PersonalInfo({ onBack }) {
                               </button>
                               {((isEditing && !isDisabled) || (!isEditing)) && (
                                 <button
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.stopPropagation();
-                                    setForm(prev => ({ ...prev, [field.key]: '' }));
-                                    if (!isEditing) {
-                                      try {
-                                        const token = localStorage.getItem('token');
-                                        let docType = field.key;
-                                        if (field.key === 'pancard_photo') docType = 'pan_card';
-                                        if (field.key === 'adharcard_photo') docType = 'aadhar_card';
-                                        if (field.key === 'voter_id_photo') docType = 'voter_id_proof';
-                                        if (field.key === 'passport_photo') docType = 'passport_proof';
-                                        if (field.key === 'sslc_markscard') docType = 'sslc_markscard';
-                                        if (field.key === 'puc_markscard') docType = 'puc_markscard';
-                                        if (field.key === 'ug_pg_markscard') docType = 'ug_pg_markscard';
-                                        if (field.key === 'passbook_photo') docType = 'bank_passbook';
-                                        if (field.key === 'experience_letter') docType = 'experience_letter';
-                                        if (field.key === 'previous_company_payslip') docType = 'previous_payslip';
-
-                                        const updatePayload = {
-                                          employee_id: selectedEmpId,
-                                          id: selectedEmpId,
-                                          [field.key]: '',
-                                          [docType]: '',
-                                          experience_letter_photo: field.key === 'experience_letter' ? '' : undefined,
-                                          previous_payslip_photo: field.key === 'previous_company_payslip' ? '' : undefined
-                                        };
-                                        Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
-
-                                        await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                          body: JSON.stringify(updatePayload)
-                                        });
-                                        setToast({ type: 'success', msg: `${field.label} removed successfully` });
-                                      } catch (err) {
-                                        console.error("Failed to remove file:", err);
-                                      }
-                                    }
+                                    setDocRemoveConfirm({ fieldKey: field.key, fieldLabel: field.label, isEditingCtx: isEditing });
                                   }}
                                   style={{
                                     border: 'none', background: '#ef444415', color: '#ef4444',
@@ -1898,6 +1904,65 @@ export default function PersonalInfo({ onBack }) {
                           </option>
                           {field.options.map(o => <option key={o} value={o} style={{ color: '#0B1E3F', WebkitTextFillColor: '#0B1E3F' }}>{o}</option>)}
                         </select>
+                      ) : field.key === 'languages_known' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                          <input
+                            type="text"
+                            value={form[field.key] || ''}
+                            placeholder={field.placeholder || 'e.g. English Hindi'}
+                            readOnly={isDisabled}
+                            onChange={e => handleChange(field.key, e.target.value, e.target)}
+                            style={{
+                              width: '100%',
+                              padding: '16px 20px',
+                              borderRadius: '16px',
+                              fontWeight: '900',
+                              color: '#0B1E3F',
+                              WebkitTextFillColor: '#0B1E3F',
+                              border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
+                              backgroundColor: isDisabled ? '#f1f5f9' : 'white',
+                              boxSizing: 'border-box',
+                              fontFamily: 'inherit',
+                              fontSize: '16px'
+                            }}
+                          />
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                            {['English', 'Hindi', 'Kannada', 'Telugu', 'Malayalam', 'Arabic', 'Urdu', 'Marathi'].map(lang => {
+                              const currentLangs = (form[field.key] || '').split(' ').filter(Boolean);
+                              const isSelected = currentLangs.includes(lang);
+                              return (
+                                <button
+                                  key={lang}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    let newLangs = [...currentLangs];
+                                    if (isSelected) {
+                                      newLangs = newLangs.filter(l => l !== lang);
+                                    } else {
+                                      newLangs.push(lang);
+                                    }
+                                    handleChange(field.key, newLangs.join(' '));
+                                  }}
+                                  style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '20px',
+                                    border: `2px solid ${isSelected ? '#315A9E' : '#cbd5e1'}`,
+                                    backgroundColor: isSelected ? '#315A9E' : (isDisabled ? '#f1f5f9' : 'white'),
+                                    color: isSelected ? 'white' : '#64748b',
+                                    fontWeight: '800',
+                                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    fontSize: '13px'
+                                  }}
+                                >
+                                  {lang}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       ) : (
                         <>
                           <input
@@ -2036,7 +2101,139 @@ export default function PersonalInfo({ onBack }) {
       <style>{`
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        input::placeholder, textarea::placeholder {
+          font-family: 'Outfit', sans-serif !important;
+          font-weight: 900 !important;
+          color: #94a3b8 !important;
+        }
       `}</style>
+
+      {/* Fullscreen Image Overlay */}
+      {fullscreenUrl && (
+        <div
+          onClick={() => setFullscreenUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)',
+            zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        >
+          <button
+            onClick={() => setFullscreenUrl(null)}
+            style={{
+              position: 'fixed', top: '20px', right: '20px', width: '44px', height: '44px',
+              borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'white', zIndex: 99999
+            }}
+          >
+            <X size={22} />
+          </button>
+          {(fullscreenUrl.toLowerCase().endsWith('.pdf') || fullscreenUrl.includes('application/pdf')) ? (
+            <iframe
+              src={fullscreenUrl}
+              style={{ width: '100vw', height: '100vh', border: 'none' }}
+              title="Fullscreen Preview"
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={fullscreenUrl}
+              alt="Fullscreen"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain', borderRadius: '4px' }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Centered Document Remove Confirmation Modal */}
+      {docRemoveConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(6px)',
+          zIndex: 99999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '24px', padding: '36px 32px',
+            maxWidth: '420px', width: '100%', textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+            border: '1.5px solid #fee2e2'
+          }}>
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '50%',
+              background: '#fef2f2', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 16px'
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6" /><path d="M14 11v6" />
+                <path d="M9 6V4h6v2" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: '0 0 8px 0' }}>Delete Document?</h3>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 28px 0', lineHeight: '1.5' }}>
+              Are you sure you want to delete <strong style={{ color: '#0f172a' }}>{docRemoveConfirm.fieldLabel}</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setDocRemoveConfirm(null)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '14px',
+                  border: '1.5px solid #e2e8f0', background: 'white',
+                  color: '#64748b', fontSize: '14px', fontWeight: '800', cursor: 'pointer'
+                }}
+              >Cancel</button>
+              <button
+                onClick={async () => {
+                  const { fieldKey, fieldLabel, isEditingCtx } = docRemoveConfirm;
+                  setDocRemoveConfirm(null);
+                  setForm(prev => ({ ...prev, [fieldKey]: '' }));
+                  if (!isEditingCtx) {
+                    try {
+                      const token = localStorage.getItem('token');
+                      let docType = fieldKey;
+                      if (fieldKey === 'pancard_photo') docType = 'pan_card';
+                      if (fieldKey === 'adharcard_photo') docType = 'aadhar_card';
+                      if (fieldKey === 'voter_id_photo') docType = 'voter_id_proof';
+                      if (fieldKey === 'passport_photo') docType = 'passport_proof';
+                      if (fieldKey === 'sslc_markscard') docType = 'sslc_markscard';
+                      if (fieldKey === 'puc_markscard') docType = 'puc_markscard';
+                      if (fieldKey === 'ug_pg_markscard') docType = 'ug_pg_markscard';
+                      if (fieldKey === 'passbook_photo') docType = 'bank_passbook';
+                      if (fieldKey === 'experience_letter') docType = 'experience_letter';
+                      if (fieldKey === 'previous_company_payslip') docType = 'previous_payslip';
+                      const updatePayload = {
+                        employee_id: selectedEmpId, id: selectedEmpId,
+                        [fieldKey]: '', [docType]: '',
+                        experience_letter_photo: fieldKey === 'experience_letter' ? '' : undefined,
+                        previous_payslip_photo: fieldKey === 'previous_company_payslip' ? '' : undefined
+                      };
+                      Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
+                      await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_UPDATE, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify(updatePayload)
+                      });
+                      setToast({ type: 'success', msg: `${fieldLabel} removed successfully` });
+                    } catch (err) {
+                      console.error('Failed to remove file:', err);
+                    }
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '14px',
+                  border: 'none', background: '#ef4444',
+                  color: 'white', fontSize: '14px', fontWeight: '900', cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                }}
+              >Yes, Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

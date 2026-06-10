@@ -198,21 +198,19 @@ window.alert = function (message) {
       <div class="__ca_icon__">${icon}</div>
       <p class="__ca_title__">${title}</p>
       <p class="__ca_msg__">${message}</p>
-      <button class="__ca_btn__" id="__custom_alert_ok_btn__">OK</button>
     </div>
   `;
 
   document.body.appendChild(overlay);
 
-  const btn = document.getElementById('__custom_alert_ok_btn__');
-  if (btn) btn.focus();
-
   const closeModal = () => {
     window.removeEventListener('keydown', handleKeyDown);
-    overlay.style.animation = 'none';
-    overlay.style.opacity = '0';
-    overlay.style.transition = 'opacity 0.15s';
-    setTimeout(() => { overlay.remove(); }, 150);
+    if (overlay && overlay.parentNode) {
+      overlay.style.animation = 'none';
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.15s';
+      setTimeout(() => { overlay.remove(); }, 150);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -223,7 +221,9 @@ window.alert = function (message) {
   };
 
   window.addEventListener('keydown', handleKeyDown);
-  btn.addEventListener('click', closeModal);
+  
+  // Auto close after 2.5 seconds
+  setTimeout(closeModal, 2500);
 };
 
 // Global Security Interceptor (Fetch version of Axios Interceptor)

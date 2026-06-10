@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
-    Download, Plus, Search, Filter, AlertCircle, X,
+    Download, Plus, Search, Filter, AlertCircle, X, XCircle,
     ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +28,8 @@ export default function ServiceCertificateUserScreen() {
     const [adminRemark, setAdminRemark] = useState('');
     const [certificateUrl, setCertificateUrl] = useState('');
     const [winWidth, setWinWidth] = useState(window.innerWidth);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+    const [popupMessage, setPopupMessage] = useState('');
 
     useEffect(() => {
         if (selectedDetail) {
@@ -41,6 +43,17 @@ export default function ServiceCertificateUserScreen() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (showSuccessPopup) {
+            const timer = setTimeout(() => {
+                setShowSuccessPopup(false);
+                setSelectedDetail(null);
+                fetchMyRequests();
+            }, 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [showSuccessPopup]);
 
 
     useEffect(() => {
@@ -188,8 +201,8 @@ export default function ServiceCertificateUserScreen() {
                 })
             });
             if (res.ok) {
-                setSelectedDetail(null);
-                fetchMyRequests();
+                setPopupMessage(newStatus === 'Approved' ? 'Certificate Approved Successfully!' : 'Certificate Rejected Successfully!');
+                setShowSuccessPopup(true);
             }
         } catch (error) {
             console.error('Quick update error:', error);
@@ -493,26 +506,6 @@ export default function ServiceCertificateUserScreen() {
                                                 style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '80px', background: '#f8fafc' }}
                                             />
                                         </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Certificate Download URL (PDF)</label>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <input 
-                                                    type="text"
-                                                    value={certificateUrl}
-                                                    onChange={(e) => setCertificateUrl(e.target.value)}
-                                                    placeholder="https://example.com/certificate.pdf"
-                                                    style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', background: '#f8fafc' }}
-                                                />
-                                                {selectedDetail.status === 'Approved' && (
-                                                    <button 
-                                                        onClick={() => quickStatusUpdate(selectedDetail.id, 'Approved')}
-                                                        style={{ background: '#0f172a', color: 'white', border: 'none', padding: '0 15px', borderRadius: '10px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
-                                                    >
-                                                        Update URL
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
                                     </div>
 
                                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -734,6 +727,38 @@ export default function ServiceCertificateUserScreen() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Custom Center Pop-Up Modal */}
+            {showSuccessPopup && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999,
+                    animation: 'fadeIn 0.25s ease'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '32px', width: '90%', maxWidth: '420px',
+                        boxShadow: '0 20px 50px rgba(15, 23, 42, 0.15)', border: '1.5px solid #e2e8f0', textAlign: 'center',
+                        animation: 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}>
+                        <div style={{
+                            width: '56px', height: '56px', borderRadius: '50%',
+                            background: popupMessage.includes('Approved') ? '#ecfdf5' : '#fef2f2',
+                            color: popupMessage.includes('Approved') ? '#10b981' : '#ef4444',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+                            boxShadow: popupMessage.includes('Approved') ? '0 8px 20px rgba(16, 185, 129, 0.15)' : '0 8px 20px rgba(239, 68, 68, 0.15)'
+                        }}>
+                            {popupMessage.includes('Approved') ? <CheckCircle size={28} strokeWidth={3} /> : <XCircle size={28} strokeWidth={3} />}
+                        </div>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
+                            {popupMessage.includes('Approved') ? 'Approved!' : 'Rejected!'}
+                        </h3>
+                        <p style={{ margin: '0', fontSize: '13px', fontWeight: '750', color: '#475569', lineHeight: '1.5' }}>
+                            {popupMessage}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <AppFooter />
         </div>

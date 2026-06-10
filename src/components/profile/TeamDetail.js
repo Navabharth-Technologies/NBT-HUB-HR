@@ -36,8 +36,8 @@ export default function TeamDetail() {
           const found = allTeams.find(t => t && String(t.id || t.ID || '').trim() === String(id).trim());
           if (found) {
             // Fetch users only for role resolution (Tasks removed per request)
-            const usersData = await fetch(API_ENDPOINTS.USERS, { 
-              headers: { 'Authorization': `Bearer ${user.token}` } 
+            const usersData = await fetch(API_ENDPOINTS.USERS, {
+              headers: { 'Authorization': `Bearer ${user.token}` }
             }).then(r => r.ok ? r.json() : []).catch(() => []);
 
             let roleMap = {};
@@ -92,7 +92,6 @@ export default function TeamDetail() {
 
       <style>{`
         .member-report-card { transition: all 0.2s ease-in-out; }
-        .member-report-card:hover { border-color: #3863a8 !important; transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(56, 99, 168, 0.15) !important; }
         .dashboard-section:hover { border-color: #e2e8f0 !important; }
       `}</style>
 
@@ -104,8 +103,8 @@ export default function TeamDetail() {
           gap: winWidth < 768 ? '15px' : '0'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
             >
               <ArrowLeft size={18} color="#64748b" />
@@ -124,8 +123,8 @@ export default function TeamDetail() {
         <div className="main-dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px', width: '100%', overflowX: 'hidden' }}>
           <section className="dashboard-section animate-fade-in" style={{ width: '100%', overflowX: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 className="section-title" style={{ margin: 0 }}>Team Roster</h2>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>{team.members.length} Total People</span>
+
+              <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#64748b' }}>{team.members.length} Members</span>
             </div>
 
             <div style={{ marginBottom: '32px' }}>
@@ -209,7 +208,7 @@ export default function TeamDetail() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: winWidth < 480 ? '10px' : '12px',
-                        cursor: 'pointer',
+                        cursor: 'default',
                         transition: 'all 0.2s',
                         boxShadow: 'var(--shadow-sm)'
                       }}

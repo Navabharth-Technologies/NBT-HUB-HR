@@ -717,6 +717,15 @@ export default function PaySlipScreen() {
         fetchPayslips(); // Refresh the payslips list
     };
 
+    useEffect(() => {
+        if (showSuccessPopup) {
+            const timer = setTimeout(() => {
+                handleConfirmOK();
+            }, 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [showSuccessPopup]);
+
     const handleConfirmCancel = () => {
         setShowSuccessPopup(false); // Stay on the same screen, no reset or redirection
     };
@@ -782,8 +791,16 @@ export default function PaySlipScreen() {
                 }
             });
 
+            const monthChanged = isEditMode && initialMonth && String(formData.month).trim() !== String(initialMonth).trim();
+            const yearChanged = isEditMode && initialYear && String(formData.year).trim() !== String(initialYear).trim();
+            const keyChanged = monthChanged || yearChanged;
+
+            if (keyChanged && editingPayslipId && !idsToDelete.includes(editingPayslipId)) {
+                idsToDelete.push(editingPayslipId);
+            }
+
             let response;
-            if (isEditMode && editingPayslipId) {
+            if (isEditMode && editingPayslipId && !keyChanged) {
                 const payload = {
                     ...formData,
                     _id: editingPayslipId,
@@ -1462,9 +1479,9 @@ export default function PaySlipScreen() {
                     <div className="no-print" style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 600 ? 'flex-start' : 'center', marginBottom: '32px', gap: '16px' }}>
                         <button
                             onClick={() => navigate(-1)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1.5px solid #e2e8f0', padding: '10px 20px', borderRadius: '12px', color: '#64748b', fontWeight: '800', cursor: 'pointer', transition: '0.2s' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1.5px solid #e2e8f0', width: '44px', height: '44px', borderRadius: '12px', color: '#64748b', cursor: 'pointer', transition: '0.2s' }}
                         >
-                            <ArrowLeft size={18} /> Back
+                            <ArrowLeft size={18} />
                         </button>
 
                         <div style={{ display: 'flex', gap: '12px', width: winWidth < 600 ? '100%' : 'auto', alignItems: 'center' }}>
@@ -1647,8 +1664,6 @@ export default function PaySlipScreen() {
                                         <button onClick={handleDownloadPDF} style={dropdownItemStyle}><FileText size={16} color="#ef4444" /> PDF</button>
                                         <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
                                         <button onClick={handleDownloadExcel} style={dropdownItemStyle}><FileSpreadsheet size={16} color="#16a34a" /> Excel</button>
-                                        <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
-                                        <button onClick={handlePrint} style={dropdownItemStyle}><Printer size={16} color="#64748b" /> Print</button>
                                     </div>
                                 )}
                             </div>
@@ -2058,47 +2073,7 @@ export default function PaySlipScreen() {
                         <p style={{ margin: '0 0 24px', fontSize: '13px', fontWeight: '750', color: '#475569', lineHeight: '1.5' }}>
                             {isEditMode ? "Payslip Updated Successfully!" : "Payslip Updated Successfully."}
                         </p>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            <button
-                                type="button"
-                                onClick={handleConfirmCancel}
-                                style={{
-                                    flex: 1,
-                                    padding: '12px 20px',
-                                    borderRadius: '12px',
-                                    border: '1.5px solid #e2e8f0',
-                                    background: 'white',
-                                    color: '#475569',
-                                    fontWeight: '900',
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    outline: 'none'
-                                }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmOK}
-                                style={{
-                                    flex: 1,
-                                    padding: '12px 20px',
-                                    borderRadius: '12px',
-                                    border: 'none',
-                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                    color: 'white',
-                                    fontWeight: '900',
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                                    outline: 'none'
-                                }}
-                            >
-                                OK
-                            </button>
-                        </div>
+
                     </div>
                 </div>
             )}

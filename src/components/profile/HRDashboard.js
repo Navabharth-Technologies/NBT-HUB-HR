@@ -525,7 +525,7 @@ export default function HRDashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div>
-              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>Ravikumar's Dashboard</h1>
+              <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>HR Dashboard</h1>
               <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale</p>
             </div>
           </div>
@@ -864,7 +864,6 @@ export default function HRDashboard() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '15px', fontWeight: '800', color: '#115e59' }}>{holiday.name || holiday.title}</div>
-                    <div style={{ fontSize: '12px', color: '#5b7c7a' }}>{holiday.day || holiday.d?.toLocaleDateString('en-US', { weekday: 'long' }) || 'Holiday'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '14px', fontWeight: '900', color: '#0d9488' }}>
