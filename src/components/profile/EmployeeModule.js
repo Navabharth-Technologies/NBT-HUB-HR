@@ -150,7 +150,7 @@ export default function EmployeeModule() {
             <span style={{ position: 'absolute', left: '16px', top: winWidth < 480 ? '10px' : '14px', fontSize: winWidth < 480 ? '14px' : '18px' }}>🔍</span>
             <input
               type="text"
-              placeholder="Search name, role, or team..."
+              placeholder="Search name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
@@ -228,15 +228,7 @@ export default function EmployeeModule() {
                     <h3 style={{ fontSize: winWidth < 480 ? '16px' : '18px', fontWeight: '800', color: 'var(--secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</h3>
                     <div style={{ fontSize: winWidth < 480 ? '11px' : '13px', fontWeight: '700', color: 'var(--primary)' }}>{emp.role}</div>
                   </div>
-                  <div style={{
-                    marginLeft: 'auto', padding: '3px 10px', borderRadius: '6px', fontSize: winWidth < 480 ? '9px' : '11px', fontWeight: '900',
-                    background: emp.status === 'Active' ? '#f0fdf4' : '#f8fafc',
-                    color: emp.status === 'Active' ? 'var(--accent)' : 'var(--text-muted)',
-                    border: `1px solid ${emp.status === 'Active' ? '#bcf0da' : '#e2e8f0'}`,
-                    flexShrink: 0
-                  }}>
-                    {(emp.status || 'Active').toUpperCase()}
-                  </div>
+
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: winWidth < 480 ? '8px' : '12px' }}>

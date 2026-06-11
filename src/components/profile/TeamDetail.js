@@ -111,7 +111,7 @@ export default function TeamDetail() {
             </button>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '30px', fontWeight: '900', color: '#1e293b', margin: 0 }}>{team.name}</h1>
-              <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}>Detailed performance and member analytics</p>
+              <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}></p>
             </div>
           </div>
 
@@ -173,10 +173,6 @@ export default function TeamDetail() {
                           <span style={{ padding: '3px 10px', background: '#3863a8', color: 'white', fontSize: '10px', fontWeight: '900', borderRadius: '50px', textTransform: 'uppercase' }}>TEAM LEADER</span>
                         </div>
                         <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '700' }}>{leader.role}</div>
-                        <div style={{ fontSize: '12px', marginTop: '6px', color: '#10b981', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
-                          OFFICIAL STATUS: ONLINE
-                        </div>
                       </div>
                     </div>
                   );

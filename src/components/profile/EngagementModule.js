@@ -654,7 +654,6 @@ export default function ThreadScreen() {
 
                         <div style={styles.footer}>
                             <div
-                                onClick={() => onToggleLike(post.id)}
                                 onMouseEnter={() => setActiveEmojiPicker(post.id)}
                                 onMouseLeave={() => setActiveEmojiPicker(null)}
                                 style={{ ...styles.action(!!activeReaction, '#ef4444'), gap: '6px', minWidth: isMobile ? '44px' : '56px' }}

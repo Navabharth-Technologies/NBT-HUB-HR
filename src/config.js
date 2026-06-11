@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
   LEAVE_STATS_MY: `${BASE_URL}/api/leave-stats`,
   ADMIN_LEAVE_STATS: `${BASE_URL}/api/admin/leaves/stats`,
   ADMIN_LEAVE_STATS_UPDATE: `${BASE_URL}/api/admin/leaves/stats`,
+  BANK_IFSC: (code) => `${BASE_URL}/api/bank/ifsc/${code}`,
   PAYSLIPS: `${BASE_URL}/api/payslips`,
   PAY_SLIP_POST: `${BASE_URL}/api/pay_slip`,
   PAY_SLIPS_CALCULATE_SUMMARY: (employee_id, month, year) => `${BASE_URL}/api/admin/pay-slips/calculate-summary?employee_id=${employee_id}&month=${month}&year=${year}`,

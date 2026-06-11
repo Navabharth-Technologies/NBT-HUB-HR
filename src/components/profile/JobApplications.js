@@ -134,6 +134,7 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
           <option value="HR">HR</option>
           <option value="Design">Design</option>
           <option value="Operations">Operations</option>
+          <option value="Internship">Internship</option>
         </select>
         <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
       </div>

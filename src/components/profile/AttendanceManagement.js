@@ -531,9 +531,11 @@ export default function AttendanceManagement() {
           const latestInLog = [...myTodayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_IN' || (!log.remark?.includes('OUT') && !checkHasPunchOut(log))) || myTodayLogs[0];
           const latestOutLog = [...myTodayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_OUT' || (checkHasPunchOut(log) && log.remark !== 'MANUAL_EDIT_IN'));
 
-          const extractTime = (log) => {
+          const extractTime = (log, isOut = false) => {
             if (!log) return '----';
-            const t = log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric;
+            const t = isOut
+              ? (log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime)
+              : (log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
             if (t && t !== '----' && t !== '--:--' && t !== '00:00' && t !== '00:00:00') return t;
             if (log.created_at) {
               const d = new Date(log.created_at);
@@ -542,8 +544,8 @@ export default function AttendanceManagement() {
             return '----';
           };
 
-          const in_time = extractTime(latestInLog);
-          const out_time = latestOutLog ? extractTime(latestOutLog) : '----';
+          const in_time = extractTime(latestInLog, false);
+          const out_time = latestOutLog ? extractTime(latestOutLog, true) : '----';
 
           const outLocVal = (logRec) => {
             if (!logRec) return null;
@@ -601,7 +603,7 @@ export default function AttendanceManagement() {
         })
       });
       const data = await res.json();
-      
+
       if (data.success) {
         if (data.action === 'PUNCH_IN') {
           setPersonalAttendance(prev => ({
@@ -710,9 +712,11 @@ export default function AttendanceManagement() {
         const dayPunchInLog = [...logsForEmp].reverse().find(log => log.remark === 'MANUAL_EDIT_IN' || (!log.remark?.includes('OUT') && !checkHasPunchOut(log))) || logsForEmp[0];
         const dayPunchOutLog = [...logsForEmp].reverse().find(log => log.remark === 'MANUAL_EDIT_OUT' || (checkHasPunchOut(log) && log.remark !== 'MANUAL_EDIT_IN'));
 
-        const extractTime = (log) => {
+        const extractTime = (log, isOut = false) => {
           if (!log) return '----';
-          const t = log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric;
+          const t = isOut
+            ? (log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime)
+            : (log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
           if (t && t !== '----' && t !== '--:--' && t !== '00:00' && t !== '00:00:00') return t;
           if (log.created_at) {
             const d = new Date(log.created_at);
@@ -721,16 +725,14 @@ export default function AttendanceManagement() {
           return '----';
         };
 
-        const inTime = extractTime(dayPunchInLog);
-        const outTime = logsForEmp.length > 0 ? ((targetDate === todayStr && !dayPunchOutLog) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog) : '----')) : '----';
+        const inTime = extractTime(dayPunchInLog, false);
+        const outTime = logsForEmp.length > 0 ? ((targetDate === todayStr && !dayPunchOutLog) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog, true) : '----')) : '----';
 
         let displayStatus = 'Absent';
         if (logsForEmp.length > 0) {
           const pIn = parseTimeStr(inTime);
           const pOut = parseTimeStr(outTime);
-          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-
-          let rawStatus = isHalfDayTime ? 'HALF_DAY' : String(logsForEmp[0].status || logsForEmp[0].Status || 'PRESENT').trim().toUpperCase();
+          let rawStatus = String(logsForEmp[0].status || logsForEmp[0].Status || 'PRESENT').trim().toUpperCase();
           if (inTime !== '----' && inTime !== '--:--' && rawStatus === 'ABSENT') rawStatus = 'PRESENT';
 
           if (rawStatus === 'PRESENT' || rawStatus === 'P' || rawStatus === 'IN OFFICE' || rawStatus === 'IN-OFFICE') {
@@ -889,9 +891,11 @@ export default function AttendanceManagement() {
           const dayPunchInLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_IN' || (!log.remark?.includes('OUT') && !checkHasPunchOut(log))) || firstLog;
           const dayPunchOutLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_OUT' || (checkHasPunchOut(log) && log.remark !== 'MANUAL_EDIT_IN'));
 
-          const extractTime = (log) => {
+          const extractTime = (log, isOut = false) => {
             if (!log) return '----';
-            const t = log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric;
+            const t = isOut
+              ? (log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime)
+              : (log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
             if (t && t !== '----' && t !== '--:--' && t !== '00:00' && t !== '00:00:00') return t;
             if (log.created_at) {
               const d = new Date(log.created_at);
@@ -900,8 +904,8 @@ export default function AttendanceManagement() {
             return '----';
           };
 
-          const punchIn = extractTime(dayPunchInLog);
-          const punchOut = (latestDate === todayStr && !dayPunchOutLog) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog) : '----');
+          const punchIn = extractTime(dayPunchInLog, false);
+          const punchOut = (latestDate === todayStr && !dayPunchOutLog) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog, true) : '----');
 
           const hasValidPunchIn = punchIn && punchIn !== '----' && punchIn !== '--:--' && punchIn !== '00:00';
           const status = String(firstLog?.status || firstLog?.Status || '').toUpperCase();
@@ -938,8 +942,7 @@ export default function AttendanceManagement() {
           // Half Day check
           const st = String(firstLog?.status || '').toUpperCase().trim();
           const isHalfDayStatus = st === 'HALF_DAY' || st === 'HD' || st === 'HALF DAY' || st === 'HALF-DAY';
-          const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-          if (isHalfDayStatus || isHalfDayTime) {
+          if (isHalfDayStatus) {
             halfDayEmpIds.add(empIdStr);
             halfDayLogs.push(log);
           }
@@ -1347,7 +1350,7 @@ export default function AttendanceManagement() {
           <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'center', marginBottom: '24px', gap: '16px' }}>
             <div style={{ position: 'relative', width: winWidth < 1024 ? '100%' : '320px' }}>
               <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={16} />
-              <input type="text" placeholder="Filter employee, role or department..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 44px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: 'white', outline: 'none', fontSize: '13px', fontWeight: '600', boxSizing: 'border-box' }} />
+              <input type="text" placeholder="Search employee ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 44px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: 'white', outline: 'none', fontSize: '13px', fontWeight: '600', boxSizing: 'border-box' }} />
             </div>
           </div>
 
@@ -1394,9 +1397,11 @@ export default function AttendanceManagement() {
                     const dayPunchInLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_IN' || (!log.remark?.includes('OUT') && !checkHasPunchOut(log))) || sortedDayLogs[0];
                     const dayPunchOutLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_OUT' || (checkHasPunchOut(log) && log.remark !== 'MANUAL_EDIT_IN'));
                     const hasDayPunchOut = !!dayPunchOutLog;
-                    const extractTime = (log) => {
+                    const extractTime = (log, isOut = false) => {
                       if (!log) return '----';
-                      const t = log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric;
+                      const t = isOut
+                        ? (log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime)
+                        : (log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
                       if (t && t !== '----' && t !== '--:--' && t !== '00:00' && t !== '00:00:00') return t;
                       if (log.created_at) {
                         const d = new Date(log.created_at);
@@ -1405,8 +1410,8 @@ export default function AttendanceManagement() {
                       return '----';
                     };
 
-                    const punchIn = extractTime(dayPunchInLog);
-                    const punchOut = (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog) : '----');
+                    const punchIn = extractTime(dayPunchInLog, false);
+                    const punchOut = (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog, true) : '----');
                     const pDate = latestDate;
                     const workHrs = (latestDate === todayStr && !hasDayPunchOut) ? '00:00' : (dayPunchOutLog?.work_hrs || sortedDayLogs[0]?.work_hrs || '00:00');
 
@@ -1482,8 +1487,7 @@ export default function AttendanceManagement() {
                             const todayPunchOut = log?.out_time;
                             const pIn = parseTimeStr(todayPunchIn);
                             const pOut = parseTimeStr(todayPunchOut);
-                            const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-                            const rawStatus = isHalfDayTime ? 'HALF_DAY' : (log?.status || log?.Status || '').trim();
+                            const rawStatus = (log?.status || log?.Status || '').trim();
                             if (rawStatus) {
                               let displayStatus = rawStatus;
                               if (rawStatus.toUpperCase() === 'PRESENT' || rawStatus.toUpperCase() === 'IN OFFICE' || rawStatus.toUpperCase() === 'IN-OFFICE') displayStatus = 'In Office';
@@ -1616,9 +1620,11 @@ export default function AttendanceManagement() {
                       const dayPunchInLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_IN' || (!log.remark?.includes('OUT') && !checkHasPunchOut(log))) || sortedDayLogs[0];
                       const dayPunchOutLog = [...sortedDayLogs].reverse().find(log => log.remark === 'MANUAL_EDIT_OUT' || (checkHasPunchOut(log) && log.remark !== 'MANUAL_EDIT_IN'));
                       const hasDayPunchOut = !!dayPunchOutLog;
-                      const extractTime = (log) => {
+                      const extractTime = (log, isOut = false) => {
                         if (!log) return '----';
-                        const t = log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric;
+                        const t = isOut
+                          ? (log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric || log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime)
+                          : (log.punch_time || log.in_time || log.INTime || log.PunchIn || log.PunchTime || log.out_time || log.OUTTime || log.PunchOut || log.punch_time_out || log.out_time_biometric);
                         if (t && t !== '----' && t !== '--:--' && t !== '00:00' && t !== '00:00:00') return t;
                         if (log.created_at) {
                           const d = new Date(log.created_at);
@@ -1627,8 +1633,8 @@ export default function AttendanceManagement() {
                         return '----';
                       };
 
-                      const punchIn = extractTime(dayPunchInLog);
-                      const punchOut = (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog) : '----');
+                      const punchIn = extractTime(dayPunchInLog, false);
+                      const punchOut = (latestDate === todayStr && !hasDayPunchOut) ? '----' : (dayPunchOutLog ? extractTime(dayPunchOutLog, true) : '----');
 
                       const log = sortedDayLogs[0] ? {
                         ...sortedDayLogs[0],
@@ -1698,8 +1704,7 @@ export default function AttendanceManagement() {
                               const todayPunchOut = log?.out_time || log?.OUTTime || log?.PunchOut || log?.punch_time_out || log?.out_time_biometric;
                               const pIn = parseTimeStr(todayPunchIn);
                               const pOut = parseTimeStr(todayPunchOut);
-                              const isHalfDayTime = (pIn !== -1 && pIn > (13 * 60 + 30)) || (pOut !== -1 && pOut >= (14 * 60 + 30) && pOut < (17 * 60));
-                              const rawStatus = isHalfDayTime ? 'HALF_DAY' : (log?.status || log?.Status || '').trim();
+                              const rawStatus = (log?.status || log?.Status || '').trim();
                               if (rawStatus) {
                                 let displayStatus = rawStatus;
                                 if (rawStatus.toUpperCase() === 'PRESENT' || rawStatus.toUpperCase() === 'IN OFFICE' || rawStatus.toUpperCase() === 'IN-OFFICE') displayStatus = 'In Office';

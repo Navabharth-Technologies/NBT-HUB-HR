@@ -38,8 +38,10 @@ export default function PerformanceModule() {
   const [profileData, setProfileData] = useState({ name: '', employee_id: '', designation: '' });
   const [fetchedRole, setFetchedRole] = useState('');
   const [joiningDate, setJoiningDate] = useState('N/A');
+  const [rawJoiningDate, setRawJoiningDate] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
   // Crop States
   const [showCropModal, setShowCropModal] = useState(false);
@@ -51,6 +53,20 @@ export default function PerformanceModule() {
 
   const fileInputRef = useRef(null);
   const dobInputRef = useRef(null);
+
+  useEffect(() => {
+    if (fullscreenImage) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [fullscreenImage]);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -197,6 +213,7 @@ export default function PerformanceModule() {
           if (target) {
             setFetchedRole(target.Role || target.role || '');
             if (target.joining_date) {
+              setRawJoiningDate(target.joining_date);
               try {
                 const dateObj = new Date(target.joining_date);
                 if (!isNaN(dateObj)) {
@@ -225,7 +242,9 @@ export default function PerformanceModule() {
 
   // Calculate total tenurity from joining date
   const calcTenure = () => {
-    const raw = user?.date_of_joining || user?.joining_date || user?.doj || '2026-01-16';
+    const raw = rawJoiningDate || user?.date_of_joining || user?.joining_date || user?.doj;
+    if (!raw) return { months: 0, days: 0 };
+    
     let joinDate;
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
       joinDate = new Date(raw);
@@ -233,7 +252,8 @@ export default function PerformanceModule() {
       const [d, m, y] = raw.split('/');
       joinDate = new Date(`${y}-${m}-${d}`);
     } else {
-      joinDate = new Date('2026-01-16');
+      joinDate = new Date(raw);
+      if (isNaN(joinDate.getTime())) return { months: 0, days: 0 };
     }
     const now = new Date();
     let months = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
@@ -684,7 +704,9 @@ export default function PerformanceModule() {
               <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
                 <div
                   style={{ ...dashboardStyles.avatar, cursor: 'pointer' }}
-                  onClick={() => navigate('/personal-info?self=true')}
+                  onClick={() => {
+                    if (profileImage) setFullscreenImage(profileImage);
+                  }}
                 >
                   {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
                   <button
@@ -997,6 +1019,16 @@ export default function PerformanceModule() {
           {toast.message}
         </div>
       )}
+      {/* Fullscreen Image Modal */}
+      {fullscreenImage && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} onClick={() => setFullscreenImage(null)}>
+          <button onClick={() => setFullscreenImage(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10001 }}>
+            <X size={20} color="#0f172a" />
+          </button>
+          <img src={fullscreenImage} alt="Profile Fullscreen" style={{ maxWidth: '90%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '16px' }} onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
       {showCropModal && selectedImageSrc && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ position: 'relative', width: '90%', maxWidth: '500px', height: '400px', background: '#333', borderRadius: '16px', overflow: 'hidden' }}>

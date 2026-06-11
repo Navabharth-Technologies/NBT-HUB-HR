@@ -328,7 +328,8 @@ export default function HRDashboard() {
           participants = scoreList.length;
           topParticipants = scoreList.slice(0, 3).map(p => ({
             name: p.name,
-            pic: p.pic
+            pic: p.pic,
+            score: p.score
           }));
 
           if (scoreList.length > 0) {
@@ -526,7 +527,7 @@ export default function HRDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '24px' : '32px', fontWeight: '950', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>HR Dashboard</h1>
-              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and scale</p>
+              <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '700', margin: '4px 0 0 0' }}>Strength and Scale</p>
             </div>
           </div>
         </header>
@@ -799,12 +800,20 @@ export default function HRDashboard() {
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
 
-                {challengeData.topPointsHolder ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.1)', padding: '8px 16px', borderRadius: '50px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', marginTop: '5px' }}>
-                    <Trophy size={14} color="#f59e0b" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
-                      Top Spot: {challengeData.topPointsHolder.name} ({challengeData.topPointsHolder.score} pts)
-                    </span>
+                {challengeData.topParticipants && challengeData.topParticipants.length > 0 && challengeData.topParticipants[0].score !== undefined ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '5px' }}>
+                    {challengeData.topParticipants.map((p, i) => {
+                      const rankColors = ['#f59e0b', '#cbd5e1', '#d97706']; // Gold, Silver, Bronze
+                      const rankLabels = ['Top Spot', '2nd Rank', '3rd Rank'];
+                      return (
+                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.1)', padding: '8px 16px', borderRadius: '50px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', width: 'fit-content' }}>
+                          <Trophy size={14} color={rankColors[i] || '#f59e0b'} style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
+                            {rankLabels[i] || `${i + 1}th Rank`}: {p.name} ({p.score || 0} pts)
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

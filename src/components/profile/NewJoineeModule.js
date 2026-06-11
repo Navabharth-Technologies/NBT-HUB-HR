@@ -87,6 +87,7 @@ export default function NewJoineeModule() {
 
   const [viewBlocked, setViewBlocked] = useState(false);
   const [unblocking, setUnblocking] = useState(false);
+  const [showUnblockConfirm, setShowUnblockConfirm] = useState(false);
 
   // Probation/Internship completion tracking
   const [completedJoinees, setCompletedJoinees] = useState([]);
@@ -102,7 +103,7 @@ export default function NewJoineeModule() {
       const jId = j.id || j._id || j.employee_id || j.intern_id;
       return !dismissedCompletions.includes(jId);
     });
-    const hasActiveModal = showAddModal || !!deleteConfirmJoinee || visibleCompleted.length > 0;
+    const hasActiveModal = showAddModal || !!deleteConfirmJoinee || showUnblockConfirm || visibleCompleted.length > 0;
 
     if (hasActiveModal) {
       document.body.style.overflow = 'hidden';
@@ -270,51 +271,45 @@ export default function NewJoineeModule() {
       }
       filteredValue = digits;
     } else if (name === 'joining_date') {
-      // DD/MM/YYYY formatting with validation rules
-      let clean = value.replace(/[^0-9]/g, '');
-      clean = clean.slice(0, 8);
+      if (value.length < (formData.joining_date || '').length) {
+        filteredValue = value;
+      } else {
+        let clean = value.replace(/[^0-9]/g, '');
+        clean = clean.slice(0, 8);
 
-      let dd = clean.slice(0, 2);
-      let mm = clean.slice(2, 4);
-      let yyyy = clean.slice(4, 8);
+        let dd = clean.slice(0, 2);
+        let mm = clean.slice(2, 4);
+        let yyyy = clean.slice(4, 8);
 
-      if (dd.length === 2) {
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 31 || ddVal === 0) {
-          dd = '31';
+        if (dd.length === 2) {
+          const ddVal = parseInt(dd, 10);
+          if (ddVal > 31 || ddVal === 0) dd = '31';
+        } else if (dd.length === 1) {
+          const ddVal = parseInt(dd, 10);
+          if (ddVal > 3) dd = '0' + dd;
         }
-      } else if (dd.length === 1) {
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 3) {
-          dd = '0' + dd;
-        }
-      }
 
-      if (mm.length === 2) {
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 12 || mmVal === 0) {
-          mm = '12';
+        if (mm.length === 2) {
+          const mmVal = parseInt(mm, 10);
+          if (mmVal > 12 || mmVal === 0) mm = '12';
+        } else if (mm.length === 1) {
+          const mmVal = parseInt(mm, 10);
+          if (mmVal > 1) mm = '0' + mm;
         }
-      } else if (mm.length === 1) {
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 1) {
-          mm = '0' + mm;
+
+        if (yyyy.length === 4) {
+          const yyyyVal = parseInt(yyyy, 10);
+          if (yyyyVal > 2099) yyyy = '2099';
         }
-      }
 
-      const validatedDigits = dd + mm + yyyy;
-      let formatted = '';
-      if (validatedDigits.length > 0) {
-        formatted += validatedDigits.slice(0, 2);
-      }
-      if (validatedDigits.length > 2) {
-        formatted += '/' + validatedDigits.slice(2, 4);
-      }
-      if (validatedDigits.length > 4) {
-        formatted += '/' + validatedDigits.slice(4, 8);
-      }
+        const validatedDigits = dd + mm + yyyy;
+        let formatted = '';
+        if (validatedDigits.length > 0) formatted += validatedDigits.slice(0, 2);
+        if (validatedDigits.length > 2) formatted += '/' + validatedDigits.slice(2, 4);
+        if (validatedDigits.length > 4) formatted += '/' + validatedDigits.slice(4, 8);
 
-      filteredValue = formatted;
+        filteredValue = formatted;
+      }
     } else if (name === 'email_id') {
       const atIndex = value.indexOf('@');
       if (atIndex !== -1) {
@@ -602,8 +597,13 @@ export default function NewJoineeModule() {
     }
   };
 
-  const handleUnblockAll = async () => {
-    if (!user?.token || !window.confirm('Are you sure you want to unblock ALL employees? This will restore access for everyone who was blocked for pending courses.')) return;
+  const handleUnblockAll = () => {
+    if (!user?.token) return;
+    setShowUnblockConfirm(true);
+  };
+
+  const executeUnblockAll = async () => {
+    setShowUnblockConfirm(false);
     setUnblocking(true);
     try {
       let response = await fetch(API_ENDPOINTS.UNBLOCK_ALL_JOINEES_ALT, {
@@ -733,7 +733,7 @@ export default function NewJoineeModule() {
         <div style={{ marginBottom: '24px', display: 'flex', gap: '16px' }}>
           <div style={{ flex: '1', position: 'relative' }}>
             <span style={{ position: 'absolute', left: '16px', top: '14px' }}>🔍</span>
-            <input type="text" placeholder="Search hires..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', outline: 'none' }} />
+            <input type="text" placeholder="Search By Names..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', outline: 'none' }} />
           </div>
         </div>
 
@@ -1153,6 +1153,41 @@ export default function NewJoineeModule() {
           </div>
         );
       })()}
+
+      {showUnblockConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
+        }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+          >
+            <div style={{ width: '64px', height: '64px', background: '#f0fdf4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#16a34a', fontSize: '32px' }}>
+              🔓
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', marginBottom: '12px' }}>Unblock All Employees?</h2>
+            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px', lineHeight: '1.5' }}>
+              Are you sure you want to unblock ALL employees? This will restore access for everyone who was blocked for pending courses.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowUnblockConfirm(false)}
+                style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeUnblockAll}
+                style={{ flex: 1, padding: '12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }}
+              >
+                Yes, Unblock All
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {showSuccessToast && (
         <div style={{

@@ -48,30 +48,44 @@ export default function AppFooter({ onCreateTeam }) {
       const leaveRes = isAdmin ? results[1] : null;
       const ticketRes = isAdmin ? results[2] : null;
 
-      const updates = { leaves: 0, tickets: 0, threads: 0 };
+      let lCount = -1, tCount = -1, nCount = -1;
 
       if (leaveRes?.ok) {
-        const lData = await leaveRes.json();
-        const lList = Array.isArray(lData) ? lData : (lData.all || lData.data || []);
-        updates.leaves = lList.filter(l => String(l.status || '').toLowerCase().includes('pending')).length;
+        try {
+          const lData = await leaveRes.json();
+          const lList = Array.isArray(lData) ? lData : (lData.all || lData.data || []);
+          lCount = lList.filter(l => String(l.status || '').toLowerCase().includes('pending')).length;
+        } catch(e) {}
+      } else if (!isAdmin) {
+        lCount = 0;
       }
 
       if (ticketRes?.ok) {
-        const tData = await ticketRes.json();
-        const tList = Array.isArray(tData) ? tData : (tData.data || tData.value || []);
-        updates.tickets = tList.filter(t =>
-          ((t.department || '').toUpperCase() === 'HR') &&
-          (String(t.status || '').toLowerCase() === 'open' || String(t.status || '').toLowerCase() === 'pending')
-        ).length;
+        try {
+          const tData = await ticketRes.json();
+          const tList = Array.isArray(tData) ? tData : (tData.data || tData.value || []);
+          tCount = tList.filter(t =>
+            ((t.department || '').toUpperCase() === 'HR') &&
+            (String(t.status || '').toLowerCase() === 'open' || String(t.status || '').toLowerCase() === 'pending')
+          ).length;
+        } catch(e) {}
+      } else if (!isAdmin) {
+        tCount = 0;
       }
 
       if (notifRes?.ok) {
-        const nData = await notifRes.json();
-        const nList = Array.isArray(nData) ? nData : (nData.data || []);
-        updates.threads = nList.filter(n => (n.is_read === 0 || n.is_read === false) && (n.message + (n.type || '')).toLowerCase().includes('thread')).length;
+        try {
+          const nData = await notifRes.json();
+          const nList = Array.isArray(nData) ? nData : (nData.data || []);
+          nCount = nList.filter(n => (n.is_read === 0 || n.is_read === false) && (n.message + (n.type || '')).toLowerCase().includes('thread')).length;
+        } catch(e) {}
       }
 
-      setUnreadCounts(updates);
+      setUnreadCounts(prev => ({
+        leaves: lCount !== -1 ? lCount : (prev.leaves === -1 ? 0 : prev.leaves),
+        tickets: tCount !== -1 ? tCount : (prev.tickets === -1 ? 0 : prev.tickets),
+        threads: nCount !== -1 ? nCount : (prev.threads === -1 ? 0 : prev.threads)
+      }));
     } catch (e) {
       console.error("Footer counts fetch error:", e);
     }

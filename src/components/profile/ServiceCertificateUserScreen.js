@@ -88,9 +88,10 @@ export default function ServiceCertificateUserScreen() {
                     actualData = result.requests;
                 }
 
-                // HR portal shows all requests by default
+                // HR portal shows all requests by default but filter out Asset Declarations as they are viewed inside Service Certificates
+                const filteredData = actualData.filter(req => req.purpose !== 'Professional Asset Declaration');
 
-                setRequests(actualData);
+                setRequests(filteredData);
             }
         } catch (error) {
             console.error('Fetch requests error:', error);
@@ -712,16 +713,6 @@ export default function ServiceCertificateUserScreen() {
                                     )}
                                 </div>
 
-                                <button
-                                    style={{
-                                        width: '100%', padding: '18px', borderRadius: '18px', border: 'none',
-                                        background: '#10b981', color: 'white', fontWeight: '900', fontSize: '15px',
-                                        cursor: 'pointer', marginTop: '32px', display: 'flex', alignItems: 'center',
-                                        justifyContent: 'center', gap: '10px', boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
-                                    }}
-                                >
-                                    <Sparkles size={18} /> Update Hardware Declaration
-                                </button>
                             </div>
                         </motion.div>
                     </div>

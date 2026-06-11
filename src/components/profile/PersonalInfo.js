@@ -99,6 +99,7 @@ const SECTIONS = [
       { key: 'lwd', label: 'Last Working Day (LWD)', type: 'text', placeholder: 'DD/MM/YYYY' },
       { key: 'attrition_bucket', label: 'Attrition Bucket', type: 'select', options: ['N/A', 'Resignation', 'Performance', 'Behavioral', 'Medical'] },
       { key: 'reason', label: 'Reason of Separation', type: 'text' },
+      { key: 'previous_experience', label: 'Previous Experience', type: 'text' },
       { key: 'experience_letter', label: 'Experience Letter', type: 'file' },
       { key: 'previous_company_payslip', label: 'Previous Company 3 Month Payslip', type: 'file' },
     ]
@@ -165,7 +166,7 @@ export default function PersonalInfo({ onBack }) {
     sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
     ug_pg_percentage: '', ug_pg_markscard: '',
     qualification: '', edu_completion_year: '', college: '', university: '', previous_organization: '', previous_exp: '', source: '', languages_known: '',
-    separation: '', lwd: '', attrition_bucket: '', reason: '',
+    separation: '', lwd: '', attrition_bucket: '', reason: '', previous_experience: '',
     experience_letter: '', previous_company_payslip: '',
     bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
     bgv_status: '', appointment_letter: '', approved_by_ceo: '', onboarding_doc_completed: '', id_card: '', onboarding_link: '',
@@ -253,6 +254,30 @@ export default function PersonalInfo({ onBack }) {
   }, [toast]);
 
   useEffect(() => {
+    if (form.ifsc_code && form.ifsc_code.length === 11) {
+      const fetchBankDetails = async () => {
+        try {
+          const res = await fetch(API_ENDPOINTS.BANK_IFSC(form.ifsc_code));
+          if (res.ok) {
+            const data = await res.json();
+            if (data && (data.BRANCH || data.branch)) {
+              setForm(prev => ({ 
+                ...prev, 
+                bank_branch: data.BRANCH || data.branch || prev.bank_branch,
+                bank_name: data.BANK || data.bank || prev.bank_name
+              }));
+              setToast({ type: 'success', msg: 'Bank details fetched successfully' });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch bank details:", err);
+        }
+      };
+      fetchBankDetails();
+    }
+  }, [form.ifsc_code]);
+
+  useEffect(() => {
     const loadDocs = async () => {
       try {
         const uid = selectedEmpId;
@@ -266,7 +291,7 @@ export default function PersonalInfo({ onBack }) {
           sslc_percentage: '', sslc_markscard: '', puc_percentage: '', puc_markscard: '',
           ug_pg_percentage: '', ug_pg_markscard: '',
           qualification: '', edu_completion_year: '', college: '', university: '', previous_organization: '', previous_exp: '', source: '', languages_known: '',
-          separation: '', lwd: '', attrition_bucket: '', reason: '',
+          separation: '', lwd: '', attrition_bucket: '', reason: '', previous_experience: '',
           experience_letter: '', previous_company_payslip: '',
           bank_name: '', bank_account_no: '', ifsc_code: '', bank_branch: '', gross_salary_a: '', salary: '', pt: '', passbook_photo: '',
           bgv_status: '', appointment_letter: '', approved_by_ceo: '', onboarding_doc_completed: '', id_card: '', onboarding_link: '',
@@ -306,6 +331,7 @@ export default function PersonalInfo({ onBack }) {
             // Aggressive mapping for backend column variations
             if (lowerKey === 'dob' || lowerKey === 'date_of_birth') targetKey = 'date_of_birth';
             if (lowerKey === 'last_working_day' || lowerKey === 'lastworkingday' || lowerKey === 'last_working_date' || lowerKey === 'lwd') targetKey = 'lwd';
+            if (lowerKey === 'doj' || lowerKey === 'date_of_joining' || lowerKey === 'joining_date' || lowerKey === 'dateofjoining') targetKey = 'doj';
             if (lowerKey.includes('pan_card') || lowerKey === 'pancard') targetKey = 'pancard_photo';
             if (lowerKey.includes('aadhar_card') || lowerKey.includes('adhar_card') || lowerKey === 'adharcard') targetKey = 'adharcard_photo';
             // Map all voter card/id photo columns to voter_id_photo (the key the UI uses)
@@ -784,8 +810,8 @@ export default function PersonalInfo({ onBack }) {
       sanitizedValue = formatted;
     }
 
-    if (key === 'separation') {
-      const prevValue = form.separation || '';
+    if (key === 'separation' || key === 'doj') {
+      const prevValue = form[key] || '';
       const isDeleting = prevValue.length > value.length;
 
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
@@ -915,80 +941,7 @@ export default function PersonalInfo({ onBack }) {
       sanitizedValue = formatted;
     }
 
-    if (key === 'doj') {
-      const prevValue = form.doj || '';
-      const isDeleting = prevValue.length > value.length;
-      let clean = value.replace(/\D/g, '');
-
-      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
-        if (clean.length > 0) {
-          clean = clean.slice(0, -1);
-        }
-      }
-
-      // Max 8 digits
-      if (clean.length > 8) {
-        clean = clean.slice(0, 8);
-      }
-
-      // Restrict day (dd)
-      if (clean.length >= 1) {
-        const d1 = parseInt(clean.charAt(0), 10);
-        if (d1 > 3) {
-          clean = '0' + clean;
-        }
-      }
-      if (clean.length >= 2) {
-        let dd = clean.slice(0, 2);
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 31) {
-          dd = '31';
-        } else if (ddVal === 0) {
-          dd = '01';
-        }
-        clean = dd + clean.slice(2);
-      }
-
-      // Restrict month (mm)
-      if (clean.length >= 3) {
-        const m1 = parseInt(clean.charAt(2), 10);
-        if (m1 > 1) {
-          clean = clean.slice(0, 2) + '0' + clean.slice(2);
-        }
-      }
-      if (clean.length >= 4) {
-        let mm = clean.slice(2, 4);
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 12) {
-          mm = '12';
-        } else if (mmVal === 0) {
-          mm = '01';
-        }
-        clean = clean.slice(0, 2) + mm + clean.slice(4);
-      }
-
-      // Restrict year (yyyy) max 4 digits, <= 2090
-      if (clean.length >= 8) {
-        let yyyy = clean.slice(4, 8);
-        const yyyyVal = parseInt(yyyy, 10);
-        if (yyyyVal > 2090) {
-          yyyy = '2090';
-        }
-        clean = clean.slice(0, 4) + yyyy;
-      }
-
-      // Reconstruct with slashes
-      let formatted = '';
-      if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
-      } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
-      } else {
-        formatted = clean;
-      }
-
-      sanitizedValue = formatted;
-    }
+    // doj formatting logic removed because it is now combined with separation
 
     if (key === 'personal_email' || key === 'official_email' || key === 'personal_email_id' || key === 'official_email_id') {
       const atIndex = value.indexOf('@');
@@ -1055,6 +1008,20 @@ export default function PersonalInfo({ onBack }) {
     } else if (key === 'voter_id') {
       sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       if (sanitizedValue.length > 10) sanitizedValue = sanitizedValue.substring(0, 10);
+    } else if (key === 'previous_experience') {
+      sanitizedValue = value.replace(/[^0-9.]/g, '');
+      const parts = sanitizedValue.split('.');
+      if (parts.length > 2) {
+        sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+      }
+      const newParts = sanitizedValue.split('.');
+      if (newParts[0].length > 2) {
+        newParts[0] = newParts[0].substring(0, 2);
+      }
+      if (newParts.length > 1 && newParts[1].length > 1) {
+        newParts[1] = newParts[1].substring(0, 1);
+      }
+      sanitizedValue = newParts.join('.');
     } else if (percentageFields.includes(key)) {
       sanitizedValue = value.replace(/[^0-9.]/g, '');
       const parts = sanitizedValue.split('.');

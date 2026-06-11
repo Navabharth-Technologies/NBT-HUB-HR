@@ -704,8 +704,8 @@ const FunQuiz = ({ onBack }) => {
                   </button>
 
                   <div style={{ position: 'relative', zIndex: 10, paddingTop: isMobile ? '35px' : '20px' }}>
-                    <h2 style={s.heroTitle}>Get Ready for<br />a Fun Quiz!</h2>
-                    <p style={s.heroDesc}>Train your brain with smart Quizzes</p>
+                    <h2 style={s.heroTitle}>Let's Create a Quiz!</h2>
+
 
                     <div style={{ display: 'flex', gap: '15px', marginTop: '25px', alignItems: 'center' }}>
                       <button
@@ -1289,6 +1289,28 @@ const FunQuiz = ({ onBack }) => {
                       </div>
                     )}
 
+                    {selectedQuestionIds.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                        {selectedQuestionIds.map(id => {
+                          const q = questions.find(x => String(x.id) === String(id));
+                          if (!q) return null;
+                          return (
+                            <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white' }}>
+                              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>
+                                {q.question.substring(0, 50)}{q.question.length > 50 ? '...' : ''}
+                              </div>
+                              <button
+                                onClick={() => setSelectedQuestionIds(prev => prev.filter(x => String(x) !== String(id)))}
+                                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ef4444' }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {!selectedQuestionIds.length && (
                       <>
                         <div>
@@ -1306,7 +1328,7 @@ const FunQuiz = ({ onBack }) => {
                             value={editId || ''}
                             style={{ width: '100%', padding: '14px 18px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontWeight: '700', color: '#1e293b', outline: 'none', backgroundColor: '#f8fafc', appearance: 'none', cursor: 'pointer' }}
                           >
-                            <option value="">-- Click to Select a Question --</option>
+                            <option value="" disabled hidden>-- Click to Select a Question --</option>
                             {questions.map((q, idx) => (
                               <option key={q.id || idx} value={q.id}>
                                 Q{idx + 1}: {q.question.substring(0, 50)}{q.question.length > 50 ? '...' : ''}
