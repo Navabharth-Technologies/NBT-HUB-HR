@@ -757,7 +757,7 @@ const FunQuiz = ({ onBack }) => {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div style={{ fontSize: '13px', fontWeight: '900', color: '#0B1E3F' }}>{card.title}</div>
+                              <div style={{ fontSize: '20px', fontWeight: '900', color: '#0B1E3F' }}>{card.title}</div>
                               {isDone && (
                                 <div style={{ backgroundColor: '#dcfce7', color: '#15803d', fontSize: '8px', fontWeight: '900', padding: '2px 6px', borderRadius: '20px', textTransform: 'uppercase' }}>Done</div>
                               )}
@@ -767,18 +767,20 @@ const FunQuiz = ({ onBack }) => {
                             </div>
                           </div>
 
-                          <button
-                            style={{
-                              backgroundColor: (isDone || isHR) ? '#f8fafc' : '#0d676c',
-                              color: (isDone || isHR) ? '#64748b' : 'white',
-                              border: (isDone || isHR) ? '1.5px solid #e2e8f0' : 'none',
-                              padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: '900',
-                              cursor: isHR ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                            }}
-                          >
-                            {isHR ? 'Monitor' : (isDone ? 'Review' : (inProgress ? 'Continue' : 'View all'))}
-                            {(isDone || isHR) ? <Info size={12} /> : <ChevronRight size={12} />}
-                          </button>
+                          {!isHR && (
+                            <button
+                              style={{
+                                backgroundColor: isDone ? '#f8fafc' : '#0d676c',
+                                color: isDone ? '#64748b' : 'white',
+                                border: isDone ? '1.5px solid #e2e8f0' : 'none',
+                                padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: '900',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                              }}
+                            >
+                              {isDone ? 'Review' : (inProgress ? 'Continue' : 'View all')}
+                              {isDone ? <Info size={12} /> : <ChevronRight size={12} />}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
