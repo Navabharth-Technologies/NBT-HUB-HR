@@ -1016,6 +1016,7 @@ export default function AwardsScreen() {
                                                     const userRewards = filteredRewards.filter(r => String(r.employee_id) === String(l.id));
                                                     return { id: l.id, name: l.name, totalRep: l.total_points, userRewards };
                                                 }).filter(stat => stat.totalRep > 0).sort((a, b) => b.totalRep - a.totalRep);
+                                                
                                                 const displayedStats = employeeStats;
                                                 if (displayedStats.length === 0) {
                                                     return (
@@ -1025,8 +1026,18 @@ export default function AwardsScreen() {
                                                         </div>
                                                     );
                                                 }
+                                                
                                                 const rankColors = ['#f59e0b', '#94a3b8', '#b45309'];
+                                                
+                                                let currentRank = 1;
+                                                let currentScore = -1;
+                                                
                                                 return displayedStats.map(({ id: empId, name: empName, totalRep, userRewards }, index) => {
+                                                    if (totalRep !== currentScore) {
+                                                        currentRank = index + 1;
+                                                        currentScore = totalRep;
+                                                    }
+                                                    
                                                     const latest = userRewards.length > 0 ? userRewards.reduce((prev, cur) => {
                                                         const dPrev = parseToDate(prev.created_at || prev.date);
                                                         const dCur = parseToDate(cur.created_at || cur.date);
@@ -1034,15 +1045,17 @@ export default function AwardsScreen() {
                                                         if (!dCur) return prev;
                                                         return dPrev > dCur ? prev : cur;
                                                     }, userRewards[0]) : null;
-                                                    const isTop3 = index < 3;
+                                                    const isTop3 = currentRank <= 3;
+                                                    const displayRank = currentRank;
+                                                    
                                                     return (
                                                         <div key={empId} onClick={() => setSelectedHistoryUser(empId)}
-                                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: winWidth < 768 ? '14px' : '16px 20px', borderRadius: '16px', background: isTop3 ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' : '#f8fafc', border: `1.5px solid ${isTop3 ? '#fde68a' : '#f1f5f9'}`, transition: 'all 0.2s ease' }}
+                                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: winWidth < 768 ? '14px' : '16px 20px', borderRadius: '16px', background: isTop3 ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' : '#f8fafc', border: `1.5px solid ${isTop3 ? '#fde68a' : '#f1f5f9'}`, transition: 'all 0.2s ease' }}
                                                             onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'; }}
                                                             onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                                                <div style={{ width: '38px', height: '38px', borderRadius: '12px', flexShrink: 0, background: isTop3 ? `${rankColors[index]}22` : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '950', color: isTop3 ? rankColors[index] : '#64748b' }}>
-                                                                    {index === 0 ? <Trophy size={16} color={rankColors[0]} /> : `#${index + 1}`}
+                                                                <div style={{ width: '38px', height: '38px', borderRadius: '12px', flexShrink: 0, background: isTop3 ? `${rankColors[displayRank - 1]}22` : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '950', color: isTop3 ? rankColors[displayRank - 1] : '#64748b' }}>
+                                                                    {displayRank === 1 ? <Trophy size={16} color={rankColors[0]} /> : `#${displayRank}`}
                                                                 </div>
                                                                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0, background: `hsl(${(Number(empId) * 47) % 360}, 60%, 92%)`, color: `hsl(${(Number(empId) * 47) % 360}, 70%, 35%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '950' }}>
                                                                     {(empName || resolveEmployeeName(empId)).charAt(0).toUpperCase()}
