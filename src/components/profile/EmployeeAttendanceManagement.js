@@ -110,6 +110,7 @@ export default function EmployeeAttendanceManagement() {
   useEffect(() => {
     localStorage.setItem('nbtAttendanceDetailToDate', endDate);
   }, [endDate]);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [winWidth, setWinWidth] = React.useState(window.innerWidth);
 
@@ -138,6 +139,28 @@ export default function EmployeeAttendanceManagement() {
 
       if (startDate && logDateOnly < startDate) return false;
       if (endDate && logDateOnly > endDate) return false;
+
+      if (statusFilter !== 'ALL') {
+        const d = new Date(logDateStr);
+        const isSunday = d.getDay() === 0;
+        const month = d.toLocaleDateString('en-US', { month: 'short' });
+        const dateDay = String(d.getDate()).padStart(2, '0');
+        const dayMonth = `${month} ${dateDay}`;
+        const holidays = ['Jan 01', 'Jan 26', 'Mar 04', 'Mar 19', 'Mar 21', 'Mar 26', 'Mar 31', 'Apr 03', 'May 01', 'May 27', 'Jun 26', 'Aug 15', 'Aug 26', 'Sep 04', 'Oct 02', 'Oct 20', 'Nov 08', 'Nov 24', 'Dec 25'];
+        const isHoliday = holidays.includes(dayMonth);
+
+        let resolvedStatus = String(log.status || (log.in_time && log.in_time !== '----' ? 'Present' : 'Absent'));
+        if (!log.in_time || log.in_time === '----') {
+          if (isSunday) resolvedStatus = 'WO';
+          else if (isHoliday) resolvedStatus = 'NH';
+          else resolvedStatus = 'Absent';
+        }
+        
+        const statusText = getFullStatusText(resolvedStatus, log.in_time, log.out_time, log.work_hrs);
+        if (statusFilter === 'PRESENT' && !statusText.includes('Present') && !statusText.includes('In Office')) return false;
+        if (statusFilter === 'ABSENT' && !statusText.includes('Absent')) return false;
+        if (statusFilter === 'HALF DAY' && !statusText.includes('Half Day')) return false;
+      }
       return true;
     });
   };
@@ -155,7 +178,7 @@ export default function EmployeeAttendanceManagement() {
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF('l', 'mm', 'a4');
     const filteredLogs = getFilteredLogs();
     const empName = employee?.name || 'Employee';
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -169,7 +192,7 @@ export default function EmployeeAttendanceManagement() {
 
     // --- Header ---
     doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 220, 48, 'F');
+    doc.rect(0, 0, 297, 48, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
@@ -227,10 +250,10 @@ export default function EmployeeAttendanceManagement() {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Page ${i} of ${pageCount}  |  Confidential - HR System`, 14, doc.internal.pageSize.height - 10);
+      doc.text(`Page ${i} of ${pageCount}`, 14, doc.internal.pageSize.height - 10);
     }
 
-    doc.save(`Attendance_${empName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Attendance_${empName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0].split('-').reverse().join('-')}.pdf`);
     setShowExportMenu(false);
   };
 
@@ -266,7 +289,7 @@ export default function EmployeeAttendanceManagement() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Attendance_${empName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Attendance_${empName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0].split('-').reverse().join('-')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -453,7 +476,7 @@ export default function EmployeeAttendanceManagement() {
     <div className="hr-dashboard-container" style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
       <AppHeader />
       
-      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 40px' : '30px 26px 40px', margin: '0', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 16px 120px' : '30px 26px 120px', margin: '0', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '85px' : '100px' }}>
         
 
 
@@ -474,6 +497,33 @@ export default function EmployeeAttendanceManagement() {
                 ID: <span style={{ color: '#0f172a' }}>#{id}</span> • <span style={{ color: '#10b981' }}>Verified</span>
               </p>
             </div>
+          </div>
+        </div>
+
+
+
+        {/* Mini Summary Strip */}
+        <div style={{ display: 'flex', flexDirection: winWidth < 1024 ? 'column' : 'row', justifyContent: 'space-between', alignItems: winWidth < 1024 ? 'stretch' : 'center', marginBottom: '40px', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+             <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TOTAL LOGS</div>
+                  <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{getFilteredLogs().length}</div>
+                </div>
+             </div>
+
+             <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>VERIFIED BY</div>
+                  <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>Biometrics API</div>
+                </div>
+             </div>
           </div>
           
           <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
@@ -499,74 +549,28 @@ export default function EmployeeAttendanceManagement() {
                 />
               </label>
             </div>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '0 16px', fontSize: '13px', fontWeight: '800', color: '#1e293b', outline: 'none', cursor: 'pointer', height: '44px' }}
+            >
+              <option value="ALL">All Status</option>
+              <option value="PRESENT">Present</option>
+              <option value="ABSENT">Absent</option>
+              <option value="HALF DAY">Half Day</option>
+            </select>
             
             <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
-
-              
               <div style={{ position: 'relative', flex: 2 }}>
                 <button 
-                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  onClick={handleExportPDF}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0 20px', height: '44px', borderRadius: '12px', background: '#0f172a', color: 'white', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
                 >
-                  <Download size={16} /> Export 
+                  <Download size={16} /> Export PDF
                 </button>
-
-                {showExportMenu && (
-                  <>
-                    <div 
-                      onClick={() => setShowExportMenu(false)}
-                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
-                    />
-                    <div style={{ 
-                      position: 'absolute', top: '120%', right: 0, width: '180px', background: 'white', borderRadius: '16px', 
-                      padding: '8px', shadow: '0 20px 25px -5px rgba(0,0,0,0.1)', border: '1.5px solid #f1f5f9', zIndex: 999,
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
-                    }}>
-                      <button 
-                        onClick={handleExportPDF}
-                        className="export-menu-item"
-                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: '0.2s' }}
-                      >
-                        <FileText size={16} color="#ef4444" /> Export as PDF
-                      </button>
-                      <button 
-                        onClick={handleExportExcel}
-                        className="export-menu-item"
-                        style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: '0.2s' }}
-                      >
-                        <FileSpreadsheet size={16} color="#22c55e" /> Export as XL
-                      </button>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
-        </div>
-
-
-
-        {/* Mini Summary Strip */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '40px' }}>
-           <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileText size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TOTAL LOGS</div>
-                <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{logs.length}</div>
-              </div>
-           </div>
-
-           <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CheckCircle2 size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: '9px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>VERIFIED BY</div>
-                <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>Biometrics API</div>
-              </div>
-           </div>
         </div>
 
         {/* Main Table Content */}

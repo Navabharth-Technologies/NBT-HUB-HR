@@ -114,9 +114,9 @@ const SECTIONS = [
       { key: 'bank_account_no', label: 'Bank Account No.', type: 'text', required: true },
       { key: 'ifsc_code', label: 'IFSC Code', type: 'text', required: true },
       { key: 'bank_branch', label: 'Bank Branch', type: 'text', required: true },
-      { key: 'gross_salary_a', label: 'Gross Salary (A)', type: 'text' },
-      { key: 'salary', label: 'Net Salary', type: 'text' },
-      { key: 'pt', label: 'Professional Tax (PT)', type: 'text' },
+      { key: 'gross_salary_a', label: 'Gross Salary (A)', type: 'text', placeholder: 'Enter in INR' },
+      { key: 'salary', label: 'Net Salary', type: 'text', placeholder: 'Enter in INR' },
+      { key: 'pt', label: 'Professional Tax (PT)', type: 'text', placeholder: 'Enter in %' },
       { key: 'passbook_photo', label: 'Bank Passbook', type: 'file', required: true },
     ]
   },
@@ -735,82 +735,7 @@ export default function PersonalInfo({ onBack }) {
       }
     }
 
-    if (key === 'lwd') {
-      const prevValue = form.lwd || '';
-      const isDeleting = prevValue.length > value.length;
-      let clean = value.replace(/\D/g, '');
-
-      if (isDeleting && prevValue.endsWith('/') && !value.endsWith('/')) {
-        if (clean.length > 0) {
-          clean = clean.slice(0, -1);
-        }
-      }
-
-      // Max 8 digits
-      if (clean.length > 8) {
-        clean = clean.slice(0, 8);
-      }
-
-      // Restrict day (dd)
-      if (clean.length >= 1) {
-        const d1 = parseInt(clean.charAt(0), 10);
-        if (d1 > 3) {
-          clean = '0' + clean;
-        }
-      }
-      if (clean.length >= 2) {
-        let dd = clean.slice(0, 2);
-        const ddVal = parseInt(dd, 10);
-        if (ddVal > 31) {
-          dd = '31';
-        } else if (ddVal === 0) {
-          dd = '01';
-        }
-        clean = dd + clean.slice(2);
-      }
-
-      // Restrict month (mm)
-      if (clean.length >= 3) {
-        const m1 = parseInt(clean.charAt(2), 10);
-        if (m1 > 1) {
-          clean = clean.slice(0, 2) + '0' + clean.slice(2);
-        }
-      }
-      if (clean.length >= 4) {
-        let mm = clean.slice(2, 4);
-        const mmVal = parseInt(mm, 10);
-        if (mmVal > 12) {
-          mm = '12';
-        } else if (mmVal === 0) {
-          mm = '01';
-        }
-        clean = clean.slice(0, 2) + mm + clean.slice(4);
-      }
-
-      // Restrict year (yyyy) max 4 digits, <= 2099
-      if (clean.length >= 8) {
-        let yyyy = clean.slice(4, 8);
-        const yyyyVal = parseInt(yyyy, 10);
-        if (yyyyVal > 2099) {
-          yyyy = '2099';
-        }
-        clean = clean.slice(0, 4) + yyyy;
-      }
-
-      // Reconstruct with slashes
-      let formatted = '';
-      if (clean.length > 4) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2, 4) + '/' + clean.slice(4);
-      } else if (clean.length > 2) {
-        formatted = clean.slice(0, 2) + '/' + clean.slice(2);
-      } else {
-        formatted = clean;
-      }
-
-      sanitizedValue = formatted;
-    }
-
-    if (key === 'separation' || key === 'doj') {
+    if (key === 'separation' || key === 'doj' || key === 'lwd') {
       const prevValue = form[key] || '';
       const isDeleting = prevValue.length > value.length;
 

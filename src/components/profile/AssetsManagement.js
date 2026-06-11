@@ -820,9 +820,9 @@ export default function AssetsManagement() {
                 setForm({
                   employee_name: '', employee_id: '',
                   designation: '', joining_date: '', last_working_date: '', laptop_details: '',
-                  laptop_count: '1',
-                  mouse: '1', keyboard: '1', laptop_stand: '1', ruf_pad: '1', pendrive: '1',
-                  mobile: '1', camera: '1', earphone: '1', tablet: '1'
+                  laptop_count: '0',
+                  mouse: '0', keyboard: '0', laptop_stand: '0', ruf_pad: '0', pendrive: '0',
+                  mobile: '0', camera: '0', earphone: '0', tablet: '0'
                 });
                 setIsAddAll(true);
                 setEditModal({ show: true, employee: { is_new: true, name: '' } });

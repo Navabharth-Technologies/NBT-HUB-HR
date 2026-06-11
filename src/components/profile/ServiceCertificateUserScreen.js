@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
     Download, Plus, Search, Filter, AlertCircle, X, XCircle,
-    ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles
+    ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles,
+    Send, Lock, Unlock, Monitor, Mouse, Keyboard, Smartphone, Headphones, Camera, Tablet, HardDrive, Book
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,6 +31,58 @@ export default function ServiceCertificateUserScreen() {
     const [winWidth, setWinWidth] = useState(window.innerWidth);
     const [showSuccessPopup, setShowSuccessPopup] = useState(false);
     const [popupMessage, setPopupMessage] = useState('');
+    const [activeTab, setActiveTab] = useState('submit');
+    const [formData, setFormData] = useState({
+        laptopBrand: '',
+        serialNumber: '',
+        mouse: false,
+        keyboard: false,
+        stand: false,
+        mobile: false,
+        earphones: false,
+        camera: false,
+        tablet: false,
+        pendrive: false,
+        notepad: false
+    });
+    const [isAssetsDeclared, setIsAssetsDeclared] = useState(false);
+
+    useEffect(() => {
+        const fetchMyAssets = async () => {
+            if (!user?.token) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/my-assets?employee_id=${user?.id || user?.employee_id}`, {
+                    headers: { 'Authorization': `Bearer ${user.token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const asset = Array.isArray(data) ? data[0] : (data.data ? (Array.isArray(data.data) ? data.data[0] : data.data) : data);
+                    if (asset) {
+                        setFormData(prev => ({
+                            ...prev,
+                            laptopBrand: asset.laptop_details || asset.laptop || asset.laptopBrand || prev.laptopBrand,
+                            serialNumber: asset.serial_number || asset.serialNumber || prev.serialNumber,
+                            mouse: asset.mouse === 'Yes' || asset.mouse === true || asset.mouse === 1 || prev.mouse,
+                            keyboard: asset.keyboard === 'Yes' || asset.keyboard === true || asset.keyboard === 1 || prev.keyboard,
+                            stand: asset.laptop_stand === 'Yes' || asset.stand === 'Yes' || asset.stand === true || prev.stand,
+                            mobile: asset.mobile === 'Yes' || asset.company_mobile === 'Yes' || asset.mobile === true || prev.mobile,
+                            earphones: asset.earphone === 'Yes' || asset.earphones === 'Yes' || asset.earphone_headphone === 'Yes' || asset.earphones === true || prev.earphones,
+                            camera: asset.camera === 'Yes' || asset.external_camera === 'Yes' || asset.camera === true || prev.camera,
+                            tablet: asset.tablet === 'Yes' || asset.tablet === true || prev.tablet,
+                            pendrive: asset.pendrive === 'Yes' || asset.pendrive === true || prev.pendrive,
+                            notepad: asset.ruf_pad === 'Yes' || asset.ref_pad === 'Yes' || asset.notepad === 'Yes' || asset.notepad === true || prev.notepad
+                        }));
+                        if (asset.laptop_details || asset.laptop || asset.serial_number || asset.serialNumber) {
+                            setIsAssetsDeclared(true);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch my assets", err);
+            }
+        };
+        fetchMyAssets();
+    }, [user]);
 
     useEffect(() => {
         if (selectedDetail) {
@@ -124,7 +177,7 @@ export default function ServiceCertificateUserScreen() {
         try {
             setAssetsLoading(true);
             const targetEmpId = employeeId || user.id || user.employee_id;
-            
+
             // Fetch from the global assets endpoint
             const res = await fetch(API_ENDPOINTS.ASSETS || `${API_ENDPOINTS.BASE_URL || 'http://localhost:5000'}/api/assets`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
@@ -133,9 +186,9 @@ export default function ServiceCertificateUserScreen() {
             if (res.ok) {
                 const allAssets = await res.json();
                 const list = Array.isArray(allAssets) ? allAssets : (allAssets.data || []);
-                
+
                 // Find the asset record for this specific employee
-                const myAsset = list.find(a => 
+                const myAsset = list.find(a =>
                     String(a.employee_id || a.EmpID || a.employeeId || a.id) === String(targetEmpId)
                 );
 
@@ -158,8 +211,70 @@ export default function ServiceCertificateUserScreen() {
         }
     }, [showAssetsModal]);
 
+    const handleHardwareDeclaration = async () => {
+        if (!formData.laptopBrand || !formData.serialNumber) {
+            setPopupMessage('Please provide Laptop Details and Serial Number.');
+            setShowSuccessPopup(true);
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_REQUEST, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: JSON.stringify({
+                    employee_id: user.id || user.employee_id,
+                    employee_name: user.name,
+                    laptop_details: formData.laptopBrand,
+                    serial_number: formData.serialNumber,
+                    mouse: formData.mouse ? 1 : 0,
+                    keyboard: formData.keyboard ? 1 : 0,
+                    laptop_stand: formData.stand ? 1 : 0,
+                    company_mobile: formData.mobile ? 1 : 0,
+                    earphone_headphone: formData.earphones ? 1 : 0,
+                    external_camera: formData.camera ? 1 : 0,
+                    tablet: formData.tablet ? 1 : 0,
+                    pendrive: formData.pendrive ? 1 : 0,
+                    ref_pad: formData.notepad ? 1 : 0
+                })
+            });
+
+            if (res.ok) {
+                setIsAssetsDeclared(true);
+                setPopupMessage('Hardware details verified successfully. You can now submit your application.');
+                setShowSuccessPopup(true);
+            } else {
+                setPopupMessage('Failed to verify hardware details. Please try again.');
+                setShowSuccessPopup(true);
+            }
+        } catch (error) {
+            console.error('Hardware declaration error:', error);
+            setPopupMessage('Network error while verifying hardware details.');
+            setShowSuccessPopup(true);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const handleCreateRequest = async () => {
+        if (!isAssetsDeclared) {
+            setPopupMessage('Please declare and finalize your hardware first.');
+            setShowSuccessPopup(true);
+            return;
+        }
         if (!purpose.trim() || !user?.token) return;
+        
+        const finalPurpose = purpose === 'Other' ? formData.other_purpose : purpose;
+        if (!finalPurpose) {
+            setPopupMessage('Please specify your purpose.');
+            setShowSuccessPopup(true);
+            return;
+        }
+
         try {
             setSubmitting(true);
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_REQUEST, {
@@ -171,7 +286,19 @@ export default function ServiceCertificateUserScreen() {
                 body: JSON.stringify({
                     employee_id: user.id || user.employee_id,
                     employee_name: user.name,
-                    purpose: purpose
+                    purpose: finalPurpose,
+                    status: 'Pending',
+                    laptop_details: formData.laptopBrand,
+                    serial_number: formData.serialNumber,
+                    mouse: formData.mouse ? 1 : 0,
+                    keyboard: formData.keyboard ? 1 : 0,
+                    laptop_stand: formData.stand ? 1 : 0,
+                    company_mobile: formData.mobile ? 1 : 0,
+                    earphone_headphone: formData.earphones ? 1 : 0,
+                    external_camera: formData.camera ? 1 : 0,
+                    tablet: formData.tablet ? 1 : 0,
+                    pendrive: formData.pendrive ? 1 : 0,
+                    ref_pad: formData.notepad ? 1 : 0
                 })
             });
             if (res.ok) {
@@ -195,7 +322,7 @@ export default function ServiceCertificateUserScreen() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     status: newStatus,
                     admin_remark: adminRemark,
                     certificate_url: certificateUrl
@@ -212,6 +339,7 @@ export default function ServiceCertificateUserScreen() {
 
     const pendingRequests = requests.filter(r => r.status === 'Pending');
     const historyRequests = requests.filter(r => r.status !== 'Pending');
+    const hasAlreadySubmitted = requests.some(r => String(r.employee_id) === String(user?.employee_id) || String(r.employee_id) === String(user?.id));
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#eaeff2', display: 'flex', flexDirection: 'column' }}>
@@ -219,158 +347,331 @@ export default function ServiceCertificateUserScreen() {
 
             <main style={{
                 flex: 1,
-                padding: winWidth < 768 ? '90px 15px 40px' : '100px 40px 40px',
+                padding: winWidth < 768 ? '90px 15px 120px' : '100px 40px 120px',
                 maxWidth: '100%',
                 margin: '0',
                 width: '100%',
                 fontFamily: "'Outfit', sans-serif"
             }}>
-                <header style={{
-                    marginBottom: '40px',
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <ArrowLeft size={18} color="#64748b" />
+                    </button>
+                    <div>
+                        <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Experience Letter</h1>
+                        <p style={{ color: '#64748b', fontSize: '12px', margin: '4px 0 0', fontWeight: '500' }}>Request / Review service certificate</p>
+                    </div>
+                </div>
+
+                <div style={{
                     display: 'flex',
-                    flexDirection: winWidth < 768 ? 'column' : 'row',
-                    justifyContent: 'space-between',
-                    alignItems: winWidth < 768 ? 'flex-start' : 'center',
-                    gap: winWidth < 768 ? '20px' : '0'
+                    gap: winWidth < 768 ? '4px' : '8px',
+                    background: '#d1d9e0',
+                    padding: '6px',
+                    borderRadius: '14px',
+                    width: winWidth < 768 ? '100%' : 'fit-content',
+                    marginBottom: '40px',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    msOverflowStyle: 'none'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: winWidth < 768 ? '12px' : '20px' }}>
+                    <button
+                        onClick={() => setActiveTab('submit')}
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: winWidth < 768 ? '10px 10px' : '10px 24px', borderRadius: '10px', border: 'none',
+                            cursor: 'pointer', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '800', transition: '0.3s',
+                            background: activeTab === 'submit' ? 'white' : 'transparent',
+                            color: activeTab === 'submit' ? '#0f172a' : '#64748b',
+                            boxShadow: activeTab === 'submit' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
+                            flex: winWidth < 768 ? 1 : 'none', whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
+                        }}
+                    >
+                        <Send size={16} /> Apply service certificate
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: winWidth < 768 ? '10px 10px' : '10px 24px', borderRadius: '10px', border: 'none',
+                            cursor: 'pointer', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '800', transition: '0.3s',
+                            background: activeTab === 'history' ? 'white' : 'transparent',
+                            color: activeTab === 'history' ? '#0f172a' : '#64748b',
+                            boxShadow: activeTab === 'history' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
+                            flex: winWidth < 768 ? 1 : 'none', whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
+                        }}
+                    >
+                        <Clock size={16} /> History of Service certificate requests
+                    </button>
+                </div>
 
-                        <button
-                            onClick={() => navigate(-1)}
-                            style={{ background: 'white', padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                            <ArrowLeft size={18} color="#64748b" />
-                        </button>
-                        <div>
-                            <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>Service Certificates</h1>
-                            <p style={{ color: '#64748b', fontSize: winWidth < 768 ? '12px' : '14px', margin: '4px 0 0', fontWeight: '500' }}>Request and track your employment verification</p>
-                        </div>
-
-                    </div>
-
-                    <div style={{
-                        display: 'flex',
-                        gap: '12px',
-                        alignItems: 'center',
-                        width: winWidth < 768 ? '100%' : 'auto',
-                        overflowX: winWidth < 768 ? 'auto' : 'visible',
-                        paddingBottom: winWidth < 768 ? '5px' : '0'
-                    }}>
-
-
-
-                        {!isAdmin && (
-                            <button
-                                onClick={() => setShowRequestModal(true)}
-                                style={{
-                                    background: '#0f172a',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: winWidth < 768 ? '10px 16px' : '12px 24px',
-                                    borderRadius: '14px',
-                                    fontWeight: '800',
-                                    fontSize: winWidth < 768 ? '12px' : '14px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)',
-                                    whiteSpace: 'nowrap',
-                                    flex: winWidth < 768 ? 1 : 'none',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <Plus size={winWidth < 768 ? 16 : 18} /> New Request
-                            </button>
-
-                        )}
-                    </div>
-                </header>
-
-                {/* Section: Active & History Requests */}
-                <section style={{
-                    display: 'grid',
-                    gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '20px'
-                }}>
-
-                    {loading ? (
-                        <div style={{ background: 'white', padding: '60px', borderRadius: '24px', textAlign: 'center', color: '#94a3b8', fontWeight: '800', border: '1px solid #f1f5f9', gridColumn: '1 / -1' }}>Syncing certificates...</div>
-                    ) : requests.length === 0 ? (
-                        <div style={{ background: 'white', padding: '80px 40px', borderRadius: '24px', textAlign: 'center', border: '2px dashed #e2e8f0', gridColumn: '1 / -1' }}>
-                            <div style={{ width: '64px', height: '64px', background: '#f8fafc', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                                <FileText size={30} color="#cbd5e1" />
-                            </div>
-                            <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: '0 0 8px 0' }}>No Records</h3>
-                            <p style={{ color: '#94a3b8', fontWeight: '600', margin: 0, fontSize: '14px' }}>No verification requests found.</p>
-                        </div>
-                    ) : (
-                        requests.map(req => {
-                            const status = req.status || 'Pending';
-                            const isPending = status === 'Pending';
-                            const isApproved = status === 'Approved';
-                            const isRejected = status === 'Rejected';
-
-                            return (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    key={req.id}
-                                    onClick={() => setSelectedDetail(req)}
-                                    style={{
-                                        background: 'white',
-                                        borderRadius: '24px',
-                                        border: '1.5px solid #f1f5f9',
-                                        overflow: 'hidden',
-                                        boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
-                                        transition: '0.2s',
-                                        cursor: 'pointer',
-                                        position: 'relative'
-                                    }}
-                                    onMouseOver={e => {
-                                        e.currentTarget.style.transform = 'translateY(-5px)';
-                                        e.currentTarget.style.borderColor = '#3b82f640';
-                                    }}
-                                    onMouseOut={e => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.borderColor = '#f1f5f9';
-                                    }}
-                                >
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: isPending ? '#fbbf24' : isApproved ? '#22c55e' : '#ef4444' }} />
-                                    <div style={{ padding: '20px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                            <span style={{
-                                                background: status === 'Pending Audit' ? '#fef2f2' : isPending ? '#fffbeb' : isApproved ? '#f0fdf4' : '#fef2f2',
-                                                color: status === 'Pending Audit' ? '#ef4444' : isPending ? '#d97706' : isApproved ? '#16a34a' : '#dc2626',
-                                                padding: '4px 10px', borderRadius: '8px', fontSize: '9px', fontWeight: '950', textTransform: 'uppercase'
-                                            }}>
-                                                {status}
-                                            </span>
-                                            <ExternalLink size={14} color="#94a3b8" />
-                                        </div>
-
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
-                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <FileText size={16} color="#64748b" />
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>#{req.id} Certificate</div>
-                                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>
-                                                    {req.employee_name || req.name || employeeNames[req.employee_id] || 'Employee'} (ID: {req.employee_id})
-                                                </div>
-                                                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>{new Date(req.created_at).toLocaleDateString()}</div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {req.purpose}
+                {activeTab === 'submit' ? (
+                    <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: winWidth < 1024 ? '1fr' : '2fr 1fr', gap: '30px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                            <div style={{ background: 'white', borderRadius: '24px', padding: '30px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '25px' }}>
+                                    <FileText size={20} color="#64748b" />
+                                    <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Service Certificate Application</h2>
+                                </div>
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Purpose of request <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <select
+                                        value={purpose} onChange={(e) => setPurpose(e.target.value)}
+                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a', appearance: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="" disabled>Select Purpose</option>
+                                        <option value="Visa Processing">Visa Processing</option>
+                                        <option value="Further Education">Further Education</option>
+                                        <option value="Loan Application">Loan Application</option>
+                                        <option value="Professional Requirement">Professional Requirement</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                {purpose === 'Other' && (
+                                    <div className="animate-slide-up" style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Specify Other Purpose <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input 
+                                            type="text"
+                                            placeholder="Enter your specific reason..."
+                                            value={formData.other_purpose || ''}
+                                            onChange={(e) => setFormData({...formData, other_purpose: e.target.value})}
+                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a' }}
+                                        />
+                                    </div>
+                                )}
+                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>JOB TITLE</label>
+                                        <div style={{ background: '#eef2ff', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#312e81', border: '1px solid #e0e7ff' }}>
+                                            {user?.designation || 'Junior Software Engineer'}
                                         </div>
                                     </div>
-                                </motion.div>
-                            );
-                        })
-                    )}
-                </section>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>EMPLOYEE ID</label>
+                                        <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#166534', border: '1px solid #dcfce7' }}>
+                                            {user?.employee_id || user?.id || '202351'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleCreateRequest}
+                                    disabled={hasAlreadySubmitted || !isAssetsDeclared || submitting}
+                                    style={{
+                                        width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
+                                        background: hasAlreadySubmitted ? '#cbd5e1' : (isAssetsDeclared ? '#3b82f6' : '#cbd5e1'),
+                                        color: 'white', fontWeight: '800', fontSize: '14px', display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', gap: '10px',
+                                        cursor: (hasAlreadySubmitted || !isAssetsDeclared || submitting) ? 'not-allowed' : 'pointer',
+                                        marginBottom: '15px', transition: 'all 0.3s',
+                                        boxShadow: (!hasAlreadySubmitted && isAssetsDeclared) ? '0 10px 15px -3px rgba(59, 130, 246, 0.2)' : 'none'
+                                    }}
+                                >
+                                    {hasAlreadySubmitted ? <Lock size={16} /> : (isAssetsDeclared ? <Unlock size={16} /> : <Lock size={16} />)}
+                                    {hasAlreadySubmitted ? 'Already Application Submitted' : (submitting && isAssetsDeclared ? 'Processing...' : 'Submit Application')}
+                                </button>
+                                <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <AlertCircle size={16} /> Once approved HR manager will process within 1-2 business days
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'white', borderRadius: '24px', padding: '30px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
+                                    <Unlock size={20} color="#3b82f6" />
+                                    <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Professional Asset Declaration</h2>
+                                </div>
+                                <p style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginBottom: '25px' }}>
+                                    Declare details of any company assets provided to you for your work remote setup.
+                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Laptop Details (Brand) <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input
+                                            placeholder="e.g. Macbook Pro 14, Windows HP..."
+                                            value={formData.laptopBrand} onChange={e => setFormData({ ...formData, laptopBrand: e.target.value })}
+                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', outline: 'none', fontWeight: '600', fontSize: '13px', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Serial Number <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input
+                                            placeholder="e.g. MXR293L23"
+                                            value={formData.serialNumber} onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
+                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', outline: 'none', fontWeight: '600', fontSize: '13px', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                </div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '15px' }}>
+                                    <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px', color: '#3b82f6' }} /> Hardware Components
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px', marginBottom: '30px' }}>
+                                    {[
+                                        { id: 'mouse', label: 'Optical Mouse', icon: <Mouse size={16} /> },
+                                        { id: 'keyboard', label: 'External Keyboard', icon: <Keyboard size={16} /> },
+                                        { id: 'stand', label: 'Laptop Stand', icon: <Monitor size={16} /> },
+                                        { id: 'mobile', label: 'Company Mobile', icon: <Smartphone size={16} /> },
+                                        { id: 'earphones', label: 'Earphones', icon: <Headphones size={16} /> },
+                                        { id: 'camera', label: 'External Camera', icon: <Camera size={16} /> },
+                                        { id: 'tablet', label: 'Tablet', icon: <Tablet size={16} /> },
+                                        { id: 'pendrive', label: 'Pendrive / Storage', icon: <HardDrive size={16} /> },
+                                        { id: 'notepad', label: 'Ref Pad / Notebook', icon: <Book size={16} /> },
+                                    ].map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setFormData({ ...formData, [item.id]: !formData[item.id] })}
+                                            style={{
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                padding: '12px 10px', borderRadius: '14px', border: formData[item.id] ? '1.5px solid #10b981' : '1.5px solid #e2e8f0',
+                                                background: formData[item.id] ? '#ecfdf5' : 'white', color: formData[item.id] ? '#059669' : '#64748b',
+                                                fontWeight: '700', fontSize: '11px', cursor: 'pointer', transition: '0.2s', textAlign: 'center'
+                                            }}
+                                        >
+                                            {item.icon}
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={handleHardwareDeclaration}
+                                    disabled={submitting || isAssetsDeclared}
+                                    style={{ width: '100%', padding: '16px', borderRadius: '14px', border: 'none', background: isAssetsDeclared ? '#9ca3af' : '#10b981', color: 'white', fontWeight: '900', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: (submitting || isAssetsDeclared) ? 'not-allowed' : 'pointer', boxShadow: isAssetsDeclared ? 'none' : '0 10px 15px -3px rgba(16, 185, 129, 0.2)', opacity: (submitting || isAssetsDeclared) ? 0.7 : 1, transition: 'all 0.3s' }}
+                                >
+                                    <ShieldCheck size={18} /> {submitting && !isAssetsDeclared ? 'Processing...' : isAssetsDeclared ? 'Hardware Declared' : 'Submit Hardware Declaration'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                            <div style={{ background: 'white', borderRadius: '24px', padding: '25px', border: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+                                    <div style={{ background: '#ecfdf5', padding: '8px', borderRadius: '10px' }}>
+                                        <ShieldCheck size={18} color="#10b981" />
+                                    </div>
+                                    <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Guidelines</h3>
+                                </div>
+                                <ul style={{ paddingLeft: '20px', margin: 0, color: '#475569', fontSize: '13px', fontWeight: '500', lineHeight: '1.7' }}>
+                                    <li style={{ marginBottom: '10px' }}>Network connectivity from HR working apps.</li>
+                                    <li style={{ marginBottom: '10px' }}>Tech hardware to be stored in clean, dry spaces.</li>
+                                    <li style={{ marginBottom: '10px' }}>Remote tracking apps installed to experience effects.</li>
+                                    <li>All hardware should be returned in 1-2 months.</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+                                    <Clock size={18} color="#64748b" />
+                                    <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Request History</h3>
+                                </div>
+                                {requests.filter(r => r.employee_id === user?.employee_id || r.employee_id === user?.id).length === 0 ? (
+                                    <div style={{ background: '#f8fafc', borderRadius: '20px', padding: '40px 20px', textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+                                        <FileText size={32} color="#cbd5e1" style={{ margin: '0 auto 10px' }} />
+                                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', marginBottom: '4px' }}>No requests yet</div>
+                                        <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8' }}>Your certificate applications will appear here</div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        {requests.filter(r => r.employee_id === user?.employee_id || r.employee_id === user?.id).slice(0, 3).map(r => {
+                                            const reqStatus = r.status || 'Pending';
+                                            const isAppr = reqStatus.toLowerCase() === 'approved';
+                                            const isRej = reqStatus.toLowerCase() === 'rejected';
+                                            return (
+                                                <div key={r.id} style={{ background: 'white', padding: '16px', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{r.purpose || 'Service Certificate'}</div>
+                                                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', marginTop: '4px' }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '8px', background: isAppr ? '#f0fdf4' : (isRej ? '#fef2f2' : '#fffbeb'), color: isAppr ? '#16a34a' : (isRej ? '#dc2626' : '#d97706') }}>
+                                                        {reqStatus.charAt(0).toUpperCase() + reqStatus.slice(1)}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <section style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '15px'
+                    }}>
+
+                        {loading ? (
+                            <div style={{ background: 'white', padding: '60px', borderRadius: '24px', textAlign: 'center', color: '#94a3b8', fontWeight: '800', border: '1px solid #f1f5f9' }}>Syncing certificates...</div>
+                        ) : requests.length === 0 ? (
+                            <div style={{ background: 'white', padding: '80px 40px', borderRadius: '24px', textAlign: 'center', border: '2px dashed #e2e8f0' }}>
+                                <div style={{ width: '64px', height: '64px', background: '#f8fafc', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                                    <FileText size={30} color="#cbd5e1" />
+                                </div>
+                                <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: '0 0 8px 0' }}>No Records</h3>
+                                <p style={{ color: '#94a3b8', fontWeight: '600', margin: 0, fontSize: '14px' }}>No verification requests found.</p>
+                            </div>
+                        ) : (
+                            <section style={{
+                                display: 'grid',
+                                gridTemplateColumns: winWidth < 768 ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+                                gap: '20px'
+                            }}>
+                                {requests.map((req) => {
+                                    const status = req.status || 'Pending';
+                                    const isPending = status.toLowerCase() === 'pending' || status.toLowerCase() === 'pending audit';
+                                    const isApproved = status.toLowerCase() === 'approved';
+                                    const isRejected = status.toLowerCase() === 'rejected';
+
+                                    const formatDate = (dateStr) => {
+                                        if (!dateStr) return '';
+                                        const d = new Date(dateStr);
+                                        return d.toLocaleDateString();
+                                    };
+
+                                    return (
+                                        <div key={req.id} onClick={() => setSelectedDetail(req)} style={{
+                                            position: 'relative', background: 'white', borderRadius: '16px', padding: '24px', cursor: 'pointer',
+                                            boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #f1f5f9', overflow: 'hidden',
+                                            transition: 'transform 0.2s, box-shadow 0.2s'
+                                        }}
+                                            onMouseOver={e => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.04)';
+                                            }}
+                                            onMouseOut={e => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.02)';
+                                            }}>
+                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: status === 'Pending Audit' ? '#ef4444' : isPending ? '#fbbf24' : isApproved ? '#22c55e' : '#ef4444' }} />
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                                                <div>
+                                                    <h3 style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a', margin: '0 0 4px 0' }}>{req.purpose || 'Service Certificate'}</h3>
+                                                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0, fontWeight: '600' }}>Req #{String(req.id).padStart(4, '0')}</p>
+                                                </div>
+                                                <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', background: status === 'Pending Audit' ? '#fef2f2' : isPending ? '#fef3c7' : isApproved ? '#dcfce7' : '#fee2e2', color: status === 'Pending Audit' ? '#ef4444' : isPending ? '#b45309' : isApproved ? '#15803d' : '#b91c1c' }}>
+                                                    {status}
+                                                </div>
+                                            </div>
+                                            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', marginBottom: '16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                    <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <FileText size={12} color="#64748b" />
+                                                    </div>
+                                                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155' }}>{req.employee_name || req.name || employeeNames[req.employee_id] || 'Employee'}</span>
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {req.employee_id}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600' }}>
+                                                <Clock size={12} /> {formatDate(req.created_at)}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </section>
+                        )}
+                    </section>
+                )}
             </main>
 
             {/* NEW REQUEST MODAL */}
@@ -497,17 +798,17 @@ export default function ServiceCertificateUserScreen() {
 
 
 
-                                    <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>HR Admin Remarks</label>
-                                            <textarea 
-                                                value={adminRemark}
-                                                onChange={(e) => setAdminRemark(e.target.value)}
-                                                placeholder="Enter internal notes or feedback..."
-                                                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '80px', background: '#f8fafc' }}
-                                            />
-                                        </div>
+                                <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>HR Admin Remarks</label>
+                                        <textarea
+                                            value={adminRemark}
+                                            onChange={(e) => setAdminRemark(e.target.value)}
+                                            placeholder="Enter internal notes or feedback..."
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid #f1f5f9', outline: 'none', fontSize: '13px', fontWeight: '600', minHeight: '80px', background: '#f8fafc' }}
+                                        />
                                     </div>
+                                </div>
 
                                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                                     {(selectedDetail.status === 'Pending' || selectedDetail.status === 'Pending Audit') ? (
@@ -566,7 +867,7 @@ export default function ServiceCertificateUserScreen() {
                                                 onClick={() => {
                                                     // Pass the employee_id from the request to fetch their specific assets
                                                     const empId = selectedDetail.employee_id || selectedDetail.id;
-                                                    setAssetData(selectedDetail); 
+                                                    setAssetData(selectedDetail);
                                                     setShowAssetsModal(true);
                                                     fetchAssetData(empId);
                                                 }}
@@ -734,15 +1035,15 @@ export default function ServiceCertificateUserScreen() {
                     }}>
                         <div style={{
                             width: '56px', height: '56px', borderRadius: '50%',
-                            background: popupMessage.includes('Approved') ? '#ecfdf5' : '#fef2f2',
-                            color: popupMessage.includes('Approved') ? '#10b981' : '#ef4444',
+                            background: (popupMessage.includes('Approved') || popupMessage.includes('successfully')) ? '#ecfdf5' : (popupMessage.includes('Rejected') || popupMessage.includes('Please')) ? '#fef2f2' : '#f0f9ff',
+                            color: (popupMessage.includes('Approved') || popupMessage.includes('successfully')) ? '#10b981' : (popupMessage.includes('Rejected') || popupMessage.includes('Please')) ? '#ef4444' : '#3b82f6',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
-                            boxShadow: popupMessage.includes('Approved') ? '0 8px 20px rgba(16, 185, 129, 0.15)' : '0 8px 20px rgba(239, 68, 68, 0.15)'
+                            boxShadow: (popupMessage.includes('Approved') || popupMessage.includes('successfully')) ? '0 8px 20px rgba(16, 185, 129, 0.15)' : (popupMessage.includes('Rejected') || popupMessage.includes('Please')) ? '0 8px 20px rgba(239, 68, 68, 0.15)' : '0 8px 20px rgba(59, 130, 246, 0.15)'
                         }}>
-                            {popupMessage.includes('Approved') ? <CheckCircle size={28} strokeWidth={3} /> : <XCircle size={28} strokeWidth={3} />}
+                            {(popupMessage.includes('Approved') || popupMessage.includes('successfully')) ? <CheckCircle size={28} strokeWidth={3} /> : (popupMessage.includes('Rejected') || popupMessage.includes('Please')) ? <XCircle size={28} strokeWidth={3} /> : <Info size={28} strokeWidth={3} />}
                         </div>
                         <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-                            {popupMessage.includes('Approved') ? 'Approved!' : 'Rejected!'}
+                            {popupMessage.includes('Approved') ? 'Approved!' : popupMessage.includes('Rejected') ? 'Rejected!' : popupMessage.includes('successfully') ? 'Success!' : 'Notice'}
                         </h3>
                         <p style={{ margin: '0', fontSize: '13px', fontWeight: '750', color: '#475569', lineHeight: '1.5' }}>
                             {popupMessage}

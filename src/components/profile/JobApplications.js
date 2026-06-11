@@ -566,7 +566,7 @@ export default function JobApplications() {
             </button>
             <div>
               <h1 style={{ fontSize: winWidth < 768 ? '20px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>New Hirings</h1>
-              <p style={{ fontSize: winWidth < 768 ? '11px' : '14px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}>Manage talent pipeline and flow</p>
+              <p style={{ fontSize: winWidth < 768 ? '11px' : '14px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '500' }}></p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', width: winWidth < 640 ? '100%' : 'auto' }}>

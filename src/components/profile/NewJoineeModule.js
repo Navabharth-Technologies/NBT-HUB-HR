@@ -672,7 +672,7 @@ export default function NewJoineeModule() {
             </button>
             <div>
               <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#1e293b', margin: 0 }}>New Joinee Onboarding</h1>
-              <p style={{ color: '#64748b', margin: '2px 0 0 0' }}>Monitor and welcome our newest team members</p>
+              <p style={{ color: '#64748b', margin: '2px 0 0 0' }}></p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

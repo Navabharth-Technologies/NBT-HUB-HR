@@ -336,6 +336,9 @@ export default function PerformanceModule() {
 
           // Final update with the actual remote URL
           updateUser({ profile_pic: url, profile_picture: url });
+          const formattedUrl = url.replace(/\\/g, '/');
+          const fullUrl = formattedUrl.startsWith('http') || formattedUrl.startsWith('data:') ? formattedUrl : `${BASE_URL}${formattedUrl.startsWith('/') ? '' : '/'}${formattedUrl}`;
+          setProfileImage(fullUrl);
           setToast({ show: true, message: 'profile pic updated successfully ✅', type: 'success' });
           setTimeout(() => setToast({ show: false, message: '' }), 3000);
         }
@@ -708,13 +711,13 @@ export default function PerformanceModule() {
                     if (profileImage) setFullscreenImage(profileImage);
                   }}
                 >
-                  {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') ? profileImage : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
+                  {profileImage ? <img src={profileImage.startsWith('http') || profileImage.startsWith('data:') || profileImage.startsWith('blob:') ? profileImage.replace(/\\/g, '/') : `${BASE_URL}${profileImage.startsWith('/') ? '' : '/'}${profileImage.replace(/\\/g, '/')}`} alt="Me" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: winWidth < 768 ? '18px' : '24px' }} /> : user?.name?.[0] || 'U'}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
-                    style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                    style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: winWidth < 768 ? '32px' : '36px', height: winWidth < 768 ? '32px' : '36px', background: 'white', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', cursor: 'pointer' }}
                   >
                     <Camera size={winWidth < 768 ? 16 : 18} color="#0f172a" />
                   </button>
@@ -1012,7 +1015,7 @@ export default function PerformanceModule() {
 
       {/* Success Toast */}
       {toast.show && (
-        <div style={{ position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: 'white', padding: '12px 24px', borderRadius: '16px', fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', zIndex: 9999, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ position: 'fixed', top: '100px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: 'white', padding: '12px 24px', borderRadius: '16px', fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', zIndex: 9999, border: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ background: toast.type === 'success' ? '#22c55e' : '#ef4444', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {toast.type === 'success' ? <Check size={12} color="white" strokeWidth={4} /> : <X size={12} color="white" strokeWidth={4} />}
           </div>

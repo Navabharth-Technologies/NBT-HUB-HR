@@ -285,7 +285,7 @@ export default function TicketManagement() {
         </div>
       )}
 
-      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px' : '40px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '70px' : '85px' }}>
+      <main style={{ flex: 1, padding: winWidth < 768 ? '20px 15px 120px' : '40px 40px 160px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', marginTop: winWidth < 768 ? '70px' : '85px' }}>
         <header style={{
           marginBottom: '32px',
           display: 'flex',

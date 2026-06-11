@@ -181,7 +181,7 @@ export default function EmployeeModule() {
             <option value="Marketing Team Lead">Marketing Team Lead</option>
             <option value="Human Resource">Human Resource</option>
             <option value="Technical Support Engineer">Technical Support Engineer</option>
-            <option value="employee">employee</option>
+
           </select>
         </div>
 

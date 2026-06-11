@@ -86,6 +86,8 @@ export const API_ENDPOINTS = {
   REWARDS_GIVE: `${BASE_URL}/api/rewards`,
   LEADERBOARD_ALL: `${BASE_URL}/api/employees/leaderboard/all`,
   NOTIFICATIONS_BY_USER: (uid) => `${BASE_URL}/api/notifications/${uid}`,
+  NOTIFICATIONS_READ_ALL: (userId) => userId ? `${BASE_URL}/api/notifications/read-all/${userId}` : `${BASE_URL}/api/notifications/read-all`,
+  NOTIFICATION_MARK_READ: (id) => `${BASE_URL}/api/notifications/${id}/read`,
   ASSETS: `${BASE_URL}/api/assets`,
   ASSETS_STOCK: `${BASE_URL}/api/assets-stock`,
   ASSETS_STOCK_SUMMARY: `${BASE_URL}/api/assets-stock/summary`,
