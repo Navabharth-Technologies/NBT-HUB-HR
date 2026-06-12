@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { API_ENDPOINTS } from '../../config';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
     ExternalLink, Search, Filter, MoreHorizontal,
@@ -18,23 +18,6 @@ export default function ServiceCertificateManagement() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
-    const [employees, setEmployees] = useState([]);
-
-    useEffect(() => {
-        const fetchEmployees = async () => {
-            if (!user?.token) return;
-            try {
-                const res = await fetch(`${BASE_URL}/api/admin/employees`, {
-                    headers: { 'Authorization': `Bearer ${user.token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setEmployees(Array.isArray(data) ? data : (data.data || []));
-                }
-            } catch (error) {}
-        };
-        fetchEmployees();
-    }, [user]);
 
     // Modal states
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -253,16 +236,8 @@ export default function ServiceCertificateManagement() {
                                         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: statusStyle.text }} />
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                            <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                                                {(() => {
-                                                    const emp = employees.find(e => String(e.employee_id) === String(req.employee_id));
-                                                    const rawPic = req.profile_pic || req.profile_picture || req.photo || (emp ? (emp.profile_picture || emp.profile_pic || emp.photo) : null);
-                                                    if (rawPic) {
-                                                        const imgSrc = rawPic.startsWith('http') || rawPic.startsWith('data:') ? rawPic : `${BASE_URL}${rawPic.startsWith('/') ? '' : '/'}${rawPic.replace(/\\/g, '/')}`;
-                                                        return <img src={imgSrc} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
-                                                    }
-                                                    return <User color="#64748b" size={20} />;
-                                                })()}
+                                            <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <User color="#64748b" size={20} />
                                             </div>
                                             <span style={{
                                                 background: statusStyle.bg, color: statusStyle.text,
@@ -314,6 +289,7 @@ export default function ServiceCertificateManagement() {
                                                     {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'N/A'}
                                                 </span>
                                             </div>
+                                            <ExternalLink size={14} color="#3b82f6" />
                                         </div>
                                     </div>
                                 );

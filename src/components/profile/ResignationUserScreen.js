@@ -94,11 +94,12 @@ export default function ResignationUserScreen() {
                             const empMap = {};
                             const employees = Array.isArray(empData) ? empData : (empData.data || []);
                             if (Array.isArray(employees)) {
-                                employees.forEach(e => empMap[String(e.id || e.employee_id)] = e.name);
+                                employees.forEach(e => empMap[String(e.id || e.employee_id)] = e);
                             }
                             actualData = actualData.map(r => ({
                                 ...r,
-                                employee_name: r.employee_name || empMap[String(r.employee_id)] || 'Employee'
+                                employee_name: r.employee_name || empMap[String(r.employee_id)]?.name || 'Employee',
+                                profile_picture: r.profile_picture || empMap[String(r.employee_id)]?.profile_picture || null
                             }));
                         }
                     } catch (e) { console.error('Emp fetch error', e); }
@@ -430,23 +431,26 @@ export default function ResignationUserScreen() {
                                         >
                                             <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: req.status === 'Approved' ? '#16a34a' : (req.status === 'Rejected' ? '#dc2626' : '#d97706') }} />
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <User size={20} color="#64748b" />
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: req.profile_picture ? 'transparent' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                    {req.profile_picture ? (
+                                                        <img src={req.profile_picture} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <User size={20} color="#64748b" />
+                                                    )}
                                                 </div>
                                                 <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '950', textTransform: 'uppercase', background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
                                                     {req.status || 'Pending'}
                                                 </span>
                                             </div>
-                                            <div>
+                                            <div style={{ marginTop: 'auto' }}>
                                                 <div style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginBottom: '2px' }}>{req.employee_name || 'Employee'}</div>
                                                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {req.employee_id}</div>
                                             </div>
-                                            <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8' }}>
                                                     <Calendar size={12} />
                                                     <span style={{ fontSize: '11px', fontWeight: '700' }}>{new Date(req.created_at).toLocaleDateString()}</span>
                                                 </div>
-                                                <ExternalLink size={14} color="#3b82f6" />
                                             </div>
                                         </div>
                                     );
