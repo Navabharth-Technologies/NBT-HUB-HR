@@ -96,11 +96,15 @@ export default function ResignationUserScreen() {
                             if (Array.isArray(employees)) {
                                 employees.forEach(e => empMap[String(e.id || e.employee_id)] = e);
                             }
-                            actualData = actualData.map(r => ({
-                                ...r,
-                                employee_name: r.employee_name || empMap[String(r.employee_id)]?.name || 'Employee',
-                                profile_picture: r.profile_picture || empMap[String(r.employee_id)]?.profile_picture || null
-                            }));
+                            actualData = actualData.map(r => {
+                                const emp = empMap[String(r.employee_id)];
+                                const pic = r.profile_picture || r.profile_pic || r.photo || (emp ? (emp.profile_picture || emp.profile_pic || emp.photo || emp.ProfilePic || emp.Profile_Picture) : null);
+                                return {
+                                    ...r,
+                                    employee_name: r.employee_name || emp?.name || 'Employee',
+                                    profile_picture: pic
+                                };
+                            });
                         }
                     } catch (e) { console.error('Emp fetch error', e); }
                 }
