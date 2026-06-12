@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
     ArrowLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink
 } from 'lucide-react';
@@ -88,7 +88,8 @@ export default function ResignationUserScreen() {
                 // Fetch employees to get names for the global list
                 if (actualData.length > 0) {
                     try {
-                        const empRes = await fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user.token}` } });
+                        const empRes = await fetch(API_ENDPOINTS.USERS, { headers: { 'Authorization': `Bearer ${user.token}` } });
+                        const profRes = await fetch(API_ENDPOINTS.EMPLOYEE_PROFILE_ALL, { headers: { 'Authorization': `Bearer ${user.token}` } });
                         if (empRes.ok) {
                             const empData = await empRes.json();
                             const empMap = {};
@@ -96,9 +97,23 @@ export default function ResignationUserScreen() {
                             if (Array.isArray(employees)) {
                                 employees.forEach(e => empMap[String(e.id || e.employee_id)] = e);
                             }
+                            
+                            if (profRes.ok) {
+                                const profData = await profRes.json();
+                                const profiles = Array.isArray(profData) ? profData : (profData.data || []);
+                                if (Array.isArray(profiles)) {
+                                    profiles.forEach(p => {
+                                        const id = String(p.id || p.employee_id);
+                                        if (!empMap[id]) empMap[id] = {};
+                                        empMap[id].profile_picture = p.profile_picture || p.profile_pic || p.photo || empMap[id].profile_picture;
+                                    });
+                                }
+                            }
+
                             actualData = actualData.map(r => {
                                 const emp = empMap[String(r.employee_id)];
-                                const pic = r.profile_picture || r.profile_pic || r.photo || (emp ? (emp.profile_picture || emp.profile_pic || emp.photo || emp.ProfilePic || emp.Profile_Picture) : null);
+                                let pic = r.profile_picture || r.profile_pic || r.photo || (emp ? (emp.profile_picture || emp.profile_pic || emp.photo || emp.ProfilePic || emp.Profile_Picture) : null);
+                                if (pic === 'null' || pic === 'undefined' || typeof pic !== 'string') pic = null;
                                 return {
                                     ...r,
                                     employee_name: r.employee_name || emp?.name || 'Employee',
@@ -437,7 +452,7 @@ export default function ResignationUserScreen() {
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: req.profile_picture ? 'transparent' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                                                     {req.profile_picture ? (
-                                                        <img src={req.profile_picture} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        <img src={req.profile_picture.startsWith('http') || req.profile_picture.startsWith('data:') ? req.profile_picture : `${BASE_URL}${req.profile_picture.startsWith('/') ? '' : '/'}${req.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     ) : (
                                                         <User size={20} color="#64748b" />
                                                     )}
