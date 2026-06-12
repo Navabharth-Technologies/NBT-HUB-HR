@@ -267,7 +267,7 @@ export default function ServiceCertificateUserScreen() {
             return;
         }
         if (!purpose.trim() || !user?.token) return;
-        
+
         const finalPurpose = purpose === 'Other' ? formData.other_purpose : purpose;
         if (!finalPurpose) {
             setPopupMessage('Please specify your purpose.');
@@ -434,11 +434,11 @@ export default function ServiceCertificateUserScreen() {
                                 {purpose === 'Other' && (
                                     <div className="animate-slide-up" style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Specify Other Purpose <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input 
+                                        <input
                                             type="text"
                                             placeholder="Enter your specific reason..."
                                             value={formData.other_purpose || ''}
-                                            onChange={(e) => setFormData({...formData, other_purpose: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, other_purpose: e.target.value })}
                                             style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a' }}
                                         />
                                     </div>
@@ -484,7 +484,7 @@ export default function ServiceCertificateUserScreen() {
                                     <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Professional Asset Declaration</h2>
                                 </div>
                                 <p style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginBottom: '25px' }}>
-                                    Declare details of any company assets provided to you for your work remote setup.
+                                    Declare details of company assets provided to you for your work remote setup.
                                 </p>
                                 <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                                     <div>
@@ -948,8 +948,6 @@ export default function ServiceCertificateUserScreen() {
                                                 <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: '700' }}>
                                                     {assetData?.employee_name || assetData?.name || employeeNames[assetData?.employee_id] || 'Employee'} (ID: {assetData?.employee_id})
                                                 </p>
-                                                <div style={{ width: '1px', height: '12px', background: '#cbd5e1' }} />
-                                                <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: '700' }}>Request ID: #{assetData?.id}</p>
                                             </div>
                                         </div>
                                     </div>
