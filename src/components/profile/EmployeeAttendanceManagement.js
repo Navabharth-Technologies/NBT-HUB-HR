@@ -529,6 +529,7 @@ export default function EmployeeAttendanceManagement() {
           <div style={{ display: 'flex', flexDirection: winWidth < 600 ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
             <div style={{ display: 'flex', background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '2px 4px', flexWrap: 'wrap', justifyContent: 'center' }}>
               <label htmlFor="startDateInput" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', cursor: 'pointer' }}>
+                <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>From</span>
                 <input 
                   id="startDateInput"
                   type="date" 
@@ -539,7 +540,7 @@ export default function EmployeeAttendanceManagement() {
               </label>
               <div style={{ width: '1px', background: '#e2e8f0', height: '16px', margin: 'auto 0' }}></div>
               <label htmlFor="endDateInput" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', cursor: 'pointer' }}>
-                <span style={{ fontSize: '10px', fontWeight: '950', color: '#94a3b8', letterSpacing: '0.5px' }}>TO</span>
+                <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>To</span>
                 <input 
                   id="endDateInput"
                   type="date" 
