@@ -653,7 +653,7 @@ export default function ServiceCertificateUserScreen() {
                                                     {status}
                                                 </div>
                                             </div>
-                                            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', marginBottom: '16px' }}>
+                                            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', marginBottom: '16px', marginTop: 'auto' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                                     <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                         <FileText size={12} color="#64748b" />
@@ -662,7 +662,7 @@ export default function ServiceCertificateUserScreen() {
                                                 </div>
                                                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {req.employee_id}</div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600', marginTop: 'auto' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600' }}>
                                                 <Clock size={12} /> {formatDate(req.created_at)}
                                             </div>
                                         </div>
