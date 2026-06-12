@@ -70,7 +70,32 @@ export default function ThreadScreen() {
     };
 
     useEffect(() => {
-        fetchProfiles();
+        if (user?.token) {
+            fetchProfiles();
+        }
+    }, [user]);
+
+    // AUTO-FETCH COMMENT COUNTS ON LOAD
+    useEffect(() => {
+        const fetchAllCommentCounts = async () => {
+            if (threads && threads.length > 0) {
+                for (const post of threads) {
+                    // Check if we already have comments for this post to avoid redundant API calls
+                    if (postComments[post.id] === undefined) {
+                        try {
+                            const comments = await fetchComments(post.id);
+                            setPostComments(prev => ({ ...prev, [post.id]: Array.isArray(comments) ? comments : [] }));
+                        } catch (err) {
+                            console.error("Error auto-fetching comments for count:", err);
+                        }
+                    }
+                }
+            }
+        };
+        fetchAllCommentCounts();
+    }, [threads, fetchComments]);
+
+    useEffect(() => {
         const handleResize = () => setWinWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -488,7 +513,7 @@ export default function ThreadScreen() {
                 };
                 const activeReaction = getActiveReactionChar(post.activeEmoji, pLiked);
                 const likeCount = post.likeCount || 0;
-                const commentCount = post.commentCount || 0;
+                const commentCount = Math.max(post.commentCount || post.comment_count || 0, (postComments[post.id] || []).length);
 
                 return (
                     <div key={post.id} style={styles.threadCard}>
