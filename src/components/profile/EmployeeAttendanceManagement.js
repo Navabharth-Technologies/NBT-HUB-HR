@@ -534,7 +534,7 @@ export default function EmployeeAttendanceManagement() {
                   type="date" 
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  style={{ border: 'none', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', background: 'transparent', width: '95px', cursor: 'pointer' }} 
+                  style={{ border: 'none', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', background: 'transparent', width: '90px', cursor: 'pointer', textAlign: 'right' }} 
                 />
               </label>
               <div style={{ width: '1px', background: '#e2e8f0', height: '16px', margin: 'auto 0' }}></div>
@@ -545,7 +545,7 @@ export default function EmployeeAttendanceManagement() {
                   type="date" 
                   value={endDate} 
                   onChange={(e) => setEndDate(e.target.value)}
-                  style={{ border: 'none', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', background: 'transparent', width: '95px', cursor: 'pointer' }} 
+                  style={{ border: 'none', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', background: 'transparent', width: '90px', cursor: 'pointer', textAlign: 'right' }} 
                 />
               </label>
             </div>

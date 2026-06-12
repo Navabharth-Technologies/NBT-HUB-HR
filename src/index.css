@@ -95,3 +95,7 @@ textarea::placeholder {
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
