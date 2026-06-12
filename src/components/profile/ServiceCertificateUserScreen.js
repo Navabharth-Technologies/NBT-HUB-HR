@@ -633,7 +633,7 @@ export default function ServiceCertificateUserScreen() {
                                         <div key={req.id} onClick={() => setSelectedDetail(req)} style={{
                                             position: 'relative', background: 'white', borderRadius: '16px', padding: '24px', cursor: 'pointer',
                                             boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #f1f5f9', overflow: 'hidden',
-                                            transition: 'transform 0.2s, box-shadow 0.2s'
+                                            transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column'
                                         }}
                                             onMouseOver={e => {
                                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -662,7 +662,7 @@ export default function ServiceCertificateUserScreen() {
                                                 </div>
                                                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {req.employee_id}</div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600', marginTop: 'auto' }}>
                                                 <Clock size={12} /> {formatDate(req.created_at)}
                                             </div>
                                         </div>
