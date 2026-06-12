@@ -5,7 +5,7 @@ import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
-    ArrowLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink
+    ArrowLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink, ChevronDown
 } from 'lucide-react';
 
 export default function ResignationUserScreen() {
@@ -356,17 +356,20 @@ export default function ResignationUserScreen() {
                             </div>
                             <div style={{ marginBottom: '24px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Reason to Resign <span style={{ color: '#ef4444' }}>*</span></label>
-                                <select
-                                    value={formData.primary_reason}
-                                    onChange={(e) => setFormData({ ...formData, primary_reason: e.target.value })}
-                                    style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: 'white', color: formData.primary_reason ? '#0f172a' : '#94a3b8', fontWeight: '800', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer', appearance: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
-                                >
-                                    <option value="" disabled style={{ color: '#94a3b8' }}>Select a reason</option>
-                                    <option value="Better Career Opportunity" style={{ color: '#0f172a' }}>Better Career Opportunity</option>
-                                    <option value="Personal Reasons" style={{ color: '#0f172a' }}>Personal Reasons</option>
-                                    <option value="Higher Education" style={{ color: '#0f172a' }}>Higher Education</option>
-                                    <option value="Other" style={{ color: '#0f172a' }}>Other</option>
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <select
+                                        value={formData.primary_reason}
+                                        onChange={(e) => setFormData({ ...formData, primary_reason: e.target.value })}
+                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: 'white', color: formData.primary_reason ? '#0f172a' : '#94a3b8', fontWeight: '800', fontSize: '14px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer', appearance: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                                    >
+                                        <option value="" disabled style={{ color: '#94a3b8' }}>Select a reason</option>
+                                        <option value="Better Career Opportunity" style={{ color: '#0f172a' }}>Better Career Opportunity</option>
+                                        <option value="Personal Reasons" style={{ color: '#0f172a' }}>Personal Reasons</option>
+                                        <option value="Higher Education" style={{ color: '#0f172a' }}>Higher Education</option>
+                                        <option value="Other" style={{ color: '#0f172a' }}>Other</option>
+                                    </select>
+                                    <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                                </div>
                             </div>
                             <div style={{ marginBottom: '32px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Formal Letter Content</label>
