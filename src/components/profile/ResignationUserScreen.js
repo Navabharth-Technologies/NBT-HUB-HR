@@ -466,9 +466,9 @@ export default function ResignationUserScreen() {
                                                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {req.employee_id}</div>
                                             </div>
                                             <div style={{ paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8' }}>
-                                                    <Calendar size={12} />
-                                                    <span style={{ fontSize: '11px', fontWeight: '700' }}>{new Date(req.created_at).toLocaleDateString()}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                                    <Calendar size={13} color="#64748b" />
+                                                    <span style={{ fontSize: '12px', fontWeight: '800' }}>{new Date(req.created_at).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         </div>
