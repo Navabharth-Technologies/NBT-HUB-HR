@@ -154,7 +154,7 @@ export default function AppHeader() {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          fontSize: '35px',
+          fontSize: winWidth < 768 ? '24px' : '35px',
           fontWeight: '950',
           letterSpacing: '0px',
           textTransform: 'uppercase',

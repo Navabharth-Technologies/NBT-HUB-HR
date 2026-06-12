@@ -8,7 +8,8 @@ import {
     ArrowLeft, FileText, CheckCircle, Clock,
     Download, Plus, Search, Filter, AlertCircle, X, XCircle,
     ExternalLink, Calendar, Info, Package, ShieldCheck, Sparkles,
-    Send, Lock, Unlock, Monitor, Mouse, Keyboard, Smartphone, Headphones, Camera, Tablet, HardDrive, Book
+    Send, Lock, Unlock, Monitor, Mouse, Keyboard, Smartphone, Headphones, Camera, Tablet, HardDrive, Book,
+    ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -388,7 +389,7 @@ export default function ServiceCertificateUserScreen() {
                             background: activeTab === 'submit' ? 'white' : 'transparent',
                             color: activeTab === 'submit' ? '#0f172a' : '#64748b',
                             boxShadow: activeTab === 'submit' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
-                            flex: winWidth < 768 ? 1 : 'none', whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
+                            flex: 'none', flexShrink: 0, whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
                         }}
                     >
                         <Send size={16} /> Apply service certificate
@@ -402,7 +403,7 @@ export default function ServiceCertificateUserScreen() {
                             background: activeTab === 'history' ? 'white' : 'transparent',
                             color: activeTab === 'history' ? '#0f172a' : '#64748b',
                             boxShadow: activeTab === 'history' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
-                            flex: winWidth < 768 ? 1 : 'none', whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
+                            flex: 'none', flexShrink: 0, whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
                         }}
                     >
                         <Clock size={16} /> History of Service certificate requests
@@ -419,17 +420,20 @@ export default function ServiceCertificateUserScreen() {
                                 </div>
                                 <div style={{ marginBottom: '20px' }}>
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Purpose of request <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <select
-                                        value={purpose} onChange={(e) => setPurpose(e.target.value)}
-                                        style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a', appearance: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="" disabled>Select Purpose</option>
-                                        <option value="Visa Processing">Visa Processing</option>
-                                        <option value="Further Education">Further Education</option>
-                                        <option value="Loan Application">Loan Application</option>
-                                        <option value="Professional Requirement">Professional Requirement</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <div style={{ position: 'relative' }}>
+                                        <select
+                                            value={purpose} onChange={(e) => setPurpose(e.target.value)}
+                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a', appearance: 'none', cursor: 'pointer' }}
+                                        >
+                                            <option value="" disabled>Select Purpose</option>
+                                            <option value="Visa Processing">Visa Processing</option>
+                                            <option value="Further Education">Further Education</option>
+                                            <option value="Loan Application">Loan Application</option>
+                                            <option value="Professional Requirement">Professional Requirement</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                                    </div>
                                 </div>
                                 {purpose === 'Other' && (
                                     <div className="animate-slide-up" style={{ marginBottom: '20px' }}>

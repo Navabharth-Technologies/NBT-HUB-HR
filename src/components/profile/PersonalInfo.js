@@ -193,6 +193,7 @@ export default function PersonalInfo({ onBack }) {
   const [fullscreenUrl, setFullscreenUrl] = useState(null); // fullscreen doc preview
   const [employees, setEmployees] = useState([]);
   const [selectedEmpId, setSelectedEmpId] = useState('');
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('personal_info_active_section', activeSection);
@@ -1536,34 +1537,89 @@ export default function PersonalInfo({ onBack }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexDirection: isMobile ? 'column' : 'row' }}>
               <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '240px' }}>
-                <Users size={16} color="#64748b" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
-                <select
-                  value={selectedEmpId}
-                  onChange={(e) => {
-                    const newId = e.target.value;
-                    setSelectedEmpId(newId);
-                    localStorage.setItem('last_selected_emp_id', newId);
-                    setIsEditing(true);
-                  }}
-                  disabled={isSelfMode}
-                  style={{
-                    width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
-                    backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none',
-                    cursor: isSelfMode ? 'default' : 'pointer'
-                  }}
-                >
-                  {isSelfMode && (
-                    <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
-                      My Profile ({user?.name || 'Self'})
-                    </option>
-                  )}
-                  {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
-                    <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
-                      {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
-                    </option>
-                  ))}
-                </select>
-                {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                {isMobile ? (
+                  <>
+                    <div
+                      onClick={() => !isSelfMode && setMobileDropdownOpen(!mobileDropdownOpen)}
+                      style={{
+                        width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                        backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: isSelfMode ? 'default' : 'pointer'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Users size={16} color="#64748b" style={{ position: 'absolute', left: '15px' }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65vw' }}>
+                          {isSelfMode
+                            ? `My Profile (${user?.name || 'Self'})`
+                            : (() => {
+                                const sel = employees.find(e => (e.employee_id || e.id) == selectedEmpId);
+                                return sel ? `${sel.name || sel.emp_name} (${sel.employee_id || sel.id})` : 'Select Employee';
+                              })()
+                          }
+                        </span>
+                      </div>
+                      {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ transform: mobileDropdownOpen ? 'rotate(180deg)' : 'none', transition: '0.2s', flexShrink: 0 }} />}
+                    </div>
+                    {mobileDropdownOpen && !isSelfMode && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
+                        backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px',
+                        maxHeight: '250px', overflowY: 'auto', zIndex: 10000, boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                      }}>
+                        {employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                          <div
+                            key={emp.employee_id || emp.id}
+                            onClick={() => {
+                              const newId = String(emp.employee_id || emp.id);
+                              setSelectedEmpId(newId);
+                              localStorage.setItem('last_selected_emp_id', newId);
+                              setIsEditing(true);
+                              setMobileDropdownOpen(false);
+                            }}
+                            style={{
+                              padding: '12px 16px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', fontWeight: '700',
+                              color: '#0B1E3F', cursor: 'pointer', backgroundColor: selectedEmpId == (emp.employee_id || emp.id) ? '#f8fafc' : 'white'
+                            }}
+                          >
+                            {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Users size={16} color="#64748b" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
+                    <select
+                      value={selectedEmpId}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setSelectedEmpId(newId);
+                        localStorage.setItem('last_selected_emp_id', newId);
+                        setIsEditing(true);
+                      }}
+                      disabled={isSelfMode}
+                      style={{
+                        width: '100%', padding: '12px 16px 12px 40px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                        backgroundColor: isSelfMode ? '#f8fafc' : 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800', outline: 'none', appearance: 'none',
+                        cursor: isSelfMode ? 'default' : 'pointer'
+                      }}
+                    >
+                      {isSelfMode && (
+                        <option value={user?.employee_id || user?.id || user?.email || user?.EmpID}>
+                          My Profile ({user?.name || 'Self'})
+                        </option>
+                      )}
+                      {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                        <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
+                          {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
+                        </option>
+                      ))}
+                    </select>
+                    {!isSelfMode && <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                  </>
+                )}
               </div>
 
               <motion.button
@@ -1798,29 +1854,9 @@ export default function PersonalInfo({ onBack }) {
                         </select>
                       ) : field.key === 'languages_known' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                          <input
-                            type="text"
-                            value={form[field.key] || ''}
-                            placeholder={field.placeholder || 'e.g. English Hindi'}
-                            readOnly={isDisabled}
-                            onChange={e => handleChange(field.key, e.target.value, e.target)}
-                            style={{
-                              width: '100%',
-                              padding: '16px 20px',
-                              borderRadius: '16px',
-                              fontWeight: '900',
-                              color: '#0B1E3F',
-                              WebkitTextFillColor: '#0B1E3F',
-                              border: isMobile ? '2px solid #cbd5e1' : '3px solid #cbd5e1',
-                              backgroundColor: isDisabled ? '#f1f5f9' : 'white',
-                              boxSizing: 'border-box',
-                              fontFamily: 'inherit',
-                              fontSize: '16px'
-                            }}
-                          />
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                             {['English', 'Hindi', 'Kannada', 'Telugu', 'Malayalam', 'Arabic', 'Urdu', 'Marathi'].map(lang => {
-                              const currentLangs = (form[field.key] || '').split(' ').filter(Boolean);
+                              const currentLangs = (form[field.key] || '').split(/[, ]+/).filter(Boolean);
                               const isSelected = currentLangs.includes(lang);
                               return (
                                 <button
@@ -1835,7 +1871,7 @@ export default function PersonalInfo({ onBack }) {
                                     } else {
                                       newLangs.push(lang);
                                     }
-                                    handleChange(field.key, newLangs.join(' '));
+                                    handleChange(field.key, newLangs.join(', '));
                                   }}
                                   style={{
                                     padding: '6px 14px',
@@ -1995,7 +2031,7 @@ export default function PersonalInfo({ onBack }) {
         @keyframes spin { to { transform: rotate(360deg); } }
         input::placeholder, textarea::placeholder {
           font-family: 'Outfit', sans-serif !important;
-          font-weight: 900 !important;
+          font-weight: 500 !important;
           color: #94a3b8 !important;
         }
       `}</style>

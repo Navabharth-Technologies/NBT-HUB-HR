@@ -20,7 +20,7 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '600', fontSize: '14px', minHeight: '100px', resize: 'vertical', outline: 'none' }}
+        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '800', color: '#0f172a', fontSize: '14px', minHeight: '100px', resize: 'vertical', outline: 'none' }}
       />
     ) : (
       <input
@@ -28,7 +28,7 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none' }}
+        style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '800', color: '#0f172a', fontSize: '14px', outline: 'none' }}
       />
     )}
   </div>
@@ -362,7 +362,7 @@ export default function JobPostings() {
                   <select 
                     value={form.type} 
                     onChange={(e) => setForm({...form, type: e.target.value})}
-                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '800', color: '#0f172a', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
                   >
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
@@ -375,7 +375,7 @@ export default function JobPostings() {
                   <select 
                     value={form.status} 
                     onChange={(e) => setForm({...form, status: e.target.value})}
-                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '600', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1.5px solid #000000', background: '#f8fafc', fontWeight: '800', color: '#0f172a', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
                   >
                     <option value="Open">Open</option>
                     <option value="Closed">Closed</option>

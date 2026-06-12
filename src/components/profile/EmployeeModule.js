@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +17,7 @@ export default function EmployeeModule() {
   const [loading, setLoading] = useState(true);
   const [selectedDept, setSelectedDept] = useState('Departments');
   const [winWidth, setWinWidth] = useState(window.innerWidth);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWinWidth(window.innerWidth);
@@ -163,26 +164,73 @@ export default function EmployeeModule() {
               }}
             />
           </div>
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="form-select"
-            style={{
-              width: winWidth < 600 ? '100%' : 'auto',
-              padding: winWidth < 480 ? '10px' : '12px',
-              fontSize: winWidth < 480 ? '13px' : '14px',
-              minWidth: '200px'
-            }}
-          >
-            <option value="Departments">All Roles</option>
-            <option value="Project Manager">Project Manager</option>
-            <option value="Lead Software Engineer">Lead Software Engineer</option>
-            <option value="Junior Software Engineer">Junior Software Engineer</option>
-            <option value="Marketing Team Lead">Marketing Team Lead</option>
-            <option value="Human Resource">Human Resource</option>
-            <option value="Technical Support Engineer">Technical Support Engineer</option>
-
-          </select>
+          {winWidth < 768 ? (
+            <div style={{ position: 'relative', width: '100%' }}>
+              <div
+                onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+                style={{
+                  width: '100%', padding: '12px 16px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                  backgroundColor: 'white', color: '#0B1E3F', fontSize: '14px', fontWeight: '800',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <span>{selectedDept === 'Departments' ? 'All Roles' : selectedDept}</span>
+                <ChevronDown size={14} color="#64748b" style={{ transform: mobileDropdownOpen ? 'rotate(180deg)' : 'none', transition: '0.2s', flexShrink: 0 }} />
+              </div>
+              {mobileDropdownOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
+                  backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px',
+                  maxHeight: '250px', overflowY: 'auto', zIndex: 10000, boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                }}>
+                  {[
+                    { val: 'Departments', label: 'All Roles' },
+                    { val: 'Project Manager', label: 'Project Manager' },
+                    { val: 'Lead Software Engineer', label: 'Lead Software Engineer' },
+                    { val: 'Junior Software Engineer', label: 'Junior Software Engineer' },
+                    { val: 'Marketing Team Lead', label: 'Marketing Team Lead' },
+                    { val: 'Human Resource', label: 'Human Resource' },
+                    { val: 'Technical Support Engineer', label: 'Technical Support Engineer' }
+                  ].map((role, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setSelectedDept(role.val);
+                        setMobileDropdownOpen(false);
+                      }}
+                      style={{
+                        padding: '12px 16px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', fontWeight: '700',
+                        color: '#0B1E3F', cursor: 'pointer', backgroundColor: selectedDept === role.val ? '#f8fafc' : 'white'
+                      }}
+                    >
+                      {role.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              className="form-select"
+              style={{
+                width: winWidth < 600 ? '100%' : 'auto',
+                padding: winWidth < 480 ? '10px' : '12px',
+                fontSize: winWidth < 480 ? '13px' : '14px',
+                minWidth: '200px'
+              }}
+            >
+              <option value="Departments">All Roles</option>
+              <option value="Project Manager">Project Manager</option>
+              <option value="Lead Software Engineer">Lead Software Engineer</option>
+              <option value="Junior Software Engineer">Junior Software Engineer</option>
+              <option value="Marketing Team Lead">Marketing Team Lead</option>
+              <option value="Human Resource">Human Resource</option>
+              <option value="Technical Support Engineer">Technical Support Engineer</option>
+            </select>
+          )}
         </div>
 
         {/* Employee Grid */}

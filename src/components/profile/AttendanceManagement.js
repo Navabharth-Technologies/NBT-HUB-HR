@@ -808,7 +808,7 @@ export default function AttendanceManagement() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text(`Generated: ${todayFormatted} | Period: ${dateRangeDisplay}`, 14, 30);
+    doc.text(`Generated: ${todayFormatted}`, 14, 30);
 
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);

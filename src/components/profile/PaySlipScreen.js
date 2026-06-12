@@ -194,7 +194,7 @@ export default function PaySlipScreen() {
                 <div style={{ border: '1.5px solid #e2e8f0', marginBottom: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1.5px solid #e2e8f0' }}>
                         <div style={{ padding: '12px 15px', borderRight: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>EMPCODE</span>
+                            <span style={{ fontSize: '11px', fontWeight: '950', color: '#475569' }}>EMPLOYEE ID</span>
                             <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{data.employee_id || ''}</span>
                         </div>
                         <div style={{ padding: '12px 15px', display: 'flex', justifyContent: 'space-between' }}>

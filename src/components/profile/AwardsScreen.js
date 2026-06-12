@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trophy, Star, Award, Zap, ArrowLeft, ShieldCheck, UserCheck, Flame, Edit, Trash2, Plus, Users, Search, ChevronRight, ChevronLeft, X, RefreshCw } from 'lucide-react';
+import { Trophy, Star, Award, Zap, ArrowLeft, ShieldCheck, UserCheck, Flame, Edit, Trash2, Plus, Users, Search, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
@@ -757,34 +757,24 @@ export default function AwardsScreen() {
                                 <ShieldCheck size={14} />
                                 Team Audit
                             </button>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #e2e8f0', width: winWidth < 480 ? '100%' : 'auto' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>From</span>
-                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
-                                </div>
-                                <div style={{ width: '1px', height: '15px', background: '#cbd5e1' }}></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>To</span>
-                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
+                            <div style={{ display: 'flex', gap: '12px', width: winWidth < 480 ? '100%' : 'auto' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>From</span>
+                                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
+                                    </div>
+                                    <div style={{ width: '1px', height: '15px', background: '#cbd5e1' }}></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>To</span>
+                                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: 'transparent', fontSize: '10px', fontWeight: '700', outline: 'none', width: '90px' }} />
+                                    </div>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => {
-                                    fetchInitialData();
-                                    fetchGrantedHistory();
-                                }}
-                                title="Refresh rewards for selected date range"
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0', width: '38px', height: '38px', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s ease', background: 'white', color: '#64748b', border: '1.5px solid #cbd5e1', flexShrink: 0 }}
-                                onMouseEnter={e => { e.currentTarget.style.color = '#3b82f6'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                            >
-                                <RefreshCw size={16} />
-                            </button>
                         </div>
                     </div>
 
-                    {/* â”€â”€ Top Banner â”€â”€ */}
-                    <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', borderRadius: '24px', padding: winWidth < 768 ? '30px 20px' : '30px 60px', display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : '1fr 1fr 1fr', gap: winWidth < 768 ? '30px' : '0', alignItems: 'center', boxShadow: '0 25px 50px -12px rgba(15,23,42,0.4)', marginBottom: '40px', position: 'relative', overflow: 'hidden' }}>
+                    {/* ── Top Banner ── */}
+                    <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', borderRadius: '24px', padding: winWidth < 768 ? '30px 20px' : '30px 60px', display: 'grid', gridTemplateColumns: winWidth < 768 ? '1fr' : '1fr 1fr 1fr', gap: winWidth < 768 ? '30px' : '0', alignItems: 'center', boxShadow: '0 25px 50px -12px rgba(15,23,42,0.4)', marginBottom: '40px', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
                         <div style={{ position: 'absolute', top: '-50%', left: '-10%', width: '40%', height: '200%', background: 'radial-gradient(circle, rgba(56,189,248,0.1) 0%, transparent 70%)', transform: 'rotate(-45deg)', opacity: 0.5 }}></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderRight: winWidth < 768 ? 'none' : '1.5px solid rgba(255,255,255,0.1)', borderBottom: winWidth < 768 ? '1.5px solid rgba(255,255,255,0.1)' : 'none', paddingBottom: winWidth < 768 ? '20px' : '0' }}>
                             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -812,10 +802,10 @@ export default function AwardsScreen() {
                         </div>
                     </div>
 
-                    {/* â”€â”€ AUDIT VIEW â”€â”€ */}
+                    {/* ── AUDIT VIEW ── */}
                     {view === 'audit' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px', alignItems: 'start' }}>
-                            <div style={{ background: '#f8fafc', borderRadius: '24px', padding: winWidth < 768 ? '15px' : '30px', border: '1.5px solid #f1f5f9' }}>
+                            <div style={{ background: '#f8fafc', borderRadius: '24px', padding: winWidth < 768 ? '15px' : '30px', border: '1.5px solid #f1f5f9', boxSizing: 'border-box' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#1e293b' }}>Team Recognition Audit</h3>
                                 </div>
@@ -905,7 +895,7 @@ export default function AwardsScreen() {
                         <div style={{ display: 'grid', gridTemplateColumns: winWidth < 1024 ? '1fr' : '480px 1fr', gap: '24px', alignItems: 'start' }}>
 
                             {/* LEFT: Grant Recognition */}
-                            <div style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 100%)', borderRadius: '24px', padding: winWidth < 768 ? '24px 20px' : '32px 28px', border: '1.5px solid rgba(255,255,255,0.07)', boxShadow: '0 20px 40px rgba(15,23,42,0.25)', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 100%)', borderRadius: '24px', padding: winWidth < 768 ? '24px 20px' : '32px 28px', border: '1.5px solid rgba(255,255,255,0.07)', boxShadow: '0 20px 40px rgba(15,23,42,0.25)', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
                                 <div style={{ position: 'absolute', top: '-60px', right: '-40px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
                                     <div style={{ background: 'rgba(250,204,21,0.15)', padding: '10px', borderRadius: '14px', border: '1px solid rgba(250,204,21,0.2)' }}>
@@ -998,7 +988,7 @@ export default function AwardsScreen() {
                             </div>
 
                             {/* RIGHT: Live Feed */}
-                            <div style={{ background: '#ffffff', borderRadius: '24px', padding: winWidth < 768 ? '20px' : '32px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+                            <div style={{ background: '#ffffff', borderRadius: '24px', padding: winWidth < 768 ? '20px' : '32px', border: '1.5px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', boxSizing: 'border-box' }}>
                                 {!selectedHistoryUser ? (
                                     <>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

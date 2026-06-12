@@ -23,6 +23,13 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import './HRDashboard.css';
 
+const formatToDDMMYYYY = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
 const getFullStatusText = (status, inTime, outTime, workHrs) => {
   let s = String(status || '').toUpperCase();
   const hasIn = inTime && inTime !== '----' && inTime !== '--:--';
@@ -181,12 +188,11 @@ export default function EmployeeAttendanceManagement() {
     const doc = new jsPDF('l', 'mm', 'a4');
     const filteredLogs = getFilteredLogs();
     const empName = employee?.name || 'Employee';
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const today = formatToDDMMYYYY(new Date());
 
     // Format the selected date range for display
     const formatDateDisplay = (dateStr) => {
-      if (!dateStr) return 'N/A';
-      return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return formatToDDMMYYYY(dateStr);
     };
     const dateRangeText = `${formatDateDisplay(startDate)}  →  ${formatDateDisplay(endDate)}`;
 
@@ -200,10 +206,6 @@ export default function EmployeeAttendanceManagement() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated: ${today}`, 14, 28);
-    // Date range in header
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184); // slate-400
-    doc.text(`Period: ${dateRangeText}`, 14, 38);
 
     // --- Employee Info ---
     doc.setTextColor(15, 23, 42);
@@ -217,7 +219,7 @@ export default function EmployeeAttendanceManagement() {
 
     // --- Table ---
     const tableData = filteredLogs.map(log => [
-      log.punch_date ? String(log.punch_date).split('T')[0].split(' ')[0] : 'N/A',
+      log.punch_date ? formatToDDMMYYYY(log.punch_date) : 'N/A',
       log.in_time || log.inTime || '----',
       log.out_time || log.outTime || '----',
       resolveWorkHrs(log),
@@ -271,7 +273,7 @@ export default function EmployeeAttendanceManagement() {
       return [
         empName,
         "'" + id,
-        pDate ? "'" + String(pDate).split('T')[0].split(' ')[0] : 'N/A',
+        pDate ? "'" + formatToDDMMYYYY(pDate) : 'N/A',
         pIn || '----',
         pOut || '----',
         resolveWorkHrs(log),
@@ -626,7 +628,7 @@ export default function EmployeeAttendanceManagement() {
                           </div>
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '950', color: '#1e293b' }}>
-                              {pDate ? new Date(pDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '----'}
+                              {pDate ? formatToDDMMYYYY(pDate) : '----'}
                             </div>
                             <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Attendance Log</div>
                           </div>
@@ -731,8 +733,9 @@ export default function EmployeeAttendanceManagement() {
                               const dateStr = String(pDate).split('T')[0].split(' ')[0];
                               const d = new Date(dateStr);
                               if (isNaN(d.getTime())) return dateStr;
+                              const displayDate = formatToDDMMYYYY(d);
                               const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-                              return `${dateStr} (${dayName})`;
+                              return `${displayDate} (${dayName})`;
                             })()}
                           </div>
                         </td>
