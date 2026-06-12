@@ -662,8 +662,9 @@ export default function ServiceCertificateUserScreen() {
                                                 </div>
                                                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {req.employee_id}</div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: '600' }}>
-                                                <Clock size={12} /> {formatDate(req.created_at)}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
+                                                <Clock size={13} color="#64748b" />
+                                                <span style={{ fontSize: '12px', fontWeight: '800' }}>{formatDate(req.created_at)}</span>
                                             </div>
                                         </div>
                                     )
