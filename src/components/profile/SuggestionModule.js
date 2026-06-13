@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
-import { ArrowLeft, Download, Calendar, X, ClipboardList, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, Calendar, X, ClipboardList, Lightbulb } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 import { jsPDF } from 'jspdf';
@@ -14,8 +14,23 @@ export default function SuggestionModule() {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const getSaturday = (offset) => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = day === 6 ? 0 : day + 1; // days since last Saturday
+    d.setDate(d.getDate() - diff + (offset * 7));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const currentSaturday = getSaturday(weekOffset);
+
+  const formatDisplayDate = (dateObj) => {
+    if (!dateObj) return 'N/A';
+    return dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   // Parse a date string like "22/5/2026" or "5/22/2026" or "22-05-2026" safely
   const parseDate = (dateStr) => {
@@ -45,21 +60,16 @@ export default function SuggestionModule() {
   };
 
   const filteredSubmissions = submissions.filter((s) => {
-    if (!fromDate && !toDate) return true;
     const d = parseDate(s.date);
-    if (!d) return true;
-    const from = fromDate ? new Date(fromDate) : null;
-    const to = toDate ? new Date(toDate) : null;
-    if (to) to.setHours(23, 59, 59, 999);
-    if (from && d < from) return false;
-    if (to && d > to) return false;
-    return true;
+    if (!d) return false;
+    
+    // Check if the suggestion date matches the current Saturday exactly
+    // Or if it falls within the week ending on that Saturday? 
+    // The user asked to "show only one date of saturday ... and by changing date it has to show previous saturday date"
+    // Usually, we filter by the exact Saturday string, but let's compare dates:
+    d.setHours(0,0,0,0);
+    return d.getTime() === currentSaturday.getTime();
   });
-
-  const clearFilter = () => {
-    setFromDate('');
-    setToDate('');
-  };
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -73,15 +83,14 @@ export default function SuggestionModule() {
     doc.setTextColor(100, 116, 139);
     doc.text(`Total Submissions: ${filteredSubmissions.length}`, 14, 30);
     doc.text(`Report Type: Suggestion Details`, 14, 36);
-    doc.text(`Generated on: ${new Date().toLocaleString('en-GB')}`, 14, 42);
+    const now = new Date();
+    const generatedStr = `${formatDisplayDate(now)}, ${now.toLocaleTimeString('en-GB')}`;
+    doc.text(`Generated on: ${generatedStr}`, 14, 42);
 
     let currentY = 50;
-    if (fromDate || toDate) {
-      const fromStr = fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : 'Start';
-      const toStr = toDate ? new Date(toDate).toLocaleDateString('en-GB') : 'Today';
-      doc.text(`Date Range: ${fromStr} to ${toStr}`, 14, 48);
-      currentY = 56;
-    }
+    const dateStr = formatDisplayDate(currentSaturday);
+    doc.text(`Suggestion Date: ${dateStr}`, 14, 48);
+    currentY = 56;
 
     const cleanText = (str) => {
       if (!str) return 'N/A';
@@ -93,13 +102,16 @@ export default function SuggestionModule() {
     };
 
     const tableColumn = ["Submitted By", "Emp ID / Team", "Date", "Suggestion Content", "Engagement"];
-    const tableRows = filteredSubmissions.map(s => [
-      cleanText(s.user),
-      cleanText(s.team),
-      cleanText(s.date),
-      cleanText(s.content),
-      cleanText(s.participation).toUpperCase()
-    ]);
+    const tableRows = filteredSubmissions.map(s => {
+      const d = parseDate(s.date);
+      return [
+        cleanText(s.user),
+        cleanText(s.team),
+        cleanText(d ? formatDisplayDate(d) : s.date),
+        cleanText(s.content),
+        cleanText(s.participation).toUpperCase()
+      ];
+    });
 
     autoTable(doc, {
       head: [tableColumn],
@@ -229,52 +241,34 @@ export default function SuggestionModule() {
           </div>
         </header>
 
-        {/* Date Filter Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '6px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>From</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: '800', color: '#1e293b', width: '130px', fontFamily: 'inherit', cursor: 'pointer' }}
-              />
-            </div>
-
-            <div style={{ width: '1.5px', height: '16px', background: '#e2e8f0' }}></div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>To</span>
-              <input
-                type="date"
-                value={toDate}
-                min={fromDate || ''}
-                onChange={(e) => setToDate(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: '800', color: '#1e293b', width: '130px', fontFamily: 'inherit', cursor: 'pointer' }}
-              />
-            </div>
-          </div>
-
-          {(fromDate || toDate) && (
-            <button
-              onClick={clearFilter}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                background: '#fef2f2', color: '#ef4444', border: '1.5px solid #fecaca',
-                borderRadius: '10px', padding: '7px 12px', fontSize: '12px', fontWeight: '800',
-                cursor: 'pointer', transition: 'all 0.2s', height: '36px'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-              onMouseOut={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}
+        {/* Weekly Navigation Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '8px 16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <button 
+              onClick={() => setWeekOffset(prev => prev - 1)} 
+              style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', transition: 'background 0.2s' }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#e2e8f0'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#f1f5f9'}
             >
-              <X size={13} /> Clear
+              <ArrowLeft size={16} color="#475569" />
             </button>
-          )}
+            <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', minWidth: '120px', textAlign: 'center' }}>
+              {formatDisplayDate(currentSaturday)}
+            </span>
+            <button 
+              onClick={() => setWeekOffset(prev => prev + 1)} 
+              disabled={weekOffset >= 0} 
+              style={{ background: weekOffset >= 0 ? '#f8fafc' : '#f1f5f9', border: 'none', borderRadius: '8px', cursor: weekOffset >= 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', transition: 'background 0.2s', opacity: weekOffset >= 0 ? 0.4 : 1 }}
+              onMouseOver={(e) => { if (weekOffset < 0) e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseOut={(e) => { if (weekOffset < 0) e.currentTarget.style.background = '#f1f5f9'; }}
+            >
+              <ArrowRight size={16} color="#475569" />
+            </button>
+          </div>
 
           {/* Result count */}
           <span style={{
-            marginLeft: 'auto', fontSize: '12px', fontWeight: '800',
+            fontSize: '12px', fontWeight: '800',
             color: '#64748b', background: '#f1f5f9', padding: '6px 14px',
             borderRadius: '20px'
           }}>
@@ -294,14 +288,14 @@ export default function SuggestionModule() {
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--white)', borderRadius: '20px', border: '1px dashed var(--border)' }}>
                 <Calendar size={32} style={{ marginBottom: '12px', opacity: 0.4 }} />
                 <p style={{ fontWeight: '800' }}>
-                  {submissions.length === 0 ? 'No submissions found.' : 'No submissions found for the selected date range.'}
+                  {submissions.length === 0 ? 'No submissions found.' : 'No submissions found for the selected date.'}
                 </p>
-                {(fromDate || toDate) && (
+                {weekOffset !== 0 && (
                   <button
-                    onClick={clearFilter}
+                    onClick={() => setWeekOffset(0)}
                     style={{ marginTop: '12px', background: '#315A9E', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
                   >
-                    Clear Filter
+                    Go to Recent Saturday
                   </button>
                 )}
               </div>
@@ -318,10 +312,15 @@ export default function SuggestionModule() {
                   gap: '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                 }}>
-                  {/* Date Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '800', fontSize: '13px' }}>
-                    <Calendar size={14} color="#1e293b" />
-                    {s.date}
+                  {/* Header: Date and Employee */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontWeight: '700', fontSize: '13px' }}>
+                      <span>{s.user} {s.team !== 'N/A' && `(${s.team})`}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '800', fontSize: '13px' }}>
+                      <Calendar size={14} color="#1e293b" />
+                      {formatDisplayDate(parseDate(s.date)) || s.date}
+                    </div>
                   </div>
 
                   {/* Requirement Block */}
