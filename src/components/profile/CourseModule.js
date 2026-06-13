@@ -292,9 +292,7 @@ export default function CourseModule() {
                   )}
                   <p className="course-card-description" style={{ color: 'var(--text-muted)' }}>{c.description || 'No description provided.'}</p>
 
-                  <div style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Calendar size={12} /> Deadline: {formatDate(c.deadline) || 'No deadline'}
-                  </div>
+
 
 
 
@@ -349,21 +347,15 @@ export default function CourseModule() {
                     <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Brief summary of the policy guidelines and compliance requirements..." rows="3" className="form-textarea" style={{ fontFamily: 'Outfit, sans-serif' }} />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>CATEGORY</label>
-                      <select name="category" value={formData.category} onChange={handleInputChange} className="form-select">
-                        <option>Technical</option>
-                        <option>Policy</option>
-                        <option>Soft Skills</option>
-                        <option>Leadership</option>
-                        <option>Compliance</option>
-                      </select>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>DEADLINE</label>
-                      <input type="date" name="deadline" value={formData.deadline} onChange={handleInputChange} required className="form-input" />
-                    </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>CATEGORY</label>
+                    <select name="category" value={formData.category} onChange={handleInputChange} className="form-select">
+                      <option>Technical</option>
+                      <option>Policy</option>
+                      <option>Soft Skills</option>
+                      <option>Leadership</option>
+                      <option>Compliance</option>
+                    </select>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

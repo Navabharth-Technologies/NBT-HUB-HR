@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
-import { ArrowLeft, Download, Calendar, X } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, X, ClipboardList, Lightbulb } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 import { jsPDF } from 'jspdf';
@@ -238,7 +238,7 @@ export default function SuggestionModule() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: '800', color: '#1e293b', width: '95px', textAlign: 'right', cursor: 'pointer' }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: '800', color: '#1e293b', width: '130px', fontFamily: 'inherit', cursor: 'pointer' }}
               />
             </div>
 
@@ -251,7 +251,7 @@ export default function SuggestionModule() {
                 value={toDate}
                 min={fromDate || ''}
                 onChange={(e) => setToDate(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: '800', color: '#1e293b', width: '95px', textAlign: 'right', cursor: 'pointer' }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: '800', color: '#1e293b', width: '130px', fontFamily: 'inherit', cursor: 'pointer' }}
               />
             </div>
           </div>
@@ -307,47 +307,52 @@ export default function SuggestionModule() {
               </div>
             ) : (
               filteredSubmissions.map((s, i) => (
-                <div key={i} className="team-card" style={{ padding: '24px', borderLeft: '4px solid var(--primary)', cursor: 'default' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '45px', height: '45px', borderRadius: '8px', backgroundColor: '#fff', border: '2px solid #e2e8f0', padding: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '16px', fontWeight: '900', color: '#315A9E', position: 'relative' }}>
-                        {(() => {
-                          const isEmpId = /^\d+$/.test(String(s.team).trim());
-                          const finalPicUrl = s.profile_pic ? (s.profile_pic.startsWith('http') || s.profile_pic.startsWith('data:') ? s.profile_pic : `${BASE_URL}${s.profile_pic.startsWith('/') ? '' : '/'}${s.profile_pic}`) : (isEmpId ? `${BASE_URL}/api/users/${String(s.team).trim()}/photo` : null);
-                          return (
-                            <>
-                              {finalPicUrl && (
-                                <img
-                                  src={finalPicUrl}
-                                  alt="User"
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', position: 'absolute', top: 0, left: 0 }}
-                                  onLoad={(e) => { if (e.target.nextSibling) e.target.nextSibling.style.display = 'none'; }}
-                                  onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                              )}
-                              <span>
-                                {s.user.charAt(0)}
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: '800', color: 'var(--secondary)', fontSize: '15px', display: 'block' }}>{s.user}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>from <strong style={{ color: 'var(--primary)' }}>{s.team}</strong></span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', fontWeight: '700' }}>{s.date}</span>
+                <div key={i} style={{ 
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderTop: '4px solid #f59e0b',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                }}>
+                  {/* Date Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '800', fontSize: '13px' }}>
+                    <Calendar size={14} color="#1e293b" />
+                    {s.date}
                   </div>
-                  <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', background: 'var(--bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: '600' }}>
-                    {s.content}
-                  </p>
-                  <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Note:</span>
-                      <span style={{ fontSize: '10px', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '12px', fontWeight: '800' }}>
-                        {s.participation}
-                      </span>
+
+                  {/* Requirement Block */}
+                  <div style={{
+                    background: '#f0f9ff',
+                    border: '1px solid #e0f2fe',
+                    borderRadius: '10px',
+                    padding: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6', fontSize: '11px', fontWeight: '900', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <ClipboardList size={14} />
+                      Requirement
+                    </div>
+                    <div style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', lineHeight: '1.5' }}>
+                      {s.participation}
+                    </div>
+                  </div>
+
+                  {/* Suggestion Block */}
+                  <div style={{
+                    background: '#fffbeb',
+                    border: '1px solid #fef3c7',
+                    borderRadius: '10px',
+                    padding: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#d97706', fontSize: '11px', fontWeight: '900', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <Lightbulb size={14} />
+                      Suggestion
+                    </div>
+                    <div style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', lineHeight: '1.5' }}>
+                      {s.content}
                     </div>
                   </div>
                 </div>

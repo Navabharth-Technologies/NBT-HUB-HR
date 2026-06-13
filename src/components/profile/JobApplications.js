@@ -7,7 +7,7 @@ import { API_ENDPOINTS, BASE_URL } from '../../config';
 import {
   Briefcase, Search, Plus, X, Save, Eye, CheckCircle,
   XCircle, Clock, User, Mail, Phone, FileText, Calendar,
-  MapPin, ChevronDown, Filter, Download, ClipboardList, Edit3, ArrowLeft,
+  MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Download, ClipboardList, Edit3, ArrowLeft,
   Upload, Trash2
 } from 'lucide-react';
 
@@ -239,6 +239,14 @@ export default function JobApplications() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const scrollContainerRef = React.useRef(null);
+  const handleScroll = (direction) => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 200;
+      scrollContainerRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const fetchApplications = async () => {
     if (!user?.token) return;
@@ -598,53 +606,77 @@ export default function JobApplications() {
           </div>
         </div>
 
-        <div className="custom-scroll" style={{
-          display: 'flex',
-          background: 'rgba(255, 255, 255, 0.5)',
-          padding: '4px',
-          borderRadius: '20px',
-          marginBottom: '25px',
-          width: '100%',
-          maxWidth: 'fit-content',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
-          overflowX: 'auto',
-          msOverflowStyle: 'none',
-          scrollbarWidth: 'none',
-          whiteSpace: 'nowrap'
-        }}>
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
+        <div style={{ position: 'relative', width: '100%', marginBottom: '25px' }}>
+          {winWidth < 768 && (
+            <div 
+              onClick={() => handleScroll('left')}
               style={{
-                padding: winWidth < 768 ? '8px 14px' : '10px 20px',
-                borderRadius: '16px',
-                border: 'none',
-                background: filterStatus === status ? '#514e4eff' : 'transparent',
-                color: filterStatus === status ? '#f2fbfaff' : '#64748b',
-                fontWeight: '800',
-                fontSize: winWidth < 768 ? '12px' : '13px',
-                cursor: 'pointer',
-                boxShadow: filterStatus === status ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-                transition: '0.3s all',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                flexShrink: 0
-              }}
-            >
-              {status}
-              <span style={{
-                background: filterStatus === status ? '#2f7b7615' : '#f1f5f9',
-                color: filterStatus === status ? '#f2e6e6ff' : '#64748b',
-                padding: '1px 6px',
-                borderRadius: '8px',
-                fontSize: '10px',
-                fontWeight: '900'
-              }}>{count}</span>
-            </button>
-          ))}
+              position: 'absolute', left: 0, top: 0, bottom: 0, width: '35px',
+              background: 'linear-gradient(to right, #eaeff2 40%, transparent)',
+              zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+              cursor: 'pointer', borderRadius: '20px 0 0 20px'
+            }}>
+              <ChevronLeft size={18} color="#475569" style={{ marginLeft: '4px' }} />
+            </div>
+          )}
+          <div ref={scrollContainerRef} className="custom-scroll" style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.5)',
+            padding: '4px',
+            borderRadius: '20px',
+            width: '100%',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+            overflowX: 'auto',
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
+            whiteSpace: 'nowrap'
+          }}>
+            {Object.entries(statusCounts).map(([status, count]) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                style={{
+                  padding: winWidth < 768 ? '8px 14px' : '10px 20px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  background: filterStatus === status ? '#514e4eff' : 'transparent',
+                  color: filterStatus === status ? '#f2fbfaff' : '#64748b',
+                  fontWeight: '800',
+                  fontSize: winWidth < 768 ? '12px' : '13px',
+                  cursor: 'pointer',
+                  boxShadow: filterStatus === status ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                  transition: '0.3s all',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  flexShrink: 0
+                }}
+              >
+                {status}
+                <span style={{
+                  background: filterStatus === status ? '#2f7b7615' : '#f1f5f9',
+                  color: filterStatus === status ? '#f2e6e6ff' : '#64748b',
+                  padding: '1px 6px',
+                  borderRadius: '8px',
+                  fontSize: '10px',
+                  fontWeight: '900'
+                }}>{count}</span>
+              </button>
+            ))}
+          </div>
+          {winWidth < 768 && (
+            <div 
+              onClick={() => handleScroll('right')}
+              style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: '35px',
+              background: 'linear-gradient(to left, #eaeff2 40%, transparent)',
+              zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+              cursor: 'pointer', borderRadius: '0 20px 20px 0'
+            }}>
+              <ChevronRight size={18} color="#475569" style={{ marginRight: '4px' }} />
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '30px' }}>
