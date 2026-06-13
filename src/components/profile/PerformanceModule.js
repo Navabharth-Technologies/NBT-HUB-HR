@@ -726,7 +726,11 @@ export default function PerformanceModule() {
                   <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', alignItems: 'center', gap: '12px' }}>
                     <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{user?.name || 'Sahana Nv'}</h1>
                     <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Fingerprint size={12} /> ID: {user?.employee_id || '202516'}
+                      <Fingerprint size={12} /> ID: {(() => {
+                        const idStr = String(user?.employee_id || '202516');
+                        const match = idStr.match(/^(\d{5,6})\1+/);
+                        return match ? match[1] : (idStr.length >= 10 ? idStr.substring(0, 6) : idStr);
+                      })()}
                     </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', alignItems: winWidth < 768 ? 'center' : 'flex-start', gap: winWidth < 768 ? '12px' : '40px', marginTop: '20px' }}>

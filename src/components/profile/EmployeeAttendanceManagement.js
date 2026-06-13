@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { cleanEmpId } from '../../utils/cleanId';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -215,7 +216,7 @@ export default function EmployeeAttendanceManagement() {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(`Employee ID: #${id}  |  Total Records: ${filteredLogs.length}  |  Date Range: ${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`, 14, 68);
+    doc.text(`Employee ID: #${cleanEmpId(id)}  |  Total Records: ${filteredLogs.length}  |  Date Range: ${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`, 14, 68);
 
     // --- Table ---
     const tableData = filteredLogs.map(log => [
@@ -496,7 +497,7 @@ export default function EmployeeAttendanceManagement() {
                 {employee?.name || 'Employee'}
               </h1>
               <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ID: <span style={{ color: '#0f172a' }}>#{id}</span> • <span style={{ color: '#10b981' }}>Verified</span>
+                ID: <span style={{ color: '#0f172a' }}>#{cleanEmpId(id)}</span> • <span style={{ color: '#10b981' }}>Verified</span>
               </p>
             </div>
           </div>
@@ -720,7 +721,7 @@ export default function EmployeeAttendanceManagement() {
                             </div>
                             <div>
                               <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>{employee?.name || log.user_name || 'Individual Employee'}</div>
-                              <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {id || '00000'}</div>
+                              <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {cleanEmpId(id) || '00000'}</div>
                             </div>
                           </div>
                         </td>
@@ -827,3 +828,4 @@ export default function EmployeeAttendanceManagement() {
     </div>
   );
 }
+

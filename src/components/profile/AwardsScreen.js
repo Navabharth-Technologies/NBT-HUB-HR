@@ -6,6 +6,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
 
+import { cleanEmpId } from '../../utils/cleanId';
 const parsePoints = (val) => {
     if (val === undefined || val === null) return 0;
     if (typeof val === 'number') return val;
@@ -321,7 +322,7 @@ export default function AwardsScreen() {
                         const dateStr = item.created_at || item.completion_date || item.date || null;
                         const dateKey = dateStr ? getLocalDateString(dateStr) : null;
                         // Use a per-day key for dated entries; skip undated cumulative overrides
-                        const uniqueKey = dateKey ? `${empId}-${dateKey}` : `${empId}-cumulative`;
+                        const uniqueKey = dateKey ? `${cleanEmpId(empId)}-${dateKey}` : `${cleanEmpId(empId)}-cumulative`;
                         if (!mergedMap.has(uniqueKey) || score > parsePoints((mergedMap.get(uniqueKey) || {}).points || 0)) {
                             mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: dateStr });
                         }
@@ -335,7 +336,7 @@ export default function AwardsScreen() {
                         const score = parsePoints(item.total_score || item.points || item.quiz_score || item.score || 0);
                         const dateStr = item.created_at || item.completion_date || item.date || null;
                         const dateKey = dateStr ? getLocalDateString(dateStr) : null;
-                        const uniqueKey = dateKey ? `${empId}-${dateKey}` : `${empId}-cumulative`;
+                        const uniqueKey = dateKey ? `${cleanEmpId(empId)}-${dateKey}` : `${cleanEmpId(empId)}-cumulative`;
                         if (!mergedMap.has(uniqueKey) || score > parsePoints((mergedMap.get(uniqueKey) || {}).points || 0)) {
                             mergedMap.set(uniqueKey, { ...item, employee_id: empId, points: score, created_at: dateStr });
                         }
@@ -848,7 +849,7 @@ export default function AwardsScreen() {
                                                                 </div>
                                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                                         <div style={{ fontSize: winWidth < 768 ? '13px' : '14px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolveEmployeeName(r.employee_id)}</div>
-                                                                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Employee ID: {r.employee_id}</div>
+                                                                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Employee ID: {cleanEmpId(r.employee_id)}</div>
                                                                 </div>
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1041,7 +1042,7 @@ export default function AwardsScreen() {
                                                     const displayRank = currentRank;
                                                     
                                                     return (
-                                                        <div key={empId} onClick={() => setSelectedHistoryUser(empId)}
+                                                        <div key={cleanEmpId(empId)} onClick={() => setSelectedHistoryUser(empId)}
                                                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: winWidth < 768 ? '14px' : '16px 20px', borderRadius: '16px', background: isTop3 ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' : '#f8fafc', border: `1.5px solid ${isTop3 ? '#fde68a' : '#f1f5f9'}`, transition: 'all 0.2s ease' }}
                                                             onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'; }}
                                                             onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
@@ -1210,3 +1211,4 @@ export default function AwardsScreen() {
         </div>
     );
 }
+

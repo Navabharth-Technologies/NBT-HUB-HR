@@ -4,6 +4,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, Send, LogOut, Clock, AlertCircle, Calendar, X, User, ExternalLink, ChevronDown
 } from 'lucide-react';
@@ -466,7 +467,7 @@ export default function ResignationUserScreen() {
                                             </div>
                                             <div style={{ marginTop: 'auto' }}>
                                                 <div style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginBottom: '2px' }}>{req.employee_name || 'Employee'}</div>
-                                                <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {req.employee_id}</div>
+                                                <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>ID: {cleanEmpId(req.employee_id)}</div>
                                             </div>
                                             <div style={{ paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
@@ -599,3 +600,4 @@ export default function ResignationUserScreen() {
         </div>
     );
 }
+

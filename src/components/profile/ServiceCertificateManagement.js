@@ -4,6 +4,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
     ExternalLink, Search, Filter, MoreHorizontal,
@@ -250,7 +251,7 @@ export default function ServiceCertificateManagement() {
 
                                         <div style={{ marginBottom: '16px' }}>
                                             <div style={{ fontSize: '16px', fontWeight: '950', color: '#0f172a', marginBottom: '2px' }}>{req.employee_name || req.name || 'User'}</div>
-                                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800' }}>ID: {req.employee_id}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '800' }}>ID: {cleanEmpId(req.employee_id)}</div>
                                         </div>
 
                                         <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', marginBottom: '16px' }}>
@@ -457,3 +458,4 @@ export default function ServiceCertificateManagement() {
         </div>
     );
 }
+

@@ -5,6 +5,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN, BASE_URL } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
   Users, Briefcase,
   ChevronRight, ArrowRight, User, CheckSquare, Hourglass, Sparkles,
@@ -750,7 +751,7 @@ export default function HRDashboard() {
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '14px', fontWeight: '850', color: '#1e293b' }}>{late.name}</div>
-                        <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: '700' }}>ID: {late.id}</div>
+                        <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: '700' }}>ID: {cleanEmpId(late.id)}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '13px', fontWeight: '900', color: '#7e22ce' }}>{late.time}</div>
@@ -1029,3 +1030,4 @@ export default function HRDashboard() {
     </div>
   );
 }
+

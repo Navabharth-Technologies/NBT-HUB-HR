@@ -10,6 +10,7 @@ import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 
+import { cleanEmpId } from '../../utils/cleanId';
 const parseLogDate = (log) => {
   const rawDate = log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '';
   if (!rawDate) return '';
@@ -224,7 +225,7 @@ export default function AttendanceManagement() {
 
     setIsPunchFetching(true);
     try {
-      const url = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${targetDate}&endDate=${targetDate}&user_id=${empId}`;
+      const url = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${targetDate}&endDate=${targetDate}&user_id=${cleanEmpId(empId)}`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${user?.token}` }
       });
@@ -313,7 +314,7 @@ export default function AttendanceManagement() {
 
     setIsPunchFetching(true);
     try {
-      const url = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${targetDate}&endDate=${targetDate}&user_id=${empId}`;
+      const url = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?startDate=${targetDate}&endDate=${targetDate}&user_id=${cleanEmpId(empId)}`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${user?.token}` }
       });
@@ -1922,7 +1923,7 @@ export default function AttendanceManagement() {
                               </div>
                               <div>
                                 <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
-                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `\u00B7 ${logDate}` : ''}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{cleanEmpId(empId)} {logDate ? `\u00B7 ${logDate}` : ''}</div>
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
@@ -2011,7 +2012,7 @@ export default function AttendanceManagement() {
                               </div>
                               <div>
                                 <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
-                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `\u00B7 ${logDate}` : ''}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{cleanEmpId(empId)} {logDate ? `\u00B7 ${logDate}` : ''}</div>
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
@@ -2087,7 +2088,7 @@ export default function AttendanceManagement() {
                               </div>
                               <div>
                                 <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{emp?.name || log?.user_name || 'Unknown'}</div>
-                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{empId} {logDate ? `\u00B7 ${logDate}` : ''}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ID: #{cleanEmpId(empId)} {logDate ? `\u00B7 ${logDate}` : ''}</div>
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
@@ -2225,3 +2226,4 @@ export default function AttendanceManagement() {
     </div>
   );
 }
+

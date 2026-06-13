@@ -4,6 +4,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
   Package, Search, Edit3, Save, X, Plus, ChevronRight,
   Laptop, MousePointer, Keyboard, Smartphone,
@@ -1222,7 +1223,7 @@ export default function AssetsManagement() {
                           {(() => {
                             const empId = emp.id || emp.EmpID;
                             const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                            const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                            const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${cleanEmpId(empId)}/photo`;
                             return (
                               <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                 <img
@@ -1240,7 +1241,7 @@ export default function AssetsManagement() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: '900', fontSize: '15px', color: '#1e293b' }}>{emp.name}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ID: {emp.id || emp.EmpID}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ID: {cleanEmpId(emp.id || emp.EmpID)}</div>
                         </div>
                         <div style={{ padding: '4px 12px', borderRadius: '100px', fontSize: '10px', fontWeight: '900', background: hasAsset ? '#f0fdf4' : '#eff6ff', color: hasAsset ? '#16a34a' : '#2563eb', border: `1px solid ${hasAsset ? '#bbf7d0' : '#dbeafe'}` }}>
                           {hasAsset ? 'CONFIGURED' : 'PENDING'}
@@ -1297,7 +1298,7 @@ export default function AssetsManagement() {
                                   {(() => {
                                     const empId = emp.id || emp.EmpID;
                                     const pic = emp.profile_picture || emp.profile_pic || emp.photo;
-                                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${empId}/photo`;
+                                    const photoUrl = pic ? (pic.startsWith('http') || pic.startsWith('data:') ? pic : `${BASE_URL}${pic.startsWith('/') ? '' : '/'}${pic}`) : `${BASE_URL}/api/users/${cleanEmpId(empId)}/photo`;
                                     return (
                                       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                                         <img
@@ -1315,7 +1316,7 @@ export default function AssetsManagement() {
                                 </div>
                                 <div style={{ overflow: 'hidden' }}>
                                   <div style={{ fontWeight: '800', fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
-                                  <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {emp.id || emp.EmpID}</div>
+                                  <div style={{ fontSize: '11px', color: '#64748b' }}>ID: {cleanEmpId(emp.id || emp.EmpID)}</div>
                                 </div>
                               </div>
                             </td>
@@ -1818,7 +1819,7 @@ export default function AssetsManagement() {
                             {empName}
                           </div>
                           <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
-                            ID: {empId}
+                            ID: {cleanEmpId(empId)}
                           </div>
                         </div>
                       </div>
@@ -1875,3 +1876,4 @@ export default function AssetsManagement() {
     </div>
   );
 }
+

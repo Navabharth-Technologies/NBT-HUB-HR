@@ -3,6 +3,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useThread } from '../../context/ThreadContext';
 import { useAuth } from '../../context/AuthContext';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
     Heart, MessageSquare, Award, Smile,
     Send, MoreHorizontal, User, Share2, Cake, Gift, Plus, ChevronLeft,
@@ -549,7 +550,7 @@ export default function ThreadScreen() {
                                     <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: '1000', color: '#0B1E3F', letterSpacing: '-0.3px' }}>{userProfiles[uid]?.name || post.user_name || post.userName || post.user || 'Collaborator'}</div>
                                     <div style={{ fontSize: isMobile ? '9px' : '10px', color: '#315A9E', fontWeight: '900', textTransform: 'uppercase', marginTop: '2px', letterSpacing: '0.5px' }}>
                                         {userProfiles[uid]?.role || post.role || 'Member'} •
-                                        {(post.emp_id || post.empId || uid) && ` ID: ${post.emp_id || post.empId || uid} • `}
+                                        {(post.emp_id || post.empId || uid) && ` ID: ${cleanEmpId(post.emp_id || post.empId || uid)} • `}
                                         {formatTime(ts)}
                                     </div>
                                 </div>

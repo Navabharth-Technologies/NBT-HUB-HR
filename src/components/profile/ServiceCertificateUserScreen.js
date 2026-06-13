@@ -4,6 +4,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
     Download, Plus, Search, Filter, AlertCircle, X, XCircle,
@@ -664,7 +665,7 @@ export default function ServiceCertificateUserScreen() {
                                                     </div>
                                                     <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155' }}>{req.employee_name || req.name || employeeNames[req.employee_id] || 'Employee'}</span>
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {req.employee_id}</div>
+                                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {cleanEmpId(req.employee_id)}</div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
                                                 <Clock size={13} color="#64748b" />
@@ -951,7 +952,7 @@ export default function ServiceCertificateUserScreen() {
                                             <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Professional Asset Declaration</h2>
                                             <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                                                 <p style={{ margin: 0, color: '#64748b', fontSize: '13px', fontWeight: '700' }}>
-                                                    {assetData?.employee_name || assetData?.name || employeeNames[assetData?.employee_id] || 'Employee'} (ID: {assetData?.employee_id})
+                                                    {assetData?.employee_name || assetData?.name || employeeNames[assetData?.employee_id] || 'Employee'} (ID: {cleanEmpId(assetData?.employee_id)})
                                                 </p>
                                             </div>
                                         </div>
@@ -1059,3 +1060,4 @@ export default function ServiceCertificateUserScreen() {
         </div>
     );
 }
+

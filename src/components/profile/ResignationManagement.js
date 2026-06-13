@@ -4,6 +4,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
+import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, FileText,
     Search, AlertCircle,
@@ -396,7 +397,7 @@ export default function ResignationManagement() {
                                     <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '10px', marginBottom: '10px' }}>
                                         <span style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8' }}>FROM:</span>
                                         <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>
-                                            {selectedRequest.employee_name} <span style={{ color: '#94a3b8', fontWeight: '600' }}>(ID: {selectedRequest.employee_id})</span>
+                                            {selectedRequest.employee_name} <span style={{ color: '#94a3b8', fontWeight: '600' }}>(ID: {cleanEmpId(selectedRequest.employee_id)})</span>
                                         </span>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -518,3 +519,4 @@ export default function ResignationManagement() {
         </div>
     );
 }
+
