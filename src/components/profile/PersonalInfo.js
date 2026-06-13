@@ -30,9 +30,9 @@ const SECTIONS = [
       { key: 'blood_group', label: 'Blood Group', type: 'text', required: true },
       { key: 'marital_status', label: 'Marital Status', type: 'select', options: ['Single', 'Married'] },
       { key: 'father_husband_name', label: "Father/Husband's Name", type: 'text' },
-      { key: 'pan_number', label: 'PAN Number', type: 'text', placeholder: 'E.g ABCDE1234R', required: true },
+      { key: 'pan_number', label: 'PAN Number', type: 'text', placeholder: 'EG: ABCDE1234R', required: true },
       { key: 'pancard_photo', label: 'PAN Card Proof', type: 'file', required: true },
-      { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: 'E.g 123456789012', required: true },
+      { key: 'aadhar_number', label: 'Aadhar Number', type: 'text', placeholder: 'EG: 123456789012', required: true },
       { key: 'adharcard_photo', label: 'Aadhar Card Proof', type: 'file', required: true },
     ]
   },
@@ -262,8 +262,8 @@ export default function PersonalInfo({ onBack }) {
           if (res.ok) {
             const data = await res.json();
             if (data && (data.BRANCH || data.branch)) {
-              setForm(prev => ({ 
-                ...prev, 
+              setForm(prev => ({
+                ...prev,
                 bank_branch: data.BRANCH || data.branch || prev.bank_branch,
                 bank_name: data.BANK || data.bank || prev.bank_name
               }));
@@ -1553,9 +1553,9 @@ export default function PersonalInfo({ onBack }) {
                           {isSelfMode
                             ? `My Profile (${user?.name || 'Self'})`
                             : (() => {
-                                const sel = employees.find(e => (e.employee_id || e.id) == selectedEmpId);
-                                return sel ? `${sel.name || sel.emp_name} (${sel.employee_id || sel.id})` : 'Select Employee';
-                              })()
+                              const sel = employees.find(e => (e.employee_id || e.id) == selectedEmpId);
+                              return sel ? `${sel.name || sel.emp_name} (${sel.employee_id || sel.id})` : 'Select Employee';
+                            })()
                           }
                         </span>
                       </div>

@@ -7,7 +7,7 @@ import SuggestionModule from './components/profile/SuggestionModule';
 import EngagementModule from './components/profile/EngagementModule';
 import EmployeeModule from './components/profile/EmployeeModule';
 import NewJoineeModule from './components/profile/NewJoineeModule';
-import LoginScreen from './components/profile/LoginScreen';
+
 import AlertScreen from './components/profile/AlertScreen';
 import BirthdayScreen from './components/profile/BirthdayScreen';
 import HolidayScreen from './components/profile/HolidayScreen';
@@ -48,11 +48,8 @@ function AppRoutes() {
   if (loading) return null; // Prevent flicker and redirect on refresh
 
   if (!user) {
-    return (
-      <Routes>
-        <Route path="*" element={<LoginScreen />} />
-      </Routes>
-    );
+    window.location.href = '/';
+    return null;
   }
 
   return (
