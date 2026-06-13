@@ -1681,8 +1681,8 @@ export default function AssetsManagement() {
                     </button>
                     {(() => {
                       const isFormValid = isAddAll 
-                        ? (form.laptop_details && form.laptop_details.trim() !== '') 
-                        : (form.employee_id && form.employee_id.trim() !== '' && form.employee_name && form.employee_name.trim() !== '' && form.designation && form.designation.trim() !== '' && form.laptop_details && form.laptop_details.trim() !== '');
+                        ? (form.laptop_details && String(form.laptop_details).trim() !== '') 
+                        : (form.employee_id && String(form.employee_id).trim() !== '' && form.employee_name && String(form.employee_name).trim() !== '' && form.designation && String(form.designation).trim() !== '' && form.laptop_details && String(form.laptop_details).trim() !== '');
                       return (
                         <button
                           onClick={handleSave}
