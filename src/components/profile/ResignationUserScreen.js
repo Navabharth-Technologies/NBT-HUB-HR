@@ -329,7 +329,7 @@ export default function ResignationUserScreen() {
                                             {user?.name || 'Employee'}
                                         </div>
                                         <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: '700', color: '#64748b' }}>
-                                            ID: {user?.employee_id || user?.id || '—'}
+                                            ID: {cleanEmpId(user?.employee_id || user?.id) || '—'}
                                         </div>
                                     </div>
                                     <span style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '4px' }}>TO</span>

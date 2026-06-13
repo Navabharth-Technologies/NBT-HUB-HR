@@ -458,7 +458,7 @@ export default function ServiceCertificateUserScreen() {
                                     <div>
                                         <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>EMPLOYEE ID</label>
                                         <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#166534', border: '1px solid #dcfce7' }}>
-                                            {user?.employee_id || user?.id || '202351'}
+                                            {cleanEmpId(user?.employee_id || user?.id) || '202351'}
                                         </div>
                                     </div>
                                 </div>
