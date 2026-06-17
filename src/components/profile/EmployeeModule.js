@@ -30,15 +30,15 @@ export default function EmployeeModule() {
     const fetchEmployees = async () => {
       if (!user?.token) return;
       try {
-        const response = await fetch(API_ENDPOINTS.EMPLOYEES, {
+        const response = await fetch(API_ENDPOINTS.USERS, {
           headers: { 'Authorization': `Bearer ${user.token}` }
         });
         if (response.ok) {
           const data = await response.json();
-          let parsedData = Array.isArray(data) ? data : (data?.data || []);
-          const activeOnly = filterActiveEmployees(parsedData);
-          const filtered = activeOnly.filter(emp => String(emp.id || emp.EmpID || '').trim() !== '20250');
-          setEmployees(filtered);
+          const rawUsers = Array.isArray(data) ? data : (data?.data || []);
+          const filtered = rawUsers.filter(emp => String(emp.employee_id || emp.id || emp.EmpID || '').trim() !== '20250');
+          const activeOnly = filterActiveEmployees(filtered);
+          setEmployees(activeOnly);
         }
       } catch (err) {
         console.error('Employee fetch error:', err);

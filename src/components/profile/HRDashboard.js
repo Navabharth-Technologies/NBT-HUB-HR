@@ -810,7 +810,9 @@ export default function HRDashboard() {
                   </div>
                   <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: '#94a3b8' }}>Weekly Challenge</span>
                 </div>
-                <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px' }}>{challengeData.title} 🏆</h3>
+                <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {challengeData.title} <Trophy size={22} color="#f59e0b" />
+                </h3>
 
                 {challengeData.topParticipants && challengeData.topParticipants.length > 0 && challengeData.topParticipants[0].score !== undefined ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '5px' }}>
