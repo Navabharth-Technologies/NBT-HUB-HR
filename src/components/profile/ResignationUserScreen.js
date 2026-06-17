@@ -95,8 +95,26 @@ export default function ResignationUserScreen() {
                             const empData = await empRes.json();
                             const empMap = {};
                             const employees = Array.isArray(empData) ? empData : (empData.data || []);
+                            let defaultHrName = 'HR Team';
+                            let defaultPmName = 'Project Manager';
+                            let usersMap = {};
+
                             if (Array.isArray(employees)) {
-                                employees.forEach(e => empMap[String(e.id || e.employee_id)] = e);
+                                employees.forEach(e => {
+                                    empMap[String(e.id || e.employee_id)] = e;
+                                    usersMap[e.id || e.employee_id] = e.name || e.username;
+                                });
+
+                                let hrUser = employees.find(u => (u.role||'').toLowerCase() === 'hr' || (u.designation||'').toLowerCase() === 'hr');
+                                if (!hrUser) hrUser = employees.find(u => (u.role||'').toLowerCase().includes('hr') || (u.designation||'').toLowerCase().includes('hr'));
+                                if (!hrUser) hrUser = employees.find(u => (u.role||'').toLowerCase().includes('human') || (u.designation||'').toLowerCase().includes('human'));
+                                if (!hrUser) hrUser = employees.find(u => (u.role||'').toLowerCase().includes('admin'));
+                                if (hrUser) defaultHrName = hrUser.name || hrUser.username;
+
+                                let pmUser = employees.find(u => (u.role||'').toLowerCase() === 'pm' || (u.designation||'').toLowerCase() === 'pm');
+                                if (!pmUser) pmUser = employees.find(u => (u.role||'').toLowerCase().includes('pm') || (u.designation||'').toLowerCase().includes('pm'));
+                                if (!pmUser) pmUser = employees.find(u => (u.role||'').toLowerCase().includes('project manager') || (u.designation||'').toLowerCase().includes('project manager'));
+                                if (pmUser) defaultPmName = pmUser.name || pmUser.username;
                             }
                             
                             if (profRes.ok) {
@@ -118,7 +136,9 @@ export default function ResignationUserScreen() {
                                 return {
                                     ...r,
                                     employee_name: r.employee_name || emp?.name || 'Employee',
-                                    profile_picture: pic
+                                    profile_picture: pic,
+                                    hr_name: usersMap[r.hr_id] || r.hr_name || defaultHrName,
+                                    pm_name: usersMap[r.pm_id] || usersMap[r.project_manager_id] || r.pm_name || r.project_manager_name || defaultPmName
                                 };
                             });
                         }
@@ -564,7 +584,31 @@ export default function ResignationUserScreen() {
                                         Sincerely,<br />
                                         <span style={{ fontWeight: '900', color: '#0f172a', fontSize: winWidth < 768 ? '14px' : '16px' }}>{selectedRequest.employee_name}</span>
                                     </p>
-                                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #f1f5f9' }}>
+
+                                    {/* Official Verification */}
+                                    <div style={{ marginTop: '30px', paddingTop: '20px', paddingBottom: '20px', borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>Official Verification</div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 500 ? '1fr' : '1fr 1fr', gap: '16px' }}>
+                                            <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}><strong style={{ color: '#0f172a', fontWeight: '950' }}>HR APPROVAL</strong> (<strong style={{ color: '#0f172a', fontWeight: '950' }}>{String(selectedRequest.hr_name || '').toUpperCase()}</strong>)</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '14px', fontWeight: '800', color: selectedRequest.hr_status === 'Approved' ? '#16a34a' : selectedRequest.hr_status === 'Rejected' ? '#dc2626' : '#d97706' }}>
+                                                        {selectedRequest.hr_status || 'Pending'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}><strong style={{ color: '#0f172a', fontWeight: '950' }}>PM APPROVAL</strong> (<strong style={{ color: '#0f172a', fontWeight: '950' }}>{String(selectedRequest.pm_name || '').toUpperCase()}</strong>)</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '14px', fontWeight: '800', color: selectedRequest.pm_status === 'Approved' ? '#16a34a' : selectedRequest.pm_status === 'Rejected' ? '#dc2626' : '#d97706' }}>
+                                                        {selectedRequest.pm_status || 'Pending'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: 'none' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                             <button
                                                 disabled={updating}

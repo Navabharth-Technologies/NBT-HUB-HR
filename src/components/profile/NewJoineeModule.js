@@ -448,11 +448,14 @@ export default function NewJoineeModule() {
     } : {
       name: formData.name,
       role: formData.role,
+      email: formData.email_id,
       emailId: formData.email_id,
+      email_id: formData.email_id,
+      personal_email: formData.email_id,
+      password: 'NBT@' + (generatedEmpId || '123'),
       joiningDate: toISODate(formData.joining_date),
       joining_date: toISODate(formData.joining_date),
       courseCompletion: 0,
-      email_id: formData.email_id,
       employee_id: generatedEmpId,
       employeeId: generatedEmpId,
       emp_id: generatedEmpId,
@@ -461,7 +464,7 @@ export default function NewJoineeModule() {
       internId: generatedEmpId,
       status: 'Active',
       phone_number: formData.phone_number,
-      duration: formData.duration !== undefined && formData.duration !== null ? String(formData.duration) : '',
+      duration: formData.duration ? parseInt(formData.duration, 10) : 0,
       hired_by: originalJoinee?.hired_by || 'HR',
       color: ['#312e81', '#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b'][Math.floor(Math.random() * 5)]
     };
@@ -491,11 +494,15 @@ export default function NewJoineeModule() {
         setFormData({ name: '', email_id: '', role: '', joining_date: '', employee_id: '', reporting_manager: '', phone_number: '', duration: '', is_intern: false });
         fetchJoinees();
       } else {
-        const errData = await response.json().catch(() => ({}));
-        setToastMessage(errData.message || `Failed to ${editingId ? 'update' : 'add'} ${isIntern ? 'intern' : 'joinee'}. Status: ${response.status}`);
+        const errText = await response.text().catch(() => '');
+        console.error('API Error Response:', response.status, errText);
+        let errData = {};
+        try { errData = JSON.parse(errText); } catch(e){}
+        const errMsg = errData.message || errData.error || errText || `Failed to add. Status: ${response.status}`;
+        setToastMessage(`Error: ${errMsg}`);
         setToastType('error');
         setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 4000);
+        setTimeout(() => setShowSuccessToast(false), 8000);
       }
     } catch (err) {
       console.error('Enrollment error:', err);

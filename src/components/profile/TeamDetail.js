@@ -5,6 +5,7 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { filterActiveEmployees } from '../../utils/employeeUtils';
 import './Dashboard.css';
 
 export default function TeamDetail() {
@@ -41,13 +42,20 @@ export default function TeamDetail() {
             }).then(r => r.ok ? r.json() : []).catch(() => []);
 
             let roleMap = {};
-            const usersList = Array.isArray(usersData) ? usersData : (usersData.users || usersData.data || []);
-            usersList.forEach(u => {
+            const parsedUsers = Array.isArray(usersData) ? usersData : (usersData.users || usersData.data || []);
+            const activeUsers = filterActiveEmployees(parsedUsers);
+            const activeUserNames = new Set(activeUsers.map(u => String(u.name || '').toLowerCase().trim()));
+
+            activeUsers.forEach(u => {
               if (u.name) roleMap[u.name.toLowerCase()] = u.role;
             });
 
             const rawMembers = Array.isArray(found.membersList) ? found.membersList : (Array.isArray(found.members) ? found.members : []);
-            const enrichedMembers = rawMembers.map(m => ({
+            
+            // Only keep members who are active employees
+            const activeMembers = rawMembers.filter(m => activeUserNames.has(String(m.name || '').toLowerCase().trim()));
+
+            const enrichedMembers = activeMembers.map(m => ({
               ...m,
               role: roleMap[String(m.name || '').toLowerCase()] || m.role || 'Member'
             }));

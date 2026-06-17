@@ -109,7 +109,7 @@ export default function TicketManagement() {
       case 'resolved':
       case 'closed':
         return { bg: '#f0fdf4', text: '#166534', border: '#bcf0da', icon: <CheckCircle size={14} /> };
-      case 'in progress':
+      case '':
         return { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', icon: <Clock size={14} /> };
       case 'open':
       case 'pending':

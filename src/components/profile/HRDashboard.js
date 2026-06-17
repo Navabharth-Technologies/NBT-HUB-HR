@@ -13,6 +13,7 @@ import {
   FileText
 } from 'lucide-react';
 import './Dashboard.css';
+import { filterActiveEmployees } from '../../utils/employeeUtils';
 
 const parseLogDate = (log) => {
   const rawDate = log?.punch_date || log?.PunchDate || log?.date || log?.created_at || '';
@@ -119,12 +120,15 @@ export default function HRDashboard() {
       if (usersRes.ok) {
         const uData = await usersRes.json();
         const rawUsers = Array.isArray(uData) ? uData : (uData?.data || []);
-        currentUsers = rawUsers.filter(u => String(u.employee_id || u.id || u.empId || '').trim() !== '20250');
-        setEmployeesCount(currentUsers.length);
-        currentUsers.forEach(u => {
+        const allParsedUsers = rawUsers.filter(u => String(u.employee_id || u.id || u.empId || '').trim() !== '20250');
+        
+        allParsedUsers.forEach(u => {
           const uid = String(u.id || u.empId || u.employee_id || '').trim();
           if (uid) userLookup[uid] = u.name;
         });
+
+        currentUsers = filterActiveEmployees(allParsedUsers);
+        setEmployeesCount(currentUsers.length);
       }
     } catch (e) {
       console.error('Error fetching users:', e);
@@ -228,7 +232,7 @@ export default function HRDashboard() {
             return new Date(s);
           };
 
-          const processed = bList.map(emp => {
+          const processed = filterActiveEmployees(bList).map(emp => {
             const dob = parseDate(emp.dob || emp.birthday || emp.date || emp.date_of_birth || emp.birthday_date);
             let displayDate = 'N/A';
             if (!isNaN(dob.getTime())) {
@@ -774,8 +778,15 @@ export default function HRDashboard() {
             style={{ animationDelay: '0.3s', cursor: 'pointer' }}
             onClick={() => navigate('/fun-quiz')}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 className="section-title"><Sparkles size={20} color="#3863a8" /> Fun and Quiz</h2>
+            <div style={{
+              display: 'flex',
+              flexDirection: winWidth < 640 ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: winWidth < 640 ? 'stretch' : 'center',
+              marginBottom: '20px',
+              gap: '12px'
+            }}>
+              <h2 className="section-title" style={{ margin: 0 }}><Sparkles size={20} color="#3863a8" /> Fun and Quiz</h2>
               <button
                 className="btn-view-all btn-blue"
                 onClick={(e) => { e.stopPropagation(); navigate('/fun-quiz'); }}

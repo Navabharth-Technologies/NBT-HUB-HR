@@ -56,9 +56,10 @@ export default function ResignationManagement() {
         if (!user?.token) return;
         try {
             setLoading(true);
-            const [resResignations, resEmployees] = await Promise.all([
+            const [resResignations, resEmployees, resUsers] = await Promise.all([
                 fetch(API_ENDPOINTS.RESIGNATIONS_GET, { headers: { 'Authorization': `Bearer ${user.token}` } }),
-                fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user.token}` } })
+                fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user.token}` } }),
+                fetch(API_ENDPOINTS.USERS, { headers: { 'Authorization': `Bearer ${user.token}` } })
             ]);
 
             let emplMap = {};
@@ -68,6 +69,29 @@ export default function ResignationManagement() {
                     empData.forEach(e => {
                         emplMap[e.id || e.employee_id] = e;
                     });
+                }
+            }
+
+            let usersMap = {};
+            let defaultHrName = 'HR Team';
+            let defaultPmName = 'Project Manager';
+            if (resUsers?.ok) {
+                const usersData = await resUsers.json();
+                if (Array.isArray(usersData)) {
+                    usersData.forEach(u => {
+                        usersMap[u.id || u.employee_id] = u.name || u.username;
+                    });
+                    
+                    let hrUser = usersData.find(u => (u.role||'').toLowerCase() === 'hr' || (u.designation||'').toLowerCase() === 'hr');
+                    if (!hrUser) hrUser = usersData.find(u => (u.role||'').toLowerCase().includes('hr') || (u.designation||'').toLowerCase().includes('hr'));
+                    if (!hrUser) hrUser = usersData.find(u => (u.role||'').toLowerCase().includes('human') || (u.designation||'').toLowerCase().includes('human'));
+                    if (!hrUser) hrUser = usersData.find(u => (u.role||'').toLowerCase().includes('admin'));
+                    if (hrUser) defaultHrName = hrUser.name || hrUser.username;
+
+                    let pmUser = usersData.find(u => (u.role||'').toLowerCase() === 'pm' || (u.designation||'').toLowerCase() === 'pm');
+                    if (!pmUser) pmUser = usersData.find(u => (u.role||'').toLowerCase().includes('pm') || (u.designation||'').toLowerCase().includes('pm'));
+                    if (!pmUser) pmUser = usersData.find(u => (u.role||'').toLowerCase().includes('project manager') || (u.designation||'').toLowerCase().includes('project manager'));
+                    if (pmUser) defaultPmName = pmUser.name || pmUser.username;
                 }
             }
 
@@ -85,7 +109,9 @@ export default function ResignationManagement() {
                         return {
                             ...req,
                             employee_name: emp ? emp.name : req.employee_name || 'User',
-                            designation: emp ? (emp.role || emp.designation) : req.designation || req.role
+                            designation: emp ? (emp.role || emp.designation) : req.designation || req.role,
+                            hr_name: usersMap[req.hr_id] || req.hr_name || defaultHrName,
+                            pm_name: usersMap[req.pm_id] || usersMap[req.project_manager_id] || req.pm_name || req.project_manager_name || defaultPmName
                         };
                     });
                     setRequests(mergedData);
@@ -115,13 +141,23 @@ export default function ResignationManagement() {
 
         try {
             setUpdating(true);
+            
+            // Determine role to update hr_status or pm_status respectively
+            const r = String(user?.role || user?.designation || '').toLowerCase();
+            const isHR = r.includes('hr') || r.includes('human resource') || r.includes('admin');
+            const isPM = r.includes('pm') || r.includes('project manager') || r.includes('ceo') || r.includes('manager');
+
+            const payload = { ...updatePayload };
+            if (isHR) payload.hr_status = updatePayload.status;
+            if (isPM) payload.pm_status = updatePayload.status;
+
             const res = await fetch(API_ENDPOINTS.RESIGNATION_UPDATE(selectedRequest.id), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify(updatePayload)
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
@@ -441,6 +477,29 @@ export default function ResignationManagement() {
                                     Sincerely,<br />
                                     <span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedRequest.employee_name}</span>
                                 </p>
+
+                                {/* Official Verification */}
+                                <div style={{ marginTop: '30px', paddingTop: '20px', paddingBottom: '20px', borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '16px' }}>Official Verification</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                        <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}><strong style={{ color: '#0f172a', fontWeight: '950' }}>HR APPROVAL</strong> (<strong style={{ color: '#0f172a', fontWeight: '950' }}>{String(selectedRequest.hr_name || '').toUpperCase()}</strong>)</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: '800', color: selectedRequest.hr_status === 'Approved' ? '#16a34a' : selectedRequest.hr_status === 'Rejected' ? '#dc2626' : '#d97706' }}>
+                                                    {selectedRequest.hr_status || 'Pending'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}><strong style={{ color: '#0f172a', fontWeight: '950' }}>PM APPROVAL</strong> (<strong style={{ color: '#0f172a', fontWeight: '950' }}>{String(selectedRequest.pm_name || '').toUpperCase()}</strong>)</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: '800', color: selectedRequest.pm_status === 'Approved' ? '#16a34a' : selectedRequest.pm_status === 'Rejected' ? '#dc2626' : '#d97706' }}>
+                                                    {selectedRequest.pm_status || 'Pending'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gap: '20px' }}>

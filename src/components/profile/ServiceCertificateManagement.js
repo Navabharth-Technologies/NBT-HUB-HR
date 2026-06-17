@@ -91,17 +91,25 @@ export default function ServiceCertificateManagement() {
     const quickStatusUpdate = async (id, newStatus) => {
         if (!user?.token) return;
         try {
+            // Optimistically update local state immediately so badge flips right away
+            setRequests(prev => prev.map(r => r.id === id ? { ...r, pm_status: newStatus } : r));
             const res = await fetch(API_ENDPOINTS.SERVICE_CERTIFICATE_UPDATE(id), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user.token}`
                 },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({ pm_status: newStatus })
             });
-            if (res.ok) fetchRequests();
+            if (res.ok) {
+                fetchRequests();
+            } else {
+                // Revert optimistic update on failure
+                fetchRequests();
+            }
         } catch (error) {
             console.error('Quick update error:', error);
+            fetchRequests();
         }
     };
 
@@ -142,7 +150,7 @@ export default function ServiceCertificateManagement() {
             case 'approved': return { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' };
             case 'pending': return { bg: '#fffbeb', text: '#d97706', border: '#fef3c7' };
             case 'rejected': return { bg: '#fef2f2', text: '#dc2626', border: '#fee2e2' };
-            default: return { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' };
+            default: return { bg: '#fffbeb', text: '#d97706', border: '#fef3c7' };
         }
     };
 
@@ -206,7 +214,15 @@ export default function ServiceCertificateManagement() {
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
                             {filteredRequests.map(req => {
-                                const statusStyle = getStatusColor(req.status);
+                                // pm_status is the PM decision column; fall back to status if not present
+                                const pmStatus = req.pm_status || req.status || 'Pending';
+                                const pmStatusLower = pmStatus.toLowerCase();
+                                const isApproved = pmStatusLower === 'approved';
+                                const isRejected = pmStatusLower === 'rejected';
+                                const isDecided = isApproved || isRejected;
+
+                                const pmStatusStyle = getStatusColor(pmStatus);
+                                const submissionStatusStyle = getStatusColor(req.status);
 
                                 return (
                                     <div
@@ -214,7 +230,7 @@ export default function ServiceCertificateManagement() {
                                         onClick={() => handleOpenReview(req)}
                                         style={{
                                             borderRadius: '24px',
-                                            border: '1.5px solid #f1f5f9',
+                                            border: `1.5px solid ${isApproved ? '#bbf7d0' : isRejected ? '#fee2e2' : '#f1f5f9'}`,
                                             background: 'white',
                                             padding: '24px',
                                             cursor: 'pointer',
@@ -226,26 +242,26 @@ export default function ServiceCertificateManagement() {
                                         onMouseOver={e => {
                                             e.currentTarget.style.transform = 'translateY(-5px)';
                                             e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.08)';
-                                            e.currentTarget.style.borderColor = '#3b82f640';
                                         }}
                                         onMouseOut={e => {
                                             e.currentTarget.style.transform = 'translateY(0)';
                                             e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.02)';
-                                            e.currentTarget.style.borderColor = '#f1f5f9';
                                         }}
                                     >
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: statusStyle.text }} />
+                                        {/* Left colored strip — reflects PM decision */}
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '5px', height: '100%', background: pmStatusStyle.text, borderRadius: '24px 0 0 24px' }} />
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                             <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 <User color="#64748b" size={20} />
                                             </div>
+                                            {/* PM Status Badge — this is the main status shown */}
                                             <span style={{
-                                                background: statusStyle.bg, color: statusStyle.text,
-                                                border: `1px solid ${statusStyle.border}`,
+                                                background: pmStatusStyle.bg, color: pmStatusStyle.text,
+                                                border: `1px solid ${pmStatusStyle.border}`,
                                                 padding: '4px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '950', textTransform: 'uppercase'
                                             }}>
-                                                {req.status || 'Pending'}
+                                                {pmStatus}
                                             </span>
                                         </div>
 
@@ -261,27 +277,49 @@ export default function ServiceCertificateManagement() {
                                             </div>
                                         </div>
 
-                                        {/* Direct Action Buttons */}
-                                        {req.status === 'Pending' && (
-                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); quickStatusUpdate(req.id, 'Approved'); }}
-                                                    style={{ flex: 1, background: '#22c55e', color: 'white', border: 'none', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(34, 197, 94, 0.2)' }}
-                                                    onMouseOver={e => e.currentTarget.style.background = '#16a34a'}
-                                                    onMouseOut={e => e.currentTarget.style.background = '#22c55e'}
-                                                >
-                                                    Approve
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); quickStatusUpdate(req.id, 'Rejected'); }}
-                                                    style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', padding: '10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}
-                                                    onMouseOver={e => e.currentTarget.style.background = '#dc2626'}
-                                                    onMouseOut={e => e.currentTarget.style.background = '#ef4444'}
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
-                                        )}
+                                        {/* Action Buttons — always shown, disabled once decided */}
+                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); if (!isDecided) quickStatusUpdate(req.id, 'Approved'); }}
+                                                disabled={isDecided}
+                                                style={{
+                                                    flex: 1,
+                                                    background: isApproved ? '#22c55e' : isDecided ? '#f1f5f9' : '#22c55e',
+                                                    color: isDecided && !isApproved ? '#94a3b8' : 'white',
+                                                    border: 'none',
+                                                    padding: '10px',
+                                                    borderRadius: '12px',
+                                                    fontSize: '12px',
+                                                    fontWeight: '900',
+                                                    cursor: isDecided ? 'not-allowed' : 'pointer',
+                                                    transition: '0.2s',
+                                                    boxShadow: isDecided ? 'none' : '0 4px 10px rgba(34, 197, 94, 0.2)',
+                                                    opacity: isDecided && !isApproved ? 0.5 : 1
+                                                }}
+                                            >
+                                                {isApproved ? '✓ Approved' : 'Approve'}
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); if (!isDecided) quickStatusUpdate(req.id, 'Rejected'); }}
+                                                disabled={isDecided}
+                                                style={{
+                                                    flex: 1,
+                                                    background: isRejected ? '#ef4444' : isDecided ? '#f1f5f9' : '#ef4444',
+                                                    color: isDecided && !isRejected ? '#94a3b8' : 'white',
+                                                    border: 'none',
+                                                    padding: '10px',
+                                                    borderRadius: '12px',
+                                                    fontSize: '12px',
+                                                    fontWeight: '900',
+                                                    cursor: isDecided ? 'not-allowed' : 'pointer',
+                                                    transition: '0.2s',
+                                                    boxShadow: isDecided ? 'none' : '0 4px 10px rgba(239, 68, 68, 0.2)',
+                                                    opacity: isDecided && !isRejected ? 0.5 : 1
+                                                }}
+                                            >
+                                                {isRejected ? '✗ Rejected' : 'Reject'}
+                                            </button>
+                                        </div>
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

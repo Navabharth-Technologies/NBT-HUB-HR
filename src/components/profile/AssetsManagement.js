@@ -216,6 +216,10 @@ export default function AssetsManagement() {
             ...(existingAsset || c),
             employee_name: c.employee_name || c.name || existingAsset?.employee_name || 'Certificate Employee',
             employee_id: id,
+            // Certificate DB row ID - ensures approve/reject PUT hits the right record
+            cert_id: c.id || existingAsset?.cert_id,
+            // Store cert approval status separately so asset record's status never overwrites it
+            cert_status: c.status || existingAsset?.cert_status || 'Pending',
             laptop_details: hasExistingAsset
               ? (existingAsset.laptop_details || c.laptop_details || c.laptop_unit_details)
               : (c.laptop_details || c.laptop_unit_details),
@@ -1741,10 +1745,12 @@ export default function AssetsManagement() {
                 Object.values(assets).filter(a => a.is_from_certificate).map((asset, i) => {
                   const empName = asset.employee_name || asset.name || 'Unknown';
                   const empId = asset.employee_id || asset.EmpID || asset.id;
-                  const status = asset.status || 'PENDING';
-                  const isAudit = status.toUpperCase().includes('AUDIT');
-                  const badgeColor = isAudit ? '#ef4444' : '#f59e0b';
-                  const badgeBg = isAudit ? '#fef2f2' : '#fffbeb';
+                  const certStatus = (asset.cert_status || 'Pending').toLowerCase();
+                  const isApproved = certStatus === 'approved';
+                  const isRejected = certStatus === 'rejected';
+                  const badgeColor = isApproved ? '#16a34a' : isRejected ? '#dc2626' : '#f59e0b';
+                  const badgeBg = isApproved ? '#f0fdf4' : isRejected ? '#fef2f2' : '#fffbeb';
+                  const badgeLabel = isApproved ? 'APPROVED' : isRejected ? 'REJECTED' : 'PENDING';
 
                   // Construct a dummy employee object for handleEdit
                   const empObj = {
@@ -1799,7 +1805,7 @@ export default function AssetsManagement() {
                           borderRadius: '6px',
                           letterSpacing: '0.5px'
                         }}>
-                          {status.toUpperCase()}
+                          {badgeLabel}
                         </span>
                         <div style={{ color: '#cbd5e1' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>

@@ -35,7 +35,7 @@ export default function SuggestionModule() {
   // Parse a date string like "22/5/2026" or "5/22/2026" or "22-05-2026" safely
   const parseDate = (dateStr) => {
     if (!dateStr || dateStr === 'Today') return new Date();
-    
+
     const parts = dateStr.includes('-') ? dateStr.split('-') : dateStr.split('/');
     if (parts.length === 3) {
       if (parts[0].length === 4) {
@@ -62,12 +62,12 @@ export default function SuggestionModule() {
   const filteredSubmissions = submissions.filter((s) => {
     const d = parseDate(s.date);
     if (!d) return false;
-    
+
     // Check if the suggestion date matches the current Saturday exactly
     // Or if it falls within the week ending on that Saturday? 
     // The user asked to "show only one date of saturday ... and by changing date it has to show previous saturday date"
     // Usually, we filter by the exact Saturday string, but let's compare dates:
-    d.setHours(0,0,0,0);
+    d.setHours(0, 0, 0, 0);
     return d.getTime() === currentSaturday.getTime();
   });
 
@@ -244,8 +244,8 @@ export default function SuggestionModule() {
         {/* Weekly Navigation Bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '8px 16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <button 
-              onClick={() => setWeekOffset(prev => prev - 1)} 
+            <button
+              onClick={() => setWeekOffset(prev => prev - 1)}
               style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', transition: 'background 0.2s' }}
               onMouseOver={(e) => e.currentTarget.style.background = '#e2e8f0'}
               onMouseOut={(e) => e.currentTarget.style.background = '#f1f5f9'}
@@ -255,9 +255,9 @@ export default function SuggestionModule() {
             <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', minWidth: '120px', textAlign: 'center' }}>
               {formatDisplayDate(currentSaturday)}
             </span>
-            <button 
-              onClick={() => setWeekOffset(prev => prev + 1)} 
-              disabled={weekOffset >= 0} 
+            <button
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              disabled={weekOffset >= 0}
               style={{ background: weekOffset >= 0 ? '#f8fafc' : '#f1f5f9', border: 'none', borderRadius: '8px', cursor: weekOffset >= 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', transition: 'background 0.2s', opacity: weekOffset >= 0 ? 0.4 : 1 }}
               onMouseOver={(e) => { if (weekOffset < 0) e.currentTarget.style.background = '#e2e8f0'; }}
               onMouseOut={(e) => { if (weekOffset < 0) e.currentTarget.style.background = '#f1f5f9'; }}
@@ -301,7 +301,7 @@ export default function SuggestionModule() {
               </div>
             ) : (
               filteredSubmissions.map((s, i) => (
-                <div key={i} style={{ 
+                <div key={i} style={{
                   background: '#fff',
                   border: '1px solid #e2e8f0',
                   borderTop: '4px solid #f59e0b',

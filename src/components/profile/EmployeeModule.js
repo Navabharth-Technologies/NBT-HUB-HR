@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { API_ENDPOINTS } from '../../config';
+import { filterActiveEmployees } from '../../utils/employeeUtils';
 import './Dashboard.css';
 
 export default function EmployeeModule() {
@@ -34,7 +35,9 @@ export default function EmployeeModule() {
         });
         if (response.ok) {
           const data = await response.json();
-          const filtered = Array.isArray(data) ? data.filter(emp => String(emp.id || emp.EmpID || '').trim() !== '20250') : [];
+          let parsedData = Array.isArray(data) ? data : (data?.data || []);
+          const activeOnly = filterActiveEmployees(parsedData);
+          const filtered = activeOnly.filter(emp => String(emp.id || emp.EmpID || '').trim() !== '20250');
           setEmployees(filtered);
         }
       } catch (err) {

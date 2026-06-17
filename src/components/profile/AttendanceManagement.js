@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext';
 
 import { API_ENDPOINTS, TEAM_OFFICE_AUTH_TOKEN } from '../../config';
+import { filterActiveEmployees } from '../../utils/employeeUtils';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 
@@ -457,8 +458,10 @@ export default function AttendanceManagement() {
       })
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
-            const filtered = data.filter(emp => String(emp.employee_id || emp.id || '').trim() !== '20250');
+          let parsedData = Array.isArray(data) ? data : (data?.data || []);
+          const activeOnly = filterActiveEmployees(parsedData);
+          if (Array.isArray(activeOnly)) {
+            const filtered = activeOnly.filter(emp => String(emp.employee_id || emp.id || '').trim() !== '20250');
             const sorted = [...filtered].sort((a, b) => {
               const idA = parseInt(String(a.employee_id || a.id || '').replace(/[^\d]/g, ''), 10) || 0;
               const idB = parseInt(String(b.employee_id || b.id || '').replace(/[^\d]/g, ''), 10) || 0;
@@ -1010,25 +1013,25 @@ export default function AttendanceManagement() {
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexDirection: winWidth < 640 ? 'column' : 'row' }}>
                 <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '4px 14px', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', height: '44px', width: winWidth < 640 ? '100%' : 'auto', justifyContent: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>From</span>
                     <input
                       type="date"
                       value={fromDate}
                       onChange={(e) => setFromDate(e.target.value)}
-                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '90px', textAlign: 'right' }}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '90px', cursor: 'pointer' }}
                     />
                   </div>
 
                   <div style={{ width: '1.5px', height: '16px', background: '#e2e8f0' }}></div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>To</span>
                     <input
                       type="date"
                       value={toDate}
                       onChange={(e) => setToDate(e.target.value)}
-                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '90px', textAlign: 'right' }}
+                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', fontWeight: '800', color: '#1e293b', width: '90px', cursor: 'pointer' }}
                     />
                   </div>
                 </div>
