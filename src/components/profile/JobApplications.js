@@ -608,14 +608,14 @@ export default function JobApplications() {
 
         <div style={{ position: 'relative', width: '100%', marginBottom: '25px' }}>
           {winWidth < 768 && (
-            <div 
+            <div
               onClick={() => handleScroll('left')}
               style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0, width: '35px',
-              background: 'linear-gradient(to right, #eaeff2 40%, transparent)',
-              zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-              cursor: 'pointer', borderRadius: '20px 0 0 20px'
-            }}>
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: '35px',
+                background: 'linear-gradient(to right, #eaeff2 40%, transparent)',
+                zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                cursor: 'pointer', borderRadius: '20px 0 0 20px'
+              }}>
               <ChevronLeft size={18} color="#475569" style={{ marginLeft: '4px' }} />
             </div>
           )}
@@ -666,14 +666,14 @@ export default function JobApplications() {
             ))}
           </div>
           {winWidth < 768 && (
-            <div 
+            <div
               onClick={() => handleScroll('right')}
               style={{
-              position: 'absolute', right: 0, top: 0, bottom: 0, width: '35px',
-              background: 'linear-gradient(to left, #eaeff2 40%, transparent)',
-              zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-              cursor: 'pointer', borderRadius: '0 20px 20px 0'
-            }}>
+                position: 'absolute', right: 0, top: 0, bottom: 0, width: '35px',
+                background: 'linear-gradient(to left, #eaeff2 40%, transparent)',
+                zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                cursor: 'pointer', borderRadius: '0 20px 20px 0'
+              }}>
               <ChevronRight size={18} color="#475569" style={{ marginRight: '4px' }} />
             </div>
           )}
@@ -684,7 +684,7 @@ export default function JobApplications() {
             <Search size={20} style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               type="text"
-              placeholder="Search by name, position or department..."
+              placeholder="Search by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{

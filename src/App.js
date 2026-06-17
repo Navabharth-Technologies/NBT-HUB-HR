@@ -34,6 +34,7 @@ import AssetsManagement from './components/profile/AssetsManagement';
 import JobApplications from './components/profile/JobApplications';
 import JobPostings from './components/profile/JobPostings';
 import MyLeaves from './components/profile/MyLeaves';
+import LoginScreen from './components/profile/LoginScreen';
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
@@ -48,8 +49,21 @@ function AppRoutes() {
   if (loading) return null; // Prevent flicker and redirect on refresh
 
   if (!user) {
-    window.location.href = '/';
-    return null;
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.hostname.startsWith('192.168.') ||
+                    window.location.hostname.startsWith('10.') ||
+                    window.location.hostname.startsWith('172.');
+    if (isLocal) {
+      return (
+        <Routes>
+          <Route path="*" element={<LoginScreen />} />
+        </Routes>
+      );
+    } else {
+      window.location.href = '/';
+      return null;
+    }
   }
 
   return (
