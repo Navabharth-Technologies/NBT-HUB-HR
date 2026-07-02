@@ -35,7 +35,11 @@ export default function AppHeader() {
       const userRole = user?.role?.toLowerCase() || '';
       const isAdmin = ['admin', 'manager', 'lead', 'teamleader', 'ceo', 'hr'].includes(userRole);
       const token = localStorage.getItem('token') || user?.token;
-      
+
+      if (token && (userRole.includes('hr') || userRole.includes('human resource') || String(user?.email || '').toLowerCase().includes('hr@navabharath'))) {
+        document.cookie = `hr_token=${token}; path=/; max-age=86400`;
+      }
+
       if (!token) {
         setFetchedRole(user?.role || user?.Role || '');
         return;
@@ -83,7 +87,7 @@ export default function AppHeader() {
       }
     };
     fetchUserData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.employee_id, user?.id, user?.token]);
 
   const styles = {
@@ -146,7 +150,7 @@ export default function AppHeader() {
         </div>
       </div>
 
-      <div 
+      <div
         onClick={handleLogoClick}
         style={{ ...styles.center, cursor: 'pointer' }}
       >
@@ -172,8 +176,7 @@ export default function AppHeader() {
 
         {/* User Info moved here */}
         <div style={{ display: winWidth < 600 ? 'none' : 'block', textAlign: 'right', lineHeight: '1.2' }}>
-          <div style={styles.userName}>{user?.name || 'NBT User'}</div>
-          <div style={styles.designation}>{fetchedRole || theme.label}</div>
+          <div style={styles.userName}>HR Team</div>
         </div>
 
         <div style={{ position: 'relative', width: winWidth < 768 ? '48px' : '64px', height: winWidth < 768 ? '48px' : '64px' }}>

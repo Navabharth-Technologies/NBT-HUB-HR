@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../config';
 import { cleanEmpId } from '../../utils/cleanId';
 import {
-    ArrowLeft, FileText,
+    ArrowLeft, FileText, Calendar,
     Search, AlertCircle,
     LogOut
 } from 'lucide-react';
@@ -29,6 +29,34 @@ export default function ResignationManagement() {
         hr_remark: ''
     });
     const [updating, setUpdating] = useState(false);
+
+    const isActionsDisabled = (() => {
+        if (!selectedRequest) return false;
+        
+        const designation = String(selectedRequest.designation || '').toLowerCase();
+        const role = String(selectedRequest.role || '').toLowerCase();
+        
+        const isExcluded = 
+            designation.includes('tl') || designation.includes('team lead') || designation.includes('teamleader') || designation.includes('lead') ||
+            role.includes('tl') || role.includes('team lead') || role.includes('teamleader') || role.includes('lead') ||
+            designation.includes('pm') || designation.includes('project manager') || designation.includes('project lead') ||
+            role.includes('pm') || role.includes('project manager') || role.includes('project lead') ||
+            designation.includes('hr') || designation.includes('human resource') ||
+            role.includes('hr') || role.includes('human resource');
+            
+        if (isExcluded) {
+            return false;
+        }
+        
+        const hasTL = selectedRequest.manager_id && Number(selectedRequest.manager_id) !== 0;
+        
+        if (hasTL) {
+            const hasTlReviewed = !!(selectedRequest.reviewed_by_tl || selectedRequest.reporting_manager_remark);
+            return !hasTlReviewed;
+        }
+        
+        return false;
+    })();
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -161,6 +189,35 @@ export default function ResignationManagement() {
             });
 
             if (res.ok) {
+                // Send notification to the employee
+                let notifTitle = 'Resignation Update';
+                let notifMessage = 'Your resignation is in waiting';
+                if (updatePayload.status === 'Approved') {
+                    notifTitle = 'Resignation Approved';
+                    notifMessage = 'Your resignation is approved';
+                } else if (updatePayload.status === 'Rejected') {
+                    notifTitle = 'Resignation Rejected';
+                    notifMessage = 'Your resignation is rejected';
+                }
+
+                try {
+                    await fetch(API_ENDPOINTS.ALERTS || `${window.location.origin}/api/notifications`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${user.token}`
+                        },
+                        body: JSON.stringify({
+                            target_user_id: selectedRequest.employee_id || selectedRequest.user_id,
+                            title: notifTitle,
+                            message: notifMessage,
+                            type: 'RESIGNATION'
+                        })
+                    });
+                } catch (notifErr) {
+                    console.error("Failed to send resignation notification", notifErr);
+                }
+
                 setSelectedRequest(null);
                 fetchRequests();
             }
@@ -320,6 +377,28 @@ export default function ResignationManagement() {
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Notice Period (set by PM) */}
+                                                {(req.notice_period_from_date || req.notice_period_to_date) && (
+                                                    <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '14px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                        <div style={{ fontSize: '11px', fontWeight: '900', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <Calendar size={12} color="#16a34a" /> Notice Period (PM Set)
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                            <div style={{ background: 'white', border: '1.5px solid #bbf7d0', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>
+                                                                FROM: {req.notice_period_from_date ? new Date(req.notice_period_from_date).toLocaleDateString('en-GB') : '—'}
+                                                            </div>
+                                                            <div style={{ background: 'white', border: '1.5px solid #fecaca', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: '800', color: '#dc2626' }}>
+                                                                TO (LWD): {req.notice_period_to_date ? new Date(req.notice_period_to_date).toLocaleDateString('en-GB') : '—'}
+                                                            </div>
+                                                        </div>
+                                                        {req.notice_period_reason_by_pm && (
+                                                            <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginTop: '2px' }}>
+                                                                Reason: {req.notice_period_reason_by_pm}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* Reason to Resign */}
                                                 <div>
@@ -499,6 +578,11 @@ export default function ResignationManagement() {
                                             </div>
                                         </div>
                                     </div>
+                                    {(selectedRequest.reviewed_by_tl || selectedRequest.reporting_manager_remark) && (
+                                        <div style={{ marginTop: '16px', padding: '12px 16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', fontSize: '12px', fontWeight: '800', color: '#16a34a' }}>
+                                            ✓ Review completed by TL: "{selectedRequest.reviewed_by_tl || selectedRequest.reporting_manager_remark}"
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -506,21 +590,29 @@ export default function ResignationManagement() {
                                 <div>
                                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>Status Decision</label>
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        {['Pending', 'Approved', 'Rejected'].map(status => (
-                                            <button
-                                                key={status}
-                                                onClick={() => setUpdatePayload(prev => ({ ...prev, status }))}
-                                                style={{
-                                                    flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid',
-                                                    borderColor: updatePayload.status === status ? '#0f172a' : '#f1f5f9',
-                                                    background: updatePayload.status === status ? '#0f172a' : 'white',
-                                                    color: updatePayload.status === status ? 'white' : '#64748b',
-                                                    fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: '0.2s'
-                                                }}
-                                            >
-                                                {status}
-                                            </button>
-                                        ))}
+                                        {['Pending', 'Approved', 'Rejected'].map(status => {
+                                            const isApprovedStatus = selectedRequest.status === 'Approved' && status === 'Approved';
+                                            const btnDisabled = isActionsDisabled || isApprovedStatus;
+                                            return (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => !btnDisabled && setUpdatePayload(prev => ({ ...prev, status }))}
+                                                    disabled={btnDisabled}
+                                                    style={{
+                                                        flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid',
+                                                        borderColor: btnDisabled ? '#cbd5e1' : (updatePayload.status === status ? '#0f172a' : '#f1f5f9'),
+                                                        background: btnDisabled ? '#f1f5f9' : (updatePayload.status === status ? '#0f172a' : 'white'),
+                                                        color: btnDisabled ? '#94a3b8' : (updatePayload.status === status ? 'white' : '#64748b'),
+                                                        fontWeight: '800', fontSize: '12px',
+                                                        cursor: btnDisabled ? 'not-allowed' : 'pointer',
+                                                        transition: '0.2s',
+                                                        opacity: btnDisabled ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {isApprovedStatus ? '✓ Approved' : status}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -561,10 +653,18 @@ export default function ResignationManagement() {
                                 <button onClick={() => setSelectedRequest(null)} style={{ flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
                                 <button
                                     onClick={handleRequestUpdate}
-                                    disabled={updating}
-                                    style={{ flex: 1, padding: '16px', borderRadius: '14px', border: 'none', background: '#ef4444', color: 'white', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
+                                    disabled={updating || isActionsDisabled || selectedRequest.status === 'Approved'}
+                                    style={{
+                                        flex: 1, padding: '16px', borderRadius: '14px', border: 'none',
+                                        background: (isActionsDisabled || selectedRequest.status === 'Approved') ? '#cbd5e1' : '#ef4444',
+                                        color: (isActionsDisabled || selectedRequest.status === 'Approved') ? '#94a3b8' : 'white',
+                                        fontWeight: '800', fontSize: '14px',
+                                        cursor: (updating || isActionsDisabled || selectedRequest.status === 'Approved') ? 'not-allowed' : 'pointer',
+                                        boxShadow: (isActionsDisabled || selectedRequest.status === 'Approved') ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)',
+                                        opacity: (isActionsDisabled || selectedRequest.status === 'Approved') ? 0.7 : 1
+                                    }}
                                 >
-                                    {updating ? 'Saving...' : 'Submit Review'}
+                                    {updating ? 'Saving...' : (selectedRequest.status === 'Approved' ? '✓ Already Approved' : 'Submit Review')}
                                 </button>
                             </div>
                         </motion.div>

@@ -78,6 +78,7 @@ export const API_ENDPOINTS = {
   RESIGNATIONS_GET: `${BASE_URL}/api/admin/resignations`,
   RESIGNATION_UPDATE: (id) => `${BASE_URL}/api/admin/resignations/${id}/review`,
   RESIGNATION_REQUEST: `${BASE_URL}/api/resignations`,
+  EXIT_FORMALITIES: `${BASE_URL}/api/exit-formalities`,
   REWARDS: `${BASE_URL}/api/rewards`,
   REWARDS_HISTORY: `${BASE_URL}/api/admin/rewards/history`,
   REWARD_EDIT: (id) => `${BASE_URL}/api/rewards/${id}`,
@@ -111,4 +112,5 @@ export const API_ENDPOINTS = {
   QUIZ_SUBMIT_TOTAL: `${BASE_URL}/api/fun-quizzes/submit`,
   ONBOARDING_REMINDERS: `${BASE_URL}/api/admin/onboarding/reminders`,
   ONBOARDING_PROMOTE: `${BASE_URL}/api/admin/onboarding/promote`,
+  EXIT_FEEDBACK: `${BASE_URL}/api/exit-feedback`
 };

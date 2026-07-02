@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { BASE_URL, API_ENDPOINTS } from '../../config';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
+import { filterActiveEmployees } from '../../utils/employeeUtils';
 
 const LOCKED_FIELDS = ['age'];
 
@@ -227,12 +228,12 @@ export default function PersonalInfo({ onBack }) {
     const fetchEmployees = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${BASE_URL}/api/employees`, {
+        const res = await fetch(API_ENDPOINTS.USERS || `${BASE_URL}/api/users`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
-          setEmployees(Array.isArray(data) ? data : []);
+          setEmployees(Array.isArray(data) ? filterActiveEmployees(data) : []);
         }
       } catch (err) {
         console.error("Failed to fetch employees:", err);

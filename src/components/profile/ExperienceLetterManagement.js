@@ -3,16 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
-import { API_ENDPOINTS } from '../../config';
+import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import logo from '../../assets/logo.png';
 import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
     ExternalLink, Search, Filter, MoreHorizontal,
-    Mail, User, Briefcase, Calendar, AlertCircle, X, Package
+    Mail, User, Briefcase, Calendar, AlertCircle, X, Package, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ServiceCertificateManagement() {
+export default function ExperienceLetterManagement() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [requests, setRequests] = useState([]);
@@ -28,6 +31,7 @@ export default function ServiceCertificateManagement() {
         certificate_url: ''
     });
     const [updating, setUpdating] = useState(false);
+    const [downloadingId, setDownloadingId] = useState(null);
 
     useEffect(() => {
         if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -66,6 +70,236 @@ export default function ServiceCertificateManagement() {
             console.error('Fetch requests error:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const formatToDDMMYYYY = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        const s = String(dateStr).trim();
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+            return s;
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            const [y, m, d] = s.split('-');
+            return `${d}/${m}/${y}`;
+        }
+        if (s.includes('/')) {
+            const parts = s.split('/');
+            if (parts.length === 3) {
+                if (parts[0].length === 4) {
+                    return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                }
+                return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+            }
+        }
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        return s;
+    };
+
+    const generateExperienceLetterPDF = async (details) => {
+        // Wrapper to keep container off-screen but renderable by html2canvas
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '-9999px';
+        wrapper.style.left = '-9999px';
+        wrapper.style.width = '794px';
+        wrapper.style.height = '1123px';
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.zIndex = '-9999';
+        document.body.appendChild(wrapper);
+
+        const container = document.createElement('div');
+        container.style.position = 'relative';
+        container.style.width = '794px';
+        container.style.height = '1123px';
+        container.style.background = '#ffffff';
+        container.style.boxSizing = 'border-box';
+        container.style.padding = '80px 70px 60px 70px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.justifyContent = 'space-between';
+        container.style.fontFamily = "'Outfit', sans-serif";
+        container.style.color = '#0f172a';
+        container.style.overflow = 'hidden';
+        wrapper.appendChild(container);
+
+        const issueDateStr = details.dateOfIssue || new Date().toLocaleDateString('en-GB');
+        const formattedDoj = formatToDDMMYYYY(details.doj);
+        const formattedLwd = formatToDDMMYYYY(details.lwd);
+        const designationUpper = String(details.designation || 'SOFTWARE ENGINEER').toUpperCase();
+
+        container.innerHTML = `
+            <div style="position: absolute; top: 0; right: 0; width: 220px; height: 220px; pointer-events: none; z-index: 1;">
+                <svg viewBox="0 0 200 200" style="width: 100%; height: 100%; display: block;">
+                    <polygon points="200,0 20,0 200,180" fill="#1d70b8" />
+                    <polygon points="200,0 80,0 200,120" fill="#1e1b4b" />
+                    <polygon points="200,0 140,0 200,60" fill="#0ea5e9" />
+                </svg>
+            </div>
+
+            <div style="position: absolute; bottom: 0; left: 0; width: 220px; height: 220px; pointer-events: none; z-index: 1;">
+                <svg viewBox="0 0 200 200" style="width: 100%; height: 100%; display: block;">
+                    <polygon points="0,200 0,20 180,200" fill="#1d70b8" />
+                    <polygon points="0,200 0,80 120,200" fill="#1e1b4b" />
+                    <polygon points="0,200 0,140 60,200" fill="#0ea5e9" />
+                </svg>
+            </div>
+
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.03; width: 400px; pointer-events: none; z-index: 0; display: flex; align-items: center; justify-content: center;">
+                <img src="${logo}" style="width: 100%; height: auto;" />
+            </div>
+
+            <div style="position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; justify-content: space-between; box-sizing: border-box;">
+                <div>
+                    <div style="display: flex; align-items: center; margin-bottom: 45px;">
+                        <img src="${logo}" style="height: 80px; object-fit: contain;" />
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 50px;">
+                        <h2 style="font-size: 24px; font-weight: 800; color: #1e3a8a; text-decoration: underline; text-underline-offset: 8px; letter-spacing: 1.5px; margin: 0;">EXPERIENCE LETTER</h2>
+                    </div>
+
+                    <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 30px;">
+                        Date: ${issueDateStr}
+                    </div>
+
+                    <div style="font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 35px; letter-spacing: 0.5px;">
+                        TO WHOMSOEVER IT MAY CONCERN
+                    </div>
+
+                    <div style="font-size: 14px; line-height: 2.0; color: #334155; display: flex; flex-direction: column; gap: 24px; text-align: justify; font-weight: 500;">
+                        <p style="margin: 0;">
+                            This is to certify that <strong>\${details.empName}</strong>, holding the position of <strong>\${details.designation}</strong>, was employed with Navabharath Technologies from <strong>\${formattedDoj}</strong> to <strong>\${formattedLwd}</strong>.
+                        </p>
+                        <p style="margin: 0; text-transform: uppercase;">
+                            DURING THEIR TENURE WITH US, <strong>\${details.empName} WAS RESPONSIBLE FOR \${designationUpper}</strong>.
+                        </p>
+                        <p style="margin: 0;">
+                            They demonstrated professionalism, dedication, skills and contributed positively to the team and organization.
+                        </p>
+                        <p style="margin: 0;">
+                            We appreciate their efforts and wish them all the best in their future endeavors.
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 50px; font-size: 14px;">
+                        <p style="margin: 0 0 45px 0; font-weight: 700; color: #1e293b;">For Navabharath Technologies.</p>
+                        <div style="margin-top: 20px; font-weight: 800; color: #1e293b; line-height: 1.4;">
+                            <p style="margin: 0; font-size: 15px;">Anish V N</p>
+                            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase;">PROJECT MANAGER</p>
+                            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase;">NAVABHARATH TECHNOLOGIES</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; align-items: flex-end;">
+                    <div style="display: flex; flex-direction: column; gap: 10px; border-left: 3px solid #0ea5e9; padding-left: 14px; margin-bottom: 10px; font-size: 11px; font-weight: 800; color: #475569;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>Phone: 0821-3128831</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>www.navabharathtechnologies.com</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>contact@navabharathtechnologies.com</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        try {
+            const canvas = await html2canvas(container, {
+                scale: 3,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: 794,
+                height: 1123,
+                scrollX: 0,
+                scrollY: 0,
+                allowTaint: true
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+            pdf.save(`Experience_Letter_\${details.empName.replace(/\s+/g, '_')}.pdf`);
+        } finally {
+            document.body.removeChild(wrapper);
+        }
+    };
+
+
+    const handleDownloadCertificate = async (req) => {
+        if (downloadingId) return;
+        setDownloadingId(req.id);
+        try {
+            const token = user?.token || localStorage.getItem('token');
+            const cleanToken = token ? token.replace(/['"]+/g, '').trim() : '';
+            const empId = req.employee_id;
+
+            const profileRes = await fetch(`\${BASE_URL}/api/employee-profile/\${empId}`, {
+                headers: { 'Authorization': `Bearer \${cleanToken}` }
+            });
+
+            let doj = 'N/A';
+            let lwd = 'N/A';
+            let empName = req.employee_name || req.name || 'Employee';
+            let designation = 'Software Engineer';
+
+            if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                const profile = profileData.data || profileData.profile || profileData.record || profileData;
+                if (profile) {
+                    doj = profile.doj || profile.joining_date || profile.date_of_joining || doj;
+                    lwd = profile.lwd || profile.separation || profile.last_working_day || lwd;
+                    empName = profile.emp_name || profile.name || empName;
+                    designation = profile.designation || designation;
+                }
+            }
+
+            if (doj === 'N/A' || lwd === 'N/A') {
+                const exitRes = await fetch(`\${BASE_URL}/api/exit-formalities/resignation/\${req.id || req.resignation_id}`, {
+                    headers: { 'Authorization': `Bearer \${cleanToken}` }
+                });
+                if (exitRes.ok) {
+                    const exitData = await exitRes.json();
+                    const exit = Array.isArray(exitData) ? exitData[0] : exitData;
+                    if (exit) {
+                        if (doj === 'N/A') doj = exit.date_of_joining || doj;
+                        if (lwd === 'N/A') lwd = exit.last_working_day || lwd;
+                    }
+                }
+            }
+
+            await generateExperienceLetterPDF({
+                empName,
+                designation,
+                doj,
+                lwd,
+                id: empId,
+                dateOfIssue: new Date().toLocaleDateString('en-GB')
+            });
+        } catch (err) {
+            console.error("Error generating experience letter:", err);
+            alert("Failed to generate PDF experience letter.");
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -168,7 +402,7 @@ export default function ServiceCertificateManagement() {
                             <ArrowLeft size={18} color="#64748b" />
                         </button>
                         <div>
-                            <h1 style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>Service Certificates</h1>
+                            <h1 style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>Experience Letter</h1>
                             <p style={{ color: '#64748b', fontSize: '14px', margin: '4px 0 0', fontWeight: '500' }}>Manage employment verification requests</p>
                         </div>
                     </div>
@@ -223,6 +457,9 @@ export default function ServiceCertificateManagement() {
 
                                 const pmStatusStyle = getStatusColor(pmStatus);
                                 const submissionStatusStyle = getStatusColor(req.status);
+
+                                const isBothApproved = (req.status || '').toLowerCase() === 'approved' || (req.pm_status || '').toLowerCase() === 'approved';
+                                const downloadUrl = req.certificate_url || req.file_path;
 
                                 return (
                                     <div
@@ -328,7 +565,34 @@ export default function ServiceCertificateManagement() {
                                                     {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'N/A'}
                                                 </span>
                                             </div>
-                                            <ExternalLink size={14} color="#3b82f6" />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {isBothApproved && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDownloadCertificate(req); }}
+                                                        disabled={downloadingId === req.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: '#0f172a',
+                                                            color: 'white',
+                                                            borderRadius: '8px',
+                                                            width: '28px',
+                                                            height: '28px',
+                                                            cursor: 'pointer',
+                                                            border: 'none'
+                                                        }}
+                                                        title="Download Experience Letter"
+                                                    >
+                                                        {downloadingId === req.id ? (
+                                                            <div style={{ width: '12px', height: '12px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                                        ) : (
+                                                            <Download size={14} />
+                                                        )}
+                                                    </button>
+                                                )}
+                                                <ExternalLink size={14} color="#3b82f6" />
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -367,6 +631,26 @@ export default function ServiceCertificateManagement() {
                                                 <span style={{ fontWeight: '600', color: '#64748b', minWidth: '80px' }}>Reason:</span>
                                                 <span style={{ fontWeight: '700', color: '#334155' }}>{selectedRequest.purpose || selectedRequest.reason}</span>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* PM Status & HR Status */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                                            <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>PM Status</div>
+                                            {(() => {
+                                                const ps = (selectedRequest.pm_status || 'Pending').toLowerCase();
+                                                const c = ps === 'approved' ? { bg: '#dcfce7', text: '#16a34a', border: '#bbf7d0' } : ps === 'rejected' ? { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' } : { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+                                                return <span style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}`, padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', textTransform: 'capitalize', display: 'inline-block' }}>{selectedRequest.pm_status || 'Pending'}</span>;
+                                            })()}
+                                        </div>
+                                        <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                                            <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>HR Status</div>
+                                            {(() => {
+                                                const hs = (selectedRequest.status || 'Pending').toLowerCase();
+                                                const c = hs === 'approved' ? { bg: '#dcfce7', text: '#16a34a', border: '#bbf7d0' } : hs === 'rejected' ? { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' } : { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+                                                return <span style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}`, padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', textTransform: 'capitalize', display: 'inline-block' }}>{selectedRequest.status || 'Pending'}</span>;
+                                            })()}
                                         </div>
                                     </div>
 

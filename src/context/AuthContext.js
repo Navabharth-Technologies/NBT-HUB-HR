@@ -9,6 +9,7 @@ if (typeof window !== 'undefined' && !window.__NBT_AUTH_CONTEXT__) {
   window.__NBT_AUTH_CONTEXT__ = AuthContext;
 }
 
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +111,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

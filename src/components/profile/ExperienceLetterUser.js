@@ -4,6 +4,9 @@ import AppHeader from './AppHeader';
 import AppFooter from './AppFooter';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS, BASE_URL } from '../../config';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import logo from '../../assets/logo.png';
 import { cleanEmpId } from '../../utils/cleanId';
 import {
     ArrowLeft, FileText, CheckCircle, Clock,
@@ -14,7 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ServiceCertificateUserScreen() {
+export default function ExperienceLetterUser({ defaultTab = 'submit' }) {
     const navigate = useNavigate();
     const { user } = useAuth();
     const isAdmin = String(user?.role || '').toLowerCase() === 'admin' || String(user?.role || '').toLowerCase().includes('hr');
@@ -33,7 +36,8 @@ export default function ServiceCertificateUserScreen() {
     const [winWidth, setWinWidth] = useState(window.innerWidth);
     const [showSuccessPopup, setShowSuccessPopup] = useState(false);
     const [popupMessage, setPopupMessage] = useState('');
-    const [activeTab, setActiveTab] = useState('submit');
+    const [activeTab, setActiveTab] = useState(defaultTab || 'submit');
+    const [downloadingId, setDownloadingId] = useState(null);
     const [formData, setFormData] = useState({
         laptopBrand: '',
         serialNumber: '',
@@ -48,6 +52,16 @@ export default function ServiceCertificateUserScreen() {
         notepad: false
     });
     const [isAssetsDeclared, setIsAssetsDeclared] = useState(false);
+    const [resignationStatus, setResignationStatus] = useState(null);
+    const [isExitCompleted, setIsExitCompleted] = useState(false);
+    const [checkingResignation, setCheckingResignation] = useState(true);
+    const [showEntrancePopup, setShowEntrancePopup] = useState(false);
+
+    useEffect(() => {
+        if (defaultTab) {
+            setActiveTab(defaultTab);
+        }
+    }, [defaultTab]);
 
     useEffect(() => {
         const fetchMyAssets = async () => {
@@ -116,6 +130,63 @@ export default function ServiceCertificateUserScreen() {
         fetchAllEmployees();
     }, [user]);
 
+    useEffect(() => {
+        const checkResignationAndExit = async () => {
+            try {
+                const token = localStorage.getItem('token') || user?.token;
+                const cleanToken = (token && token !== 'undefined' && token !== 'null') ? token.replace(/['"]+/g, '').trim() : '';
+
+                const url = `${BASE_URL}/api/resignations/my`;
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${cleanToken}` }
+                });
+
+                if (res.ok) {
+                    const raw = await res.json();
+                    let data = Array.isArray(raw) ? raw : (raw.data || raw.value || []);
+
+                    const activeRes = data.find(r => (r.status || '').toUpperCase() !== 'REVOKED') || data[0];
+                    if (activeRes) {
+                        const statusUpper = (activeRes.status || '').toUpperCase();
+                        setResignationStatus(statusUpper);
+                        if (statusUpper !== 'APPROVED') {
+                            setShowEntrancePopup(activeTab === 'submit');
+                        }
+
+                        const exitRes = await fetch(`${BASE_URL}/api/exit-formalities/resignation/${activeRes.id}`, {
+                            headers: { 'Authorization': `Bearer ${cleanToken}` }
+                        });
+                        if (exitRes.ok) {
+                            const exitData = await exitRes.json();
+                            if (exitData && (exitData.id || (Array.isArray(exitData) && exitData.length > 0))) {
+                                setIsExitCompleted(true);
+                            } else {
+                                setIsExitCompleted(false);
+                            }
+                        } else {
+                            setIsExitCompleted(false);
+                        }
+                    } else {
+                        setResignationStatus(null);
+                        setIsExitCompleted(false);
+                        setShowEntrancePopup(activeTab === 'submit');
+                    }
+                } else {
+                    setResignationStatus(null);
+                    setIsExitCompleted(false);
+                    setShowEntrancePopup(activeTab === 'submit');
+                }
+            } catch (err) {
+                console.warn("Error checking resignation & exit status:", err);
+            } finally {
+                setCheckingResignation(false);
+            }
+        };
+        if (user) {
+            checkResignationAndExit();
+        }
+    }, [user, activeTab]);
+
     const fetchMyRequests = async () => {
         if (!user?.token) return;
         try {
@@ -171,6 +242,236 @@ export default function ServiceCertificateUserScreen() {
             }
         } catch (error) {
             console.error('Fetch employees error:', error);
+        }
+    };
+
+    const formatToDDMMYYYY = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        const s = String(dateStr).trim();
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+            return s;
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            const [y, m, d] = s.split('-');
+            return `${d}/${m}/${y}`;
+        }
+        if (s.includes('/')) {
+            const parts = s.split('/');
+            if (parts.length === 3) {
+                if (parts[0].length === 4) {
+                    return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                }
+                return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+            }
+        }
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        return s;
+    };
+
+    const generateExperienceLetterPDF = async (details) => {
+        // Wrapper to keep container off-screen but renderable by html2canvas
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '-9999px';
+        wrapper.style.left = '-9999px';
+        wrapper.style.width = '794px';
+        wrapper.style.height = '1123px';
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.zIndex = '-9999';
+        document.body.appendChild(wrapper);
+
+        const container = document.createElement('div');
+        container.style.position = 'relative';
+        container.style.width = '794px';
+        container.style.height = '1123px';
+        container.style.background = '#ffffff';
+        container.style.boxSizing = 'border-box';
+        container.style.padding = '80px 70px 60px 70px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.justifyContent = 'space-between';
+        container.style.fontFamily = "'Outfit', sans-serif";
+        container.style.color = '#0f172a';
+        container.style.overflow = 'hidden';
+        wrapper.appendChild(container);
+
+        const issueDateStr = details.dateOfIssue || new Date().toLocaleDateString('en-GB');
+        const formattedDoj = formatToDDMMYYYY(details.doj);
+        const formattedLwd = formatToDDMMYYYY(details.lwd);
+        const designationUpper = String(details.designation || 'SOFTWARE ENGINEER').toUpperCase();
+
+        container.innerHTML = `
+            <div style="position: absolute; top: 0; right: 0; width: 220px; height: 220px; pointer-events: none; z-index: 1;">
+                <svg viewBox="0 0 200 200" style="width: 100%; height: 100%; display: block;">
+                    <polygon points="200,0 20,0 200,180" fill="#1d70b8" />
+                    <polygon points="200,0 80,0 200,120" fill="#1e1b4b" />
+                    <polygon points="200,0 140,0 200,60" fill="#0ea5e9" />
+                </svg>
+            </div>
+
+            <div style="position: absolute; bottom: 0; left: 0; width: 220px; height: 220px; pointer-events: none; z-index: 1;">
+                <svg viewBox="0 0 200 200" style="width: 100%; height: 100%; display: block;">
+                    <polygon points="0,200 0,20 180,200" fill="#1d70b8" />
+                    <polygon points="0,200 0,80 120,200" fill="#1e1b4b" />
+                    <polygon points="0,200 0,140 60,200" fill="#0ea5e9" />
+                </svg>
+            </div>
+
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.03; width: 400px; pointer-events: none; z-index: 0; display: flex; align-items: center; justify-content: center;">
+                <img src="${logo}" style="width: 100%; height: auto;" />
+            </div>
+
+            <div style="position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; justify-content: space-between; box-sizing: border-box;">
+                <div>
+                    <div style="display: flex; align-items: center; margin-bottom: 45px;">
+                        <img src="${logo}" style="height: 80px; object-fit: contain;" />
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 50px;">
+                        <h2 style="font-size: 24px; font-weight: 800; color: #1e3a8a; text-decoration: underline; text-underline-offset: 8px; letter-spacing: 1.5px; margin: 0;">EXPERIENCE LETTER</h2>
+                    </div>
+
+                    <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 30px;">
+                        Date: ${issueDateStr}
+                    </div>
+
+                    <div style="font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 35px; letter-spacing: 0.5px;">
+                        TO WHOMSOEVER IT MAY CONCERN
+                    </div>
+
+                    <div style="font-size: 14px; line-height: 2.0; color: #334155; display: flex; flex-direction: column; gap: 24px; text-align: justify; font-weight: 500;">
+                        <p style="margin: 0;">
+                            This is to certify that <strong>${String(details.empName).toUpperCase()}</strong>, holding the position of <strong>${details.designation}</strong>, was employed with Navabharath Technologies from <strong>${formattedDoj}</strong> to <strong>${formattedLwd}</strong>.
+                        </p>
+                        <p style="margin: 0;">
+                            During their tenure with us, <strong>${String(details.empName).toUpperCase()} was responsible for ${details.designation}</strong>.
+                        </p>
+                        <p style="margin: 0;">
+                            They demonstrated professionalism, dedication, skills and contributed positively to the team and organization.
+                        </p>
+                        <p style="margin: 0;">
+                            We appreciate their efforts and wish them all the best in their future endeavors.
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 50px; font-size: 14px;">
+                        <p style="margin: 0 0 45px 0; font-weight: 700; color: #1e293b;">For Navabharath Technologies.</p>
+                        <div style="margin-top: 20px; font-weight: 800; color: #1e293b; line-height: 1.4;">
+                            <p style="margin: 0; font-size: 15px;">Anish V N</p>
+                            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: 700;">PROJECT MANAGER</p>
+                            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: 700;">NAVABHARATH TECHNOLOGIES</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; align-items: flex-end;">
+                    <div style="display: flex; flex-direction: column; gap: 10px; border-left: 3px solid #0ea5e9; padding-left: 14px; margin-bottom: 10px; font-size: 11px; font-weight: 800; color: #475569;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>Phone: 0821-3128831</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>www.navabharathtechnologies.com</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 14px; height: 14px; background: #0ea5e9; border-radius: 2px;"></div>
+                            <span>contact@navabharathtechnologies.com</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        try {
+            const canvas = await html2canvas(container, {
+                scale: 3,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: 794,
+                height: 1123,
+                scrollX: 0,
+                scrollY: 0,
+                allowTaint: true
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+            pdf.save(`Experience_Letter_${details.empName.replace(/\s+/g, '_')}.pdf`);
+        } finally {
+            document.body.removeChild(wrapper);
+        }
+    };
+
+
+    const handleDownloadCertificate = async (req) => {
+        if (downloadingId) return;
+        setDownloadingId(req.id);
+        try {
+            const token = user?.token || localStorage.getItem('token');
+            const cleanToken = token ? token.replace(/['"]+/g, '').trim() : '';
+            const empId = req.employee_id || user?.employee_id || user?.id;
+
+            const profileRes = await fetch(`${BASE_URL}/api/employee-profile/${empId}`, {
+                headers: { 'Authorization': `Bearer ${cleanToken}` }
+            });
+
+            let doj = 'N/A';
+            let lwd = 'N/A';
+            let empName = req.employee_name || req.name || user?.name || 'Employee';
+            let designation = user?.designation || 'Software Engineer';
+
+            if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                const profile = profileData.data || profileData.profile || profileData.record || profileData;
+                if (profile) {
+                    doj = profile.doj || profile.joining_date || profile.date_of_joining || doj;
+                    lwd = profile.lwd || profile.separation || profile.last_working_day || lwd;
+                    empName = profile.emp_name || profile.name || empName;
+                    designation = profile.designation || designation;
+                }
+            }
+
+            if (doj === 'N/A' || lwd === 'N/A') {
+                const exitRes = await fetch(`${BASE_URL}/api/exit-formalities/resignation/${req.id || req.resignation_id}`, {
+                    headers: { 'Authorization': `Bearer ${cleanToken}` }
+                });
+                if (exitRes.ok) {
+                    const exitData = await exitRes.json();
+                    const exit = Array.isArray(exitData) ? exitData[0] : exitData;
+                    if (exit) {
+                        if (doj === 'N/A') doj = exit.date_of_joining || doj;
+                        if (lwd === 'N/A') lwd = exit.last_working_day || lwd;
+                    }
+                }
+            }
+
+            await generateExperienceLetterPDF({
+                empName,
+                designation,
+                doj,
+                lwd,
+                id: empId,
+                dateOfIssue: new Date().toLocaleDateString('en-GB')
+            });
+        } catch (err) {
+            console.error("Error generating experience letter:", err);
+            alert("Failed to generate PDF experience letter.");
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -363,52 +664,13 @@ export default function ServiceCertificateUserScreen() {
                         <ArrowLeft size={18} color="#64748b" />
                     </button>
                     <div>
-                        <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Experience Letter</h1>
-                        <p style={{ color: '#64748b', fontSize: '12px', margin: '4px 0 0', fontWeight: '500' }}>Request / Review service certificate</p>
+                        <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+                            {activeTab === 'history' ? 'Experience Letter History' : 'Experience Letter'}
+                        </h1>
+                        <p style={{ color: '#64748b', fontSize: '12px', margin: '4px 0 0', fontWeight: '500' }}>
+                            {activeTab === 'history' ? 'View applied experience letter requests' : 'Request / Review service certificate'}
+                        </p>
                     </div>
-                </div>
-
-                <div style={{
-                    display: 'flex',
-                    gap: winWidth < 768 ? '4px' : '8px',
-                    background: '#d1d9e0',
-                    padding: '6px',
-                    borderRadius: '14px',
-                    width: winWidth < 768 ? '100%' : 'fit-content',
-                    marginBottom: '40px',
-                    overflowX: 'auto',
-                    scrollbarWidth: 'none',
-                    WebkitOverflowScrolling: 'touch',
-                    msOverflowStyle: 'none'
-                }}>
-                    <button
-                        onClick={() => setActiveTab('submit')}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            padding: winWidth < 768 ? '10px 10px' : '10px 24px', borderRadius: '10px', border: 'none',
-                            cursor: 'pointer', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '800', transition: '0.3s',
-                            background: activeTab === 'submit' ? 'white' : 'transparent',
-                            color: activeTab === 'submit' ? '#0f172a' : '#64748b',
-                            boxShadow: activeTab === 'submit' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
-                            flex: 'none', flexShrink: 0, whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
-                        }}
-                    >
-                        <Send size={16} /> Apply service certificate
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            padding: winWidth < 768 ? '10px 10px' : '10px 24px', borderRadius: '10px', border: 'none',
-                            cursor: 'pointer', fontSize: winWidth < 768 ? '12px' : '14px', fontWeight: '800', transition: '0.3s',
-                            background: activeTab === 'history' ? 'white' : 'transparent',
-                            color: activeTab === 'history' ? '#0f172a' : '#64748b',
-                            boxShadow: activeTab === 'history' ? '0 4px 6px rgba(0,0,0,0.05)' : 'none',
-                            flex: 'none', flexShrink: 0, whiteSpace: 'nowrap', minWidth: winWidth < 768 ? '140px' : 'auto'
-                        }}
-                    >
-                        <Clock size={16} /> History of Service certificate requests
-                    </button>
                 </div>
 
                 {activeTab === 'submit' ? (
@@ -419,68 +681,94 @@ export default function ServiceCertificateUserScreen() {
                                     <FileText size={20} color="#64748b" />
                                     <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>Service Certificate Application</h2>
                                 </div>
-                                <div style={{ marginBottom: '20px' }}>
-                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Purpose of request <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <div style={{ position: 'relative' }}>
-                                        <select
-                                            value={purpose} onChange={(e) => setPurpose(e.target.value)}
-                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a', appearance: 'none', cursor: 'pointer' }}
+                                {checkingResignation ? (
+                                    <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                                        <div style={{ width: '24px', height: '24px', border: '3px solid #64748b40', borderTop: '3px solid #64748b', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 10px' }}></div>
+                                        <div style={{ fontSize: '13px', fontWeight: '600' }}>Checking clearance status...</div>
+                                    </div>
+                                ) : (resignationStatus !== 'APPROVED' || !isExitCompleted) ? (
+                                    <div style={{
+                                        padding: '30px',
+                                        textAlign: 'center',
+                                        background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+                                        borderRadius: '20px',
+                                        border: '1.5px solid #fca5a5',
+                                        boxShadow: '0 8px 24px rgba(220, 38, 38, 0.03)',
+                                        color: '#b91c1c'
+                                    }}>
+                                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#dc2626' }}>
+                                            <AlertCircle size={28} />
+                                        </div>
+                                        <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#991b1b', marginBottom: '8px' }}>Request Locked</h3>
+                                        <p style={{ fontSize: '13px', color: '#991b1b90', lineHeight: '1.5', margin: 0, fontWeight: '600' }}>
+                                            Experience letter requests are only available after your resignation is approved by TL, PM, and HR, and exit formalities are fully completed.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div style={{ marginBottom: '20px' }}>
+                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Purpose of request <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={purpose} onChange={(e) => setPurpose(e.target.value)}
+                                                    style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a', appearance: 'none', cursor: 'pointer' }}
+                                                >
+                                                    <option value="" disabled>Select Purpose</option>
+                                                    <option value="Higher Education">Higher Education</option>
+                                                    <option value="New Job Opportunity">New Job Opportunity</option>
+                                                    <option value="Personal Reasons">Personal Reasons</option>
+                                                    <option value="Other">Other (Specify below)</option>
+                                                </select>
+                                                <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                                            </div>
+                                        </div>
+                                        {purpose === 'Other' && (
+                                            <div className="animate-slide-up" style={{ marginBottom: '20px' }}>
+                                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Specify Other Purpose <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter your specific reason..."
+                                                    value={formData.other_purpose || ''}
+                                                    onChange={(e) => setFormData({ ...formData, other_purpose: e.target.value })}
+                                                    style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a' }}
+                                                />
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>JOB TITLE</label>
+                                                <div style={{ background: '#eef2ff', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#312e81', border: '1px solid #e0e7ff' }}>
+                                                    {user?.designation || 'Junior Software Engineer'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>EMPLOYEE ID</label>
+                                                <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#166534', border: '1px solid #dcfce7' }}>
+                                                    {cleanEmpId(user?.employee_id || user?.id) || '202351'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleCreateRequest}
+                                            disabled={hasAlreadySubmitted || !isAssetsDeclared || submitting}
+                                            style={{
+                                                width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
+                                                background: hasAlreadySubmitted ? '#cbd5e1' : (isAssetsDeclared ? '#3b82f6' : '#cbd5e1'),
+                                                color: 'white', fontWeight: '800', fontSize: '14px', display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', gap: '10px',
+                                                cursor: (hasAlreadySubmitted || !isAssetsDeclared || submitting) ? 'not-allowed' : 'pointer',
+                                                marginBottom: '15px', transition: 'all 0.3s',
+                                                boxShadow: (!hasAlreadySubmitted && isAssetsDeclared) ? '0 10px 15px -3px rgba(59, 130, 246, 0.2)' : 'none'
+                                            }}
                                         >
-                                            <option value="" disabled>Select Purpose</option>
-                                            <option value="Visa Processing">Visa Processing</option>
-                                            <option value="Further Education">Further Education</option>
-                                            <option value="Loan Application">Loan Application</option>
-                                            <option value="Professional Requirement">Professional Requirement</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                        <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                                    </div>
-                                </div>
-                                {purpose === 'Other' && (
-                                    <div className="animate-slide-up" style={{ marginBottom: '20px' }}>
-                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '900', color: '#1e293b', marginBottom: '8px' }}>Specify Other Purpose <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter your specific reason..."
-                                            value={formData.other_purpose || ''}
-                                            onChange={(e) => setFormData({ ...formData, other_purpose: e.target.value })}
-                                            style={{ width: '100%', padding: '14px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', background: '#f8fafc', outline: 'none', fontWeight: '700', color: '#0f172a' }}
-                                        />
-                                    </div>
+                                            {hasAlreadySubmitted ? <Lock size={16} /> : (isAssetsDeclared ? <Unlock size={16} /> : <Lock size={16} />)}
+                                            {hasAlreadySubmitted ? 'Already Application Submitted' : (submitting && isAssetsDeclared ? 'Processing...' : 'Submit Application')}
+                                        </button>
+                                        <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <AlertCircle size={16} /> Once approved HR manager will process within 1-2 business days
+                                        </div>
+                                    </>
                                 )}
-                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>JOB TITLE</label>
-                                        <div style={{ background: '#eef2ff', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#312e81', border: '1px solid #e0e7ff' }}>
-                                            {user?.designation || 'Junior Software Engineer'}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>EMPLOYEE ID</label>
-                                        <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: '800', color: '#166534', border: '1px solid #dcfce7' }}>
-                                            {cleanEmpId(user?.employee_id || user?.id) || '202351'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleCreateRequest}
-                                    disabled={hasAlreadySubmitted || !isAssetsDeclared || submitting}
-                                    style={{
-                                        width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
-                                        background: hasAlreadySubmitted ? '#cbd5e1' : (isAssetsDeclared ? '#3b82f6' : '#cbd5e1'),
-                                        color: 'white', fontWeight: '800', fontSize: '14px', display: 'flex', alignItems: 'center',
-                                        justifyContent: 'center', gap: '10px',
-                                        cursor: (hasAlreadySubmitted || !isAssetsDeclared || submitting) ? 'not-allowed' : 'pointer',
-                                        marginBottom: '15px', transition: 'all 0.3s',
-                                        boxShadow: (!hasAlreadySubmitted && isAssetsDeclared) ? '0 10px 15px -3px rgba(59, 130, 246, 0.2)' : 'none'
-                                    }}
-                                >
-                                    {hasAlreadySubmitted ? <Lock size={16} /> : (isAssetsDeclared ? <Unlock size={16} /> : <Lock size={16} />)}
-                                    {hasAlreadySubmitted ? 'Already Application Submitted' : (submitting && isAssetsDeclared ? 'Processing...' : 'Submit Application')}
-                                </button>
-                                <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <AlertCircle size={16} /> Once approved HR manager will process within 1-2 business days
-                                </div>
                             </div>
 
                             <div style={{ background: 'white', borderRadius: '24px', padding: '30px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
@@ -582,14 +870,43 @@ export default function ServiceCertificateUserScreen() {
                                             const reqStatus = r.status || 'Pending';
                                             const isAppr = reqStatus.toLowerCase() === 'approved';
                                             const isRej = reqStatus.toLowerCase() === 'rejected';
+                                            const isBothApproved = isAppr && (r.pm_status || '').toLowerCase() === 'approved';
+                                            const downloadUrl = r.certificate_url || r.file_path;
                                             return (
                                                 <div key={r.id} style={{ background: 'white', padding: '16px', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div>
                                                         <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{r.purpose || 'Service Certificate'}</div>
                                                         <div style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', marginTop: '4px' }}>{new Date(r.created_at).toLocaleDateString()}</div>
                                                     </div>
-                                                    <div style={{ fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '8px', background: isAppr ? '#f0fdf4' : (isRej ? '#fef2f2' : '#fffbeb'), color: isAppr ? '#16a34a' : (isRej ? '#dc2626' : '#d97706') }}>
-                                                        {reqStatus.charAt(0).toUpperCase() + reqStatus.slice(1)}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '8px', background: isAppr ? '#f0fdf4' : (isRej ? '#fef2f2' : '#fffbeb'), color: isAppr ? '#16a34a' : (isRej ? '#dc2626' : '#d97706') }}>
+                                                            {reqStatus.charAt(0).toUpperCase() + reqStatus.slice(1)}
+                                                        </div>
+                                                        {isBothApproved && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDownloadCertificate(r); }}
+                                                                disabled={downloadingId === r.id}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    background: '#0f172a',
+                                                                    color: 'white',
+                                                                    borderRadius: '8px',
+                                                                    width: '28px',
+                                                                    height: '28px',
+                                                                    cursor: 'pointer',
+                                                                    border: 'none'
+                                                                }}
+                                                                title="Download Experience Letter"
+                                                            >
+                                                                {downloadingId === r.id ? (
+                                                                    <div style={{ width: '12px', height: '12px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                                                ) : (
+                                                                    <Download size={14} />
+                                                                )}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -667,9 +984,43 @@ export default function ServiceCertificateUserScreen() {
                                                 </div>
                                                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginLeft: '32px' }}>ID: {cleanEmpId(req.employee_id)}</div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
-                                                <Clock size={13} color="#64748b" />
-                                                <span style={{ fontSize: '12px', fontWeight: '800' }}>{formatDate(req.created_at)}</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 'auto' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
+                                                    <Clock size={13} color="#64748b" />
+                                                    <span style={{ fontSize: '12px', fontWeight: '800' }}>{formatDate(req.created_at)}</span>
+                                                </div>
+                                                {(() => {
+                                                    const canDownload = isApproved || (req.pm_status || '').toLowerCase() === 'approved';
+                                                    return (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); if (canDownload) handleDownloadCertificate(req); }}
+                                                            disabled={!canDownload || downloadingId === req.id}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                background: canDownload ? '#0f172a' : '#e2e8f0',
+                                                                color: canDownload ? 'white' : '#94a3b8',
+                                                                borderRadius: '8px',
+                                                                width: '32px',
+                                                                height: '32px',
+                                                                cursor: canDownload ? 'pointer' : 'not-allowed',
+                                                                transition: 'background-color 0.2s',
+                                                                border: 'none',
+                                                                boxShadow: canDownload ? '0 4px 10px rgba(15,23,42,0.15)' : 'none'
+                                                            }}
+                                                            onMouseOver={e => { if (canDownload) e.currentTarget.style.backgroundColor = '#1e293b'; }}
+                                                            onMouseOut={e => { if (canDownload) e.currentTarget.style.backgroundColor = '#0f172a'; }}
+                                                            title={canDownload ? 'Download Experience Letter' : 'Available once approved'}
+                                                        >
+                                                            {downloadingId === req.id ? (
+                                                                <div style={{ width: '14px', height: '14px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                                            ) : (
+                                                                <Download size={16} />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     )
@@ -783,20 +1134,40 @@ export default function ServiceCertificateUserScreen() {
 
 
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Request Date</label>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '950', color: '#475569', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Request Date</label>
                                         <div style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{new Date(selectedDetail.created_at).toLocaleDateString()}</div>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Status</label>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '950', color: '#475569', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Status</label>
                                         <div style={{ display: 'inline-flex', background: selectedDetail.status === 'Approved' ? '#f0fdf4' : '#fffbeb', color: selectedDetail.status === 'Approved' ? '#16a34a' : '#d97706', padding: '4px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '950' }}>
                                             {selectedDetail.status || 'Pending'}
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* PM Status & HR Status */}
+                                <div style={{ display: 'grid', gridTemplateColumns: winWidth < 480 ? '1fr' : '1fr 1fr', gap: winWidth < 768 ? '10px' : '20px', marginBottom: winWidth < 768 ? '15px' : '25px' }}>
+                                    <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>PM Status</div>
+                                        {(() => {
+                                            const ps = (selectedDetail.pm_status || 'Pending').toLowerCase();
+                                            const c = ps === 'approved' ? { bg: '#dcfce7', text: '#16a34a', border: '#bbf7d0' } : ps === 'rejected' ? { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' } : { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+                                            return <span style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}`, padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', textTransform: 'capitalize', display: 'inline-block' }}>{selectedDetail.pm_status || 'Pending'}</span>;
+                                        })()}
+                                    </div>
+                                    <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>HR Status</div>
+                                        {(() => {
+                                            const hs = (selectedDetail.status || 'Pending').toLowerCase();
+                                            const c = hs === 'approved' ? { bg: '#dcfce7', text: '#16a34a', border: '#bbf7d0' } : hs === 'rejected' ? { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' } : { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+                                            return <span style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}`, padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', textTransform: 'capitalize', display: 'inline-block' }}>{selectedDetail.status || 'Pending'}</span>;
+                                        })()}
+                                    </div>
+                                </div>
+
 
                                 <div style={{ marginBottom: winWidth < 768 ? '15px' : '35px' }}>
-                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: winWidth < 768 ? '6px' : '12px', letterSpacing: '0.5px' }}>Purpose of Verification</label>
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: '950', color: '#475569', textTransform: 'uppercase', marginBottom: winWidth < 768 ? '6px' : '12px', letterSpacing: '0.5px' }}>Purpose of Verification</label>
                                     <div style={{ background: '#f8fafc', padding: winWidth < 768 ? '10px 12px' : '20px', borderRadius: '14px', border: '1px solid #f1f5f9', fontSize: '13px', fontWeight: '700', color: '#334155', lineHeight: '1.4' }}>
                                         {selectedDetail.purpose}
                                     </div>
@@ -806,7 +1177,7 @@ export default function ServiceCertificateUserScreen() {
 
                                 <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>HR Admin Remarks</label>
+                                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '950', color: '#475569', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>HR Admin Remarks</label>
                                         <textarea
                                             value={adminRemark}
                                             onChange={(e) => setAdminRemark(e.target.value)}
@@ -869,42 +1240,24 @@ export default function ServiceCertificateUserScreen() {
                                                 </button>
 
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    // Pass the employee_id from the request to fetch their specific assets
-                                                    const empId = selectedDetail.employee_id || selectedDetail.id;
-                                                    setAssetData(selectedDetail);
-                                                    setShowAssetsModal(true);
-                                                    fetchAssetData(empId);
-                                                }}
-                                                style={{
-                                                    width: winWidth < 500 ? '90%' : '100%',
-                                                    margin: winWidth < 500 ? '0 auto' : '0',
-                                                    padding: winWidth < 768 ? '10px' : '14px',
-                                                    borderRadius: '14px',
-                                                    border: '1.5px solid #e2e8f0',
-                                                    background: 'white',
-                                                    color: '#0f172a',
-                                                    fontWeight: '800',
-                                                    fontSize: winWidth < 768 ? '13px' : '14px',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '8px'
-                                                }}
-                                            >
-                                                <Package size={18} color="#3b82f6" /> Their Asset Submissions
-                                            </button>
-
                                         </>
-                                    ) : selectedDetail.status === 'Approved' && selectedDetail.certificate_url ? (
-                                        <a
-                                            href={selectedDetail.certificate_url} target="_blank" rel="noopener noreferrer"
-                                            style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', background: '#0f172a', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                                    ) : ((selectedDetail.status || '').toLowerCase() === 'approved' || (selectedDetail.pm_status || '').toLowerCase() === 'approved') ? (
+                                        <button
+                                            onClick={() => handleDownloadCertificate(selectedDetail)}
+                                            disabled={downloadingId === selectedDetail.id}
+                                            style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', background: '#0f172a', color: 'white', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                                         >
-                                            <Download size={18} /> Download official PDF
-                                        </a>
+                                            {downloadingId === selectedDetail.id ? (
+                                                <>
+                                                    <div style={{ width: '18px', height: '18px', border: '3px solid white', borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                                    Generating PDF...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Download size={18} /> Download official PDF
+                                                </>
+                                            )}
+                                        </button>
                                     ) : (
                                         <button
                                             onClick={() => setSelectedDetail(null)}
@@ -1055,6 +1408,66 @@ export default function ServiceCertificateUserScreen() {
                     </div>
                 </div>
             )}
+
+            {/* Entrance Warning Modal */}
+            <AnimatePresence>
+                {showEntrancePopup && activeTab === 'submit' && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(8px)',
+                        zIndex: 99999,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                            style={{
+                                background: 'white', borderRadius: '28px', padding: '40px 30px',
+                                maxWidth: '480px', width: '100%', textAlign: 'center',
+                                boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+                                border: '1px solid #f1f5f9',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center'
+                            }}
+                        >
+                            <div style={{
+                                width: '64px', height: '64px', borderRadius: '50%',
+                                backgroundColor: '#fee2e2', color: '#ef4444',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                marginBottom: '24px'
+                            }}>
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 style={{
+                                fontSize: '20px', fontWeight: '900', color: '#0f172a',
+                                marginBottom: '16px', lineHeight: '1.3'
+                            }}>
+                                Resignation Approval Required
+                            </h3>
+                            <p style={{
+                                fontSize: '14px', color: '#475569', lineHeight: '1.6',
+                                marginBottom: '32px', fontWeight: '600'
+                            }}>
+                                You should get approval for your resignation first then only you can apply for experience letter.
+                            </p>
+                            <button
+                                onClick={() => setShowEntrancePopup(false)}
+                                style={{
+                                    width: '100%', padding: '16px', borderRadius: '16px',
+                                    backgroundColor: '#0f172a', color: 'white', border: 'none',
+                                    fontSize: '15px', fontWeight: '800', cursor: 'pointer',
+                                    boxShadow: '0 10px 20px rgba(15, 23, 42, 0.15)',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Okay
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <AppFooter />
         </div>

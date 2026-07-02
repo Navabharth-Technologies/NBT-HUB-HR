@@ -121,7 +121,7 @@ export default function HRDashboard() {
         const uData = await usersRes.json();
         const rawUsers = Array.isArray(uData) ? uData : (uData?.data || []);
         const allParsedUsers = rawUsers.filter(u => String(u.employee_id || u.id || u.empId || '').trim() !== '20250');
-        
+
         allParsedUsers.forEach(u => {
           const uid = String(u.id || u.empId || u.employee_id || '').trim();
           if (uid) userLookup[uid] = u.name;
@@ -143,15 +143,41 @@ export default function HRDashboard() {
         ]);
 
         let totalActiveJoinees = 0;
+        const activeNamesSet = new Set(
+          (Array.isArray(currentUsers) ? currentUsers : []).map(u => String(u.name || '').toLowerCase().trim())
+        );
+        const activeEmailsSet = new Set(
+          (Array.isArray(currentUsers) ? currentUsers : []).map(u => String(u.email || '').toLowerCase().trim())
+        );
+        const activeIdsSet = new Set(
+          (Array.isArray(currentUsers) ? currentUsers : []).map(u => String(u.employee_id || u.id || u.empId || '').trim())
+        );
+
         if (joineeRes && joineeRes.ok) {
           const jData = await joineeRes.json();
-          const activeJoinees = (Array.isArray(jData) ? jData : []).filter(j => Number(j.is_blocked) !== 1);
+          const activeJoinees = (Array.isArray(jData) ? jData : []).filter(j => {
+            const name = String(j.name || '').toLowerCase().trim();
+            const email = String(j.email_id || j.emailId || j.email || '').toLowerCase().trim();
+            const id = String(j.employee_id || j.employeeId || j.id || '').trim();
+            return Number(j.is_blocked) !== 1 &&
+              !activeNamesSet.has(name) &&
+              (!email || !activeEmailsSet.has(email)) &&
+              (!id || !activeIdsSet.has(id));
+          });
           totalActiveJoinees += activeJoinees.length;
         }
         if (internRes && internRes.ok) {
           const iData = await internRes.json();
           const internsList = Array.isArray(iData) ? iData : (iData.data || []);
-          const activeInterns = internsList.filter(i => Number(i.is_blocked) !== 1);
+          const activeInterns = internsList.filter(i => {
+            const name = String(i.name || '').toLowerCase().trim();
+            const email = String(i.email_id || i.emailId || i.email || '').toLowerCase().trim();
+            const id = String(i.employee_id || i.employeeId || i.id || '').trim();
+            return Number(i.is_blocked) !== 1 &&
+              !activeNamesSet.has(name) &&
+              (!email || !activeEmailsSet.has(email)) &&
+              (!id || !activeIdsSet.has(id));
+          });
           totalActiveJoinees += activeInterns.length;
         }
         setJoineeCount(totalActiveJoinees);
@@ -320,14 +346,15 @@ export default function HRDashboard() {
             const totalPoints = emp.totalPointsNum || emp.totalRepNum || Number(String(emp.total_points || emp.total_rep || 0).replace(/,/g, ''));
             const rewardPoints = rewardSums[empId] || 0;
             const quizPoints = Math.max(0, totalPoints - rewardPoints);
-            const resolvedName = (empId && userLookup[empId]) || emp.name || emp.employee_name || 'User';
+            const resolvedName = empId && userLookup[empId];
+            if (!resolvedName) return null;
             return {
               employee_id: empId,
               name: resolvedName,
               score: quizPoints,
               pic: emp.profile_pic || emp.profile_picture || null
             };
-          }).filter(item => item.employee_id && item.score > 0)
+          }).filter(item => item && item.employee_id && item.score > 0)
             .sort((a, b) => b.score - a.score);
 
           participants = scoreList.length;
@@ -503,10 +530,15 @@ export default function HRDashboard() {
     { label: 'New Hirings', value: typeof jobAppCount === 'number' ? jobAppCount : 'View', icon: <Briefcase size={20} color="#0d9488" />, badge: 'Applications', badgeClass: 'badge-green', iconBg: '#f0fdfa', path: '/job-applications' },
   ];
 
+  const role = (user?.role || '').toLowerCase();
+  const isHrOrAdmin = role === 'hr' || role === 'admin';
+
   const row2Stats = [
     { label: 'Awards and Recognition', value: 'View', icon: <Trophy size={20} color="#f59e0b" />, badge: 'Live', badgeClass: 'badge-yellow', iconBg: '#fffbeb', path: '/awards' },
     { label: 'Asset Administration', value: 'Manage', icon: <Package size={20} color="#ec4899" />, badge: 'New', badgeClass: 'badge-pink', iconBg: '#fdf2f8', path: '/assets' },
     { label: 'Employee Information', value: 'Manage', icon: <User size={20} color="#3b82f6" />, badge: 'Active', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: '/personal-info' },
+    { label: 'Resignation History', value: 'View', icon: <Clock size={20} color="#ef4444" />, badge: 'Live', badgeClass: 'badge-red', iconBg: '#fef2f2', path: '/resignation-history' },
+    { label: 'Experience Letter History', value: 'View', icon: <Clock size={20} color="#3b82f6" />, badge: 'Live', badgeClass: 'badge-blue', iconBg: '#eef2ff', path: isHrOrAdmin ? '/admin/certificates' : '/service-certificate-history' }
   ];
 
   return (
@@ -596,7 +628,7 @@ export default function HRDashboard() {
         <section style={{ marginBottom: winWidth < 768 ? '32px' : '40px' }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gridTemplateColumns: winWidth < 640 ? 'repeat(2, 1fr)' : winWidth < 1024 ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)',
             gap: winWidth < 768 ? '12px' : '20px'
           }}>
             {row2Stats.map((stat, i) => (

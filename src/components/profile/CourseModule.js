@@ -22,6 +22,13 @@ export default function CourseModule() {
   const [editingCourseId, setEditingCourseId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseIdToDelete, setCourseIdToDelete] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleEditCourse = (course) => {
     setFormData({
@@ -237,7 +244,13 @@ export default function CourseModule() {
     <div className="hr-dashboard-container">
       <AppHeader />
 
-      <main className="dashboard-content" style={{ paddingBottom: '100px' }}>
+      <main className="dashboard-content" style={{
+        paddingLeft: isMobile ? '16px' : '26px',
+        paddingRight: isMobile ? '16px' : '26px',
+        paddingBottom: '100px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
         <header className="section-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button
@@ -263,7 +276,7 @@ export default function CourseModule() {
               No active courses found. Click "Add course to New joinee" to get started.
             </div>
           ) : (
-            <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: '20px' }}>
+            <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: '20px' }}>
               {activeCourses.map(c => (
                 <div key={c.id || c._id} className="team-card" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>

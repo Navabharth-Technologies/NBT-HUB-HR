@@ -244,7 +244,7 @@ export default function PerformanceModule() {
   const calcTenure = () => {
     const raw = rawJoiningDate || user?.date_of_joining || user?.joining_date || user?.doj;
     if (!raw) return { months: 0, days: 0 };
-    
+
     let joinDate;
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
       joinDate = new Date(raw);
@@ -671,7 +671,7 @@ export default function PerformanceModule() {
       alignItems: 'center',
       justifyContent: 'space-between',
       cursor: 'pointer',
-      transition: '0.2s transform'
+      transition: '0.2s transform, 0.2s box-shadow'
     },
     docCard: {
       background: 'white',
@@ -682,7 +682,8 @@ export default function PerformanceModule() {
       alignItems: 'center',
       justifyContent: 'space-between',
       cursor: 'pointer',
-      boxShadow: '0 4px 10px rgba(0,0,0,0.02)'
+      boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
+      transition: '0.2s transform, 0.2s box-shadow'
     }
   };
 
@@ -724,14 +725,7 @@ export default function PerformanceModule() {
                 </div>
                 <div>
                   <div style={{ display: 'flex', flexDirection: winWidth < 480 ? 'column' : 'row', alignItems: 'center', gap: '12px' }}>
-                    <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0 }}>{user?.name || 'Sahana Nv'}</h1>
-                    <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Fingerprint size={12} /> ID: {(() => {
-                        const idStr = String(user?.employee_id || '202516');
-                        const match = idStr.match(/^(\d{5,6})\1+/);
-                        return match ? match[1] : (idStr.length >= 10 ? idStr.substring(0, 6) : idStr);
-                      })()}
-                    </span>
+                    <h1 style={{ fontSize: winWidth < 768 ? '22px' : '28px', fontWeight: '950', color: '#0f172a', margin: 0 }}>HR Team</h1>
                   </div>
                   <div style={{ display: 'flex', flexDirection: winWidth < 768 ? 'column' : 'row', alignItems: winWidth < 768 ? 'center' : 'flex-start', gap: winWidth < 768 ? '12px' : '40px', marginTop: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '950', textTransform: 'uppercase' }}>
@@ -782,13 +776,7 @@ export default function PerformanceModule() {
                       )}
                     </div>
 
-                    {/* DOB Display */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: winWidth < 768 ? '12px' : '13px', fontWeight: '800' }}>
-                      <Calendar size={16} />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{formatDateDisplay(dob)}</span>
-                      </div>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -818,7 +806,7 @@ export default function PerformanceModule() {
           maxWidth: '100%',
           margin: '0 auto 40px',
           display: 'grid',
-          gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr',
+          gridTemplateColumns: '1fr',
           gap: '24px'
         }}>
           <div style={dashboardStyles.statBox}>
@@ -828,22 +816,34 @@ export default function PerformanceModule() {
               <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900', wordBreak: 'break-all' }}>{user?.email || 'sahana@navabharathtechnologies.com'}</p>
             </div>
           </div>
-          <div style={dashboardStyles.statBox}>
-            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: '#f0f9ff', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Calendar size={20} /></div>
-            <div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date of Joining</p>
-              <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', color: '#0f172a', fontWeight: '900' }}>{joiningDate}</p>
-            </div>
-          </div>
         </div>
 
         {/* Services Section */}
         <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px' }}>
           <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>Services &amp; Summary</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : winWidth < 900 ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 600 ? '1fr' : '1fr 1fr', gap: '24px' }}>
 
             {/* Card 1 – Security Settings */}
-            <div onClick={() => setShowSecurityModal(true)} style={{ ...dashboardStyles.serviceCard, background: '#dbeafe' }}>
+            <div
+              onClick={() => setShowSecurityModal(true)}
+              style={{ ...dashboardStyles.serviceCard, background: '#dbeafe' }}
+              onMouseOver={(e) => {
+                if (winWidth >= 768) {
+                  e.currentTarget.style.transform = 'scale(1.03)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(59, 130, 246, 0.15)';
+                }
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              onTouchStart={(e) => {
+                e.currentTarget.style.transform = 'scale(0.97)';
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Shield color="#3b82f6" size={20} />
@@ -857,145 +857,44 @@ export default function PerformanceModule() {
             </div>
 
             {/* Card 2 – Support & Maintenance */}
-            <div onClick={() => navigate('/tickets')} style={{ ...dashboardStyles.serviceCard, background: '#ffedd5' }}>
+            <div
+              onClick={() => navigate('/raise-ticket')}
+              style={{ ...dashboardStyles.serviceCard, background: '#ffedd5' }}
+              onMouseOver={(e) => {
+                if (winWidth >= 768) {
+                  e.currentTarget.style.transform = 'scale(1.03)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(249, 115, 22, 0.15)';
+                }
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              onTouchStart={(e) => {
+                e.currentTarget.style.transform = 'scale(0.97)';
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <LifeBuoy color="#f97316" size={20} />
                 </div>
                 <div>
                   <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Support &amp; Maintenance</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>View Tickets</p>
+                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Raise Ticket</p>
                 </div>
               </div>
               <ChevronRight size={winWidth < 768 ? 16 : 20} color="#9a3412" />
             </div>
 
-            {/* Card 3 – Total Tenurity */}
-            <div style={{ ...dashboardStyles.serviceCard, background: '#dcfce7', cursor: 'default' }}>
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <RefreshCw color="#16a34a" size={20} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Tenurity</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>
-                    {tenure.months}M {tenure.days}D Experience
-                  </p>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
 
-        {/* Documents Section */}
-        <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px' }}>
-          <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', marginBottom: '24px' }}>HR Documents</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: winWidth < 1024 ? (winWidth < 600 ? '1fr' : '1fr 1fr') : 'repeat(3, 1fr)', gap: '24px' }}>
-            <div style={{ ...dashboardStyles.docCard, cursor: 'pointer' }} onClick={() => navigate('/salary-statements')}>
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileText color="#22c55e" /></div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Payroll Record</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Salary statement</p>
-                </div>
-              </div>
-              <ChevronRight size={winWidth < 768 ? 16 : 20} color="#94a3b8" />
-            </div>
 
-            <div
-              style={{ ...dashboardStyles.docCard, background: '#69696cff', border: 'none', cursor: 'pointer' }}
-              onClick={() => {
-                const role = (user?.role || '').toLowerCase();
-                navigate(role === 'hr' || role === 'admin' ? '/admin/certificates' : '/service-certificates');
-              }}
-            >
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(217, 212, 212, 0.91)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Fingerprint color="white" /></div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: 'rgba(251, 249, 249, 0.6)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Employment Verification</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: 'white' }}>View Service certificate requests</p>
-                </div>
-              </div>
-              <ChevronRight size={winWidth < 768 ? 16 : 20} color="white" />
-            </div>
 
-            <div
-              style={{ ...dashboardStyles.docCard, gridColumn: winWidth < 1024 && winWidth >= 600 ? 'span 2' : 'auto', cursor: 'pointer' }}
-              onClick={() => {
-                const role = (user?.role || '').toLowerCase();
-                navigate(role === 'hr' || role === 'admin' ? '/admin/resignations' : '/resignations');
-              }}
-            >
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <div style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LogOut color="#ef4444" size={26} /></div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Resignation Letter</p>
-                  <p style={{ margin: 0, fontSize: winWidth < 768 ? '14px' : '16px', fontWeight: '900', color: '#0f172a' }}>Apply for Resignation</p>
-                </div>
-              </div>
-              <ChevronRight size={24} color="#94a3b8" />
-            </div>
-          </div>
-        </div>
 
-        {/* About Section */}
-        <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto 40px', background: 'white', borderRadius: winWidth < 768 ? '24px' : '32px', padding: winWidth < 768 ? '20px' : '25px', border: '1px solid #f1f5f9' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: winWidth < 768 ? '15px' : '20px' }}>
-            <h3 style={{ fontSize: winWidth < 768 ? '18px' : '22px', fontWeight: '950', color: '#0f172a', margin: 0 }}>About Me</h3>
-            {!isEditingAbout && (
-              <div
-                onClick={() => { setTempAbout(aboutMe === 'Write a short introduction about yourself' ? '' : aboutMe); setIsEditingAbout(true); }}
-                style={{ width: '36px', height: '36px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-              >
-                <Edit3 size={18} color="#0f172a" />
-              </div>
-            )}
-          </div>
-          <div style={{ textAlign: isEditingAbout ? 'left' : 'center', padding: isEditingAbout ? '0' : (winWidth < 768 ? '10px 0' : '15px 0') }}>
-            {isEditingAbout ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <textarea
-                  value={tempAbout}
-                  onChange={e => setTempAbout(e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  style={{ width: '100%', minHeight: '120px', padding: '16px', borderRadius: '16px', border: '1.5px solid #3b82f6', outline: 'none', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
-                  autoFocus
-                  onFocus={(e) => {
-                    const len = e.target.value.length;
-                    e.target.setSelectionRange(len, len);
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => setIsEditingAbout(false)}
-                    style={{ padding: '8px 20px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={updateAboutMe}
-                    disabled={saving}
-                    style={{ padding: '8px 24px', borderRadius: '10px', border: 'none', background: '#1e40af', color: 'white', fontWeight: '700', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {aboutMe === 'Write a short introduction about yourself' ? (
-                  <>
-                    <div style={{ width: '50px', height: '50px', background: '#f8fafc', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Edit3 size={24} color="#cbd5e1" /></div>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8', fontWeight: '700' }}>{aboutMe}</p>
-                  </>
-                ) : (
-                  <p style={{ margin: 0, fontSize: '15px', color: '#475569', fontWeight: '500', lineHeight: '1.6', textAlign: 'left' }}>{aboutMe}</p>
-                )}
-              </>
-            )}
-          </div>
-        </div>
 
         {/* Logout */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '5px' }}>

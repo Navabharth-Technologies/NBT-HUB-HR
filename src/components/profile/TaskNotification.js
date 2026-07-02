@@ -238,7 +238,7 @@ const TaskNotification = ({ onOpenTask }) => {
         let displayTitle = '';
         if (n.isBlockedAlert) displayTitle = 'ACCESS BLOCKED';
         else if (dL.includes('leave') || tL.includes('leave')) displayTitle = 'LEAVE REQUEST';
-        else if (dL.includes('resignation') || tL.includes('resignation')) displayTitle = 'RESIGNATION';
+        else if (dL.includes('resignation') || tL.includes('resignation') || dL.includes('exit formalities') || tL.includes('exit formalities') || (n.type && n.type.toUpperCase() === 'RESIGNATION')) displayTitle = 'Resignation Updates';
         else if (dL.includes('certificate') || tL.includes('certificate')) displayTitle = 'SERVICE CERTIFICATE';
         else if (dL.includes('job') || tL.includes('job')) displayTitle = 'JOB APPLICATION';
         else if (dL.includes('task') || tL.includes('task')) displayTitle = 'TASK ASSIGNMENT';

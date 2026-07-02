@@ -1115,6 +1115,15 @@ export default function AwardsScreen() {
                                                 return dB - dA;
                                             });
 
+                                            if (allUserHistory.length === 0) {
+                                                return (
+                                                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', background: '#f8fafc', borderRadius: '16px', border: '1.5px solid #f1f5f9' }}>
+                                                        <Trophy size={32} style={{ color: '#e2e8f0', marginBottom: '8px' }} />
+                                                        <div style={{ fontWeight: '800', fontSize: '13px', color: '#64748b' }}>No recognitions found for this user in this period.</div>
+                                                    </div>
+                                                );
+                                            }
+
                                             return allUserHistory.map((r, i) => (
                                                 <div key={i} style={{ padding: '18px 20px', borderRadius: '16px', background: '#f8fafc', border: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div>
