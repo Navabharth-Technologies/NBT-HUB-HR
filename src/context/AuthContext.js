@@ -11,7 +11,40 @@ if (typeof window !== 'undefined' && !window.__NBT_AUTH_CONTEXT__) {
 
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUserState] = useState(null);
+
+  const adjustLoggedUser = (u) => {
+    if (!u) return u;
+    const empId = String(u.employee_id || u.id || u.empId || '').trim();
+    const email = String(u.email || '').toLowerCase().trim();
+    if (empId === '202512' || email === 'rakesh@navabharathtechnologies.com') {
+      return {
+        ...u,
+        name: 'Rakesh Gowda H N',
+        user_name: 'Rakesh Gowda H N',
+        employee_name: 'Rakesh Gowda H N',
+        empName: 'Rakesh Gowda H N'
+      };
+    }
+    if (empId === '202522' || email === 'hr@navabharathtechnologies.com') {
+      return {
+        ...u,
+        name: 'HR Team',
+        user_name: 'HR Team',
+        employee_name: 'HR Team',
+        empName: 'HR Team'
+      };
+    }
+    return u;
+  };
+
+  const setUser = (val) => {
+    setUserState(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      return adjustLoggedUser(next);
+    });
+  };
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,9 +90,10 @@ export const AuthProvider = ({ children }) => {
           employee_id: data.user.employee_id
         };
 
-        setUser(authData);
-        localStorage.setItem('user', JSON.stringify(authData));
-        localStorage.setItem('navAuthUser', JSON.stringify(authData));
+        const adjusted = adjustLoggedUser(authData);
+        setUser(adjusted);
+        localStorage.setItem('user', JSON.stringify(adjusted));
+        localStorage.setItem('navAuthUser', JSON.stringify(adjusted));
         localStorage.setItem('token', data.token);
         localStorage.setItem('userRole', data.user.role);
         return { success: true };
@@ -104,7 +138,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (newUserData) => {
-    const updatedUser = { ...user, ...newUserData };
+    const updatedUser = adjustLoggedUser({ ...user, ...newUserData });
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     localStorage.setItem('navAuthUser', JSON.stringify(updatedUser));

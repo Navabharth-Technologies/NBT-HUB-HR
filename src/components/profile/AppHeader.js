@@ -176,7 +176,7 @@ export default function AppHeader() {
 
         {/* User Info moved here */}
         <div style={{ display: winWidth < 600 ? 'none' : 'block', textAlign: 'right', lineHeight: '1.2' }}>
-          <div style={styles.userName}>HR Team</div>
+          <div style={styles.userName}>{user?.name || 'HR Team'}</div>
         </div>
 
         <div style={{ position: 'relative', width: winWidth < 768 ? '48px' : '64px', height: winWidth < 768 ? '48px' : '64px' }}>
