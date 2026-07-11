@@ -214,7 +214,7 @@ export default function RaiseTicket() {
     label: {
       fontSize: '11px',
       fontWeight: '900',
-      color: '#94a3b8',
+      color: '#1e293b',
       textTransform: 'uppercase',
       letterSpacing: '1px',
       marginBottom: '15px',

@@ -125,10 +125,14 @@ export default function PerformanceModule() {
               console.error('Manager details fetch error for Dinesh:', err);
             }
           } else {
-            setReportingManager({
-              name: data.reporting_manager || 'Anish V N',
-              id: data.reporting_manager_id || ''
-            });
+            const initialManagerName = data.reporting_manager_name || data.reporting_manager || 'None';
+            const initialManagerId = data.reporting_manager_id || '';
+
+            setReportingManager(prev => ({
+              ...prev,
+              name: prev.name === 'Loading...' ? initialManagerName : prev.name,
+              id: prev.id || initialManagerId
+            }));
 
             // If we have an ID but no name, or just to ensure it's fresh, fetch manager details
             if (data.reporting_manager_id) {
@@ -138,11 +142,12 @@ export default function PerformanceModule() {
                 });
                 if (mRes.ok) {
                   const mData = await mRes.json();
-                  setReportingManager({
-                    name: mData.name || data.reporting_manager || 'Anish V N',
+                  setReportingManager(prev => ({
+                    ...prev,
+                    name: mData.name || prev.name || initialManagerName,
                     id: data.reporting_manager_id,
-                    profile_pic: mData.profile_pic || mData.profile_picture
-                  });
+                    profile_pic: mData.profile_pic || mData.profile_picture || prev.profile_pic
+                  }));
                 }
               } catch (err) { console.error('Manager details fetch error:', err); }
             }
@@ -192,12 +197,23 @@ export default function PerformanceModule() {
           // Merge with existing reporting manager info from loadProfile if needed
           setReportingManager(prev => ({
             ...prev,
-            name: data.name || prev.name || 'Anish V N',
+            name: data.name || data.reporting_manager_name || (prev.name === 'Loading...' ? 'None' : prev.name),
             id: data.id || prev.id,
             profile_pic: data.profile_pic || data.profile_picture || prev.profile_pic
           }));
+        } else {
+          setReportingManager(prev => ({
+            ...prev,
+            name: prev.name === 'Loading...' ? 'None' : prev.name
+          }));
         }
-      } catch (err) { console.error('Manager fetch error:', err); }
+      } catch (err) {
+        console.error('Manager fetch error:', err);
+        setReportingManager(prev => ({
+          ...prev,
+          name: prev.name === 'Loading...' ? 'None' : prev.name
+        }));
+      }
     };
 
     const loadUserRole = async () => {

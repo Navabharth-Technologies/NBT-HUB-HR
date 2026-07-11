@@ -122,19 +122,21 @@ const FormField = ({ label, icon, type = 'text', name, placeholder, value, onCha
             boxSizing: 'border-box',
             appearance: 'none',
             transition: 'all 0.3s',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+            color: '#1e293b',
+            fontFamily: 'inherit'
           }}
           onFocus={(e) => { e.currentTarget.style.borderColor = '#0d9488'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(13, 148, 136, 0.1)'; }}
           onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; }}
         >
-          <option value="">Select Department</option>
-          <option value="Technical Support">Technical Support</option>
-          <option value="Development">Development</option>
-          <option value="Marketing">Marketing</option>
-          <option value="HR">HR</option>
-          <option value="Design">Design</option>
-          <option value="Operations">Operations</option>
-          <option value="Internship">Internship</option>
+          <option value="" style={{ color: '#64748b' }}>Select Department</option>
+          <option value="Technical Support" style={{ color: '#1e293b' }}>Technical Support</option>
+          <option value="Development" style={{ color: '#1e293b' }}>Development</option>
+          <option value="Marketing" style={{ color: '#1e293b' }}>Marketing</option>
+          <option value="HR" style={{ color: '#1e293b' }}>HR</option>
+          <option value="Design" style={{ color: '#1e293b' }}>Design</option>
+          <option value="Operations" style={{ color: '#1e293b' }}>Operations</option>
+          <option value="Internship" style={{ color: '#1e293b' }}>Internship</option>
         </select>
         <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
       </div>

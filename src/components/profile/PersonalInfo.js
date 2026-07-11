@@ -879,6 +879,7 @@ export default function PersonalInfo({ onBack }) {
           sanitizedValue = value.substring(0, atIndex + 1 + comIndex + 4);
         }
       }
+      sanitizedValue = String(sanitizedValue || '').toLowerCase();
     }
 
     // Strict validation logic
@@ -1175,13 +1176,17 @@ export default function PersonalInfo({ onBack }) {
         payload.last_working_date = payload.lwd;
       }
 
-      // Fix key mismatches between SECTIONS field keys and backend column names
-      // official_email_id (SECTIONS key) vs official_email (form state key)
       if (!payload.official_email && (form.official_email || form.official_email_id)) payload.official_email = form.official_email || form.official_email_id;
       if (!payload.official_email_id && (form.official_email || form.official_email_id)) payload.official_email_id = form.official_email || form.official_email_id;
 
       if (!payload.personal_email && (form.personal_email || form.personal_email_id)) payload.personal_email = form.personal_email || form.personal_email_id;
       if (!payload.personal_email_id && (form.personal_email || form.personal_email_id)) payload.personal_email_id = form.personal_email || form.personal_email_id;
+
+      // Ensure emails are lowercase
+      if (payload.official_email) payload.official_email = String(payload.official_email).toLowerCase().trim();
+      if (payload.official_email_id) payload.official_email_id = String(payload.official_email_id).toLowerCase().trim();
+      if (payload.personal_email) payload.personal_email = String(payload.personal_email).toLowerCase().trim();
+      if (payload.personal_email_id) payload.personal_email_id = String(payload.personal_email_id).toLowerCase().trim();
 
       // Send ft_pt with all common backend column name variants
       if (payload.ft_pt) {

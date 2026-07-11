@@ -788,7 +788,6 @@ export default function AttendanceManagement() {
           const pIn = parseTimeStr(inTime);
           const pOut = parseTimeStr(outTime);
           let rawStatus = String(logsForEmp[0].status || logsForEmp[0].Status || 'PRESENT').trim().toUpperCase();
-          if (inTime !== '----' && inTime !== '--:--' && rawStatus === 'ABSENT') rawStatus = 'PRESENT';
 
           if (rawStatus === 'PRESENT' || rawStatus === 'P' || rawStatus === 'IN OFFICE' || rawStatus === 'IN-OFFICE') {
             displayStatus = 'In Office';
@@ -862,12 +861,24 @@ export default function AttendanceManagement() {
 
     const dateRangeDisplay = `${formatToDDMMYYYY(fromDate)} to ${formatToDDMMYYYY(toDate)}`;
 
+    const rows = getExportRows(false);
+    
+    let reportTitle = "Organization Attendance Report";
+    if (activeFilter === 'PRESENT') reportTitle = "Present Report";
+    else if (activeFilter === 'ABSENT') reportTitle = "Absent Report";
+    else if (activeFilter === 'Late Login') reportTitle = "Late Login Report";
+    else if (activeFilter === 'HALF DAYS') reportTitle = "Half Day Report";
+    else if (activeFilter === 'Early logout') reportTitle = "Early Logout Report";
+
+    const uniqueEmpIds = new Set(rows.map(r => String(r[2]).replace('#', '').trim()));
+    const dynamicCount = activeFilter === 'Late Login' ? uniqueEmpIds.size : rows.length;
+
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 297, 45, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text("Organization Attendance Report", 14, 20);
+    doc.text(reportTitle, 14, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -876,9 +887,7 @@ export default function AttendanceManagement() {
 
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.text(`Total Records: ${displayedEmployees.length} | Departments: ${user?.department || 'IT'}`, 14, 38);
-
-    const rows = getExportRows(false);
+    doc.text(`Total Records: ${dynamicCount} | Departments: ${user?.department || 'IT'}`, 14, 38);
 
     autoTable(doc, {
       head: [['Date', 'Employee', 'ID', 'In Time', 'Out Time', 'Work Hrs', 'Status', 'In Location', 'Out Location']],
@@ -1472,7 +1481,6 @@ export default function AttendanceManagement() {
                 let displayStatus = 'Absent';
                 if (logsForEmp.length > 0) {
                   let rawStatus = String(logsForEmp[0].status || logsForEmp[0].Status || 'PRESENT').trim().toUpperCase();
-                  if (punchIn !== '----' && punchIn !== '--:--' && rawStatus === 'ABSENT') rawStatus = 'PRESENT';
                   if (rawStatus === 'PRESENT' || rawStatus === 'P' || rawStatus === 'IN OFFICE' || rawStatus === 'IN-OFFICE') displayStatus = 'In Office';
                   else if (rawStatus === 'ABSENT' || rawStatus === 'A') displayStatus = 'Absent';
                   else if (rawStatus === 'HALF_DAY' || rawStatus === 'HD' || rawStatus === 'HALF DAY') displayStatus = 'Half Day';

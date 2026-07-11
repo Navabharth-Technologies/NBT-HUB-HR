@@ -566,14 +566,14 @@ export default function ThreadScreen() {
                                             setEditMediaPreview(null);
                                             setEditRemoveMedia(false);
                                         }}
-                                        style={{ border: 'none', background: '#f8fafc', color: '#315A9E', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        className="thread-action-btn"
                                         title="Edit post"
                                     >
                                         <Edit3 size={16} />
                                     </button>
                                     <button
                                         onClick={() => setDeleteConfirm({ show: true, postId: post.id, userId: post.userId || post.user_id || post.employee_id })}
-                                        style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        className="thread-action-btn"
                                         title="Delete post"
                                     >
                                         <Trash2 size={16} />
@@ -1046,6 +1046,25 @@ export default function ThreadScreen() {
             </AnimatePresence>
             </main>
             <AppFooter />
+            <style>{`
+                .thread-action-btn {
+                    border: none;
+                    background: #f8fafc;
+                    color: #64748b;
+                    padding: 10px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease-in-out;
+                }
+                .thread-action-btn:hover {
+                    background: #f1f5f9;
+                    color: #0f172a;
+                    transform: scale(1.08);
+                }
+            `}</style>
         </div>
     );
 }

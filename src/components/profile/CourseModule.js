@@ -138,10 +138,11 @@ export default function CourseModule() {
       const respData = await res.json();
       
       if (res.ok) {
+        setError(null);
         setShowModal(false);
         resetForm();
         fetchCourses();
-        setSuccess(isEditMode ? 'Course updated successfully!' : 'Course created successfully with provided links!');
+        setSuccess(isEditMode ? 'Course updated successfully!' : 'Course added successfully.');
       } else {
         setError(respData.message || `Failed to ${isEditMode ? 'update' : 'create'} course`);
       }

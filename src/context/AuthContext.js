@@ -16,7 +16,16 @@ export const AuthProvider = ({ children }) => {
   const adjustLoggedUser = (u) => {
     if (!u) return u;
     const empId = String(u.employee_id || u.id || u.empId || '').trim();
-    const email = String(u.email || '').toLowerCase().trim();
+    const email = String(u.email || u.email_id || u.user_email || '').toLowerCase().trim();
+    if (email === 'hr@navabharathtechnologies.com') {
+      return {
+        ...u,
+        name: 'HR Team',
+        user_name: 'HR Team',
+        employee_name: 'HR Team',
+        empName: 'HR Team'
+      };
+    }
     if (empId === '202512' || email === 'rakesh@navabharathtechnologies.com') {
       return {
         ...u,
@@ -26,13 +35,13 @@ export const AuthProvider = ({ children }) => {
         empName: 'Rakesh Gowda H N'
       };
     }
-    if (empId === '202522' || email === 'hr@navabharathtechnologies.com') {
+    if (empId === '202522' || email === 'raviaradhya46@gmail.com') {
       return {
         ...u,
-        name: 'HR Team',
-        user_name: 'HR Team',
-        employee_name: 'HR Team',
-        empName: 'HR Team'
+        name: 'Ravi Kumar B M',
+        user_name: 'Ravi Kumar B M',
+        employee_name: 'Ravi Kumar B M',
+        empName: 'Ravi Kumar B M'
       };
     }
     return u;

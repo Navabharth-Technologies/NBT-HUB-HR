@@ -764,33 +764,6 @@ export default function PaySlipScreen() {
         try {
             const idsToDelete = [];
 
-            // 1. If we are editing, we do NOT delete the current payslip (it will be updated via PUT).
-            // We only need to check for other duplicate records.
-
-            // 2. Check if there are any existing payslips in payslipsList 
-            // that match the target employee_id, month, and year of the saved data.
-            // We must delete them to avoid duplicates, except for the one we are editing.
-            const targetEmpId = String(formData.employee_id || '').trim();
-            const targetMonth = String(formData.month || '').trim();
-            const targetYear = String(formData.year || '').trim();
-
-            payslipsList.forEach(item => {
-                const itemEmpId = String(item.employee_id || item.id || '').trim();
-                const itemMonth = String(item.month || '').trim();
-                const itemYear = String(item.year || '').trim();
-                
-                if (itemEmpId === targetEmpId && itemMonth === targetMonth && itemYear === targetYear) {
-                    const itemId = item._id || item.id;
-                    // If we are editing, exclude the currently editing payslip from deletion
-                    if (isEditMode && editingPayslipId && String(itemId) === String(editingPayslipId)) {
-                        return;
-                    }
-                    if (itemId && !idsToDelete.includes(itemId)) {
-                        idsToDelete.push(itemId);
-                    }
-                }
-            });
-
             const monthChanged = isEditMode && initialMonth && String(formData.month).trim() !== String(initialMonth).trim();
             const yearChanged = isEditMode && initialYear && String(formData.year).trim() !== String(initialYear).trim();
             const keyChanged = monthChanged || yearChanged;
