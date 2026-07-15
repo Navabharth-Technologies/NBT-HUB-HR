@@ -880,7 +880,7 @@ export default function ExperienceLetterUser({ defaultTab = 'submit' }) {
                                             const reqStatus = r.status || 'Pending';
                                             const isAppr = reqStatus.toLowerCase() === 'approved';
                                             const isRej = reqStatus.toLowerCase() === 'rejected';
-                                            const isBothApproved = isAppr && (r.pm_status || '').toLowerCase() === 'approved';
+                                            const isBothApproved = (r.status || '').toLowerCase() === 'approved' || (r.status || '').toLowerCase() === 'completed';
                                             const downloadUrl = r.certificate_url || r.file_path;
                                             return (
                                                 <div key={r.id} style={{ background: 'white', padding: '16px', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1000,7 +1000,7 @@ export default function ExperienceLetterUser({ defaultTab = 'submit' }) {
                                                     <span style={{ fontSize: '12px', fontWeight: '800' }}>{formatDate(req.created_at)}</span>
                                                 </div>
                                                 {(() => {
-                                                    const canDownload = isApproved || (req.pm_status || '').toLowerCase() === 'approved';
+                                                    const canDownload = (req.status || '').toLowerCase() === 'approved' || (req.status || '').toLowerCase() === 'completed';
                                                     return (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); if (canDownload) handleDownloadCertificate(req); }}
@@ -1251,7 +1251,7 @@ export default function ExperienceLetterUser({ defaultTab = 'submit' }) {
 
                                             </div>
                                         </>
-                                    ) : ((selectedDetail.status || '').toLowerCase() === 'approved' || (selectedDetail.pm_status || '').toLowerCase() === 'approved') ? (
+                                    ) : ((selectedDetail.status || '').toLowerCase() === 'approved' || (selectedDetail.status || '').toLowerCase() === 'completed') ? (
                                         <button
                                             onClick={() => handleDownloadCertificate(selectedDetail)}
                                             disabled={downloadingId === selectedDetail.id}

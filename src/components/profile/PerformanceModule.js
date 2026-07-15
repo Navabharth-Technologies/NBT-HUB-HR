@@ -125,12 +125,12 @@ export default function PerformanceModule() {
               console.error('Manager details fetch error for Dinesh:', err);
             }
           } else {
-            const initialManagerName = data.reporting_manager_name || data.reporting_manager || 'None';
+            const initialManagerName = data.reporting_manager_name || data.reporting_manager || null;
             const initialManagerId = data.reporting_manager_id || '';
 
             setReportingManager(prev => ({
               ...prev,
-              name: prev.name === 'Loading...' ? initialManagerName : prev.name,
+              name: prev.name === 'Loading...' ? (initialManagerName || 'None') : prev.name,
               id: prev.id || initialManagerId
             }));
 
@@ -197,21 +197,23 @@ export default function PerformanceModule() {
           // Merge with existing reporting manager info from loadProfile if needed
           setReportingManager(prev => ({
             ...prev,
-            name: data.name || data.reporting_manager_name || (prev.name === 'Loading...' ? 'None' : prev.name),
+            name: data.name || data.reporting_manager_name || (prev.name && prev.name !== 'Loading...' ? prev.name : 'None'),
             id: data.id || prev.id,
             profile_pic: data.profile_pic || data.profile_picture || prev.profile_pic
           }));
         } else {
+          // API failed — preserve any valid name already set by loadProfile
           setReportingManager(prev => ({
             ...prev,
-            name: prev.name === 'Loading...' ? 'None' : prev.name
+            name: (prev.name && prev.name !== 'Loading...') ? prev.name : 'None'
           }));
         }
       } catch (err) {
         console.error('Manager fetch error:', err);
+        // Network error — preserve any valid name already set by loadProfile
         setReportingManager(prev => ({
           ...prev,
-          name: prev.name === 'Loading...' ? 'None' : prev.name
+          name: (prev.name && prev.name !== 'Loading...') ? prev.name : 'None'
         }));
       }
     };

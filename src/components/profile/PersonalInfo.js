@@ -987,6 +987,16 @@ export default function PersonalInfo({ onBack }) {
         }
       }
     }
+    // Net Salary validation — warn in real-time if net > gross
+    if ((key === 'salary' || key === 'gross_salary_a') && updates) {
+      const newSalary = key === 'salary' ? sanitizedValue : form.salary;
+      const newGross = key === 'gross_salary_a' ? sanitizedValue : form.gross_salary_a;
+      const netVal = parseFloat(newSalary || '0');
+      const grossVal = parseFloat(newGross || '0');
+      if (grossVal > 0 && netVal > grossVal) {
+        setToast({ type: 'error', msg: 'Net Salary cannot exceed Gross Salary (' + newGross + ')' });
+      }
+    }
     setForm(prev => ({ ...prev, ...updates }));
   };
 
@@ -1122,6 +1132,16 @@ export default function PersonalInfo({ onBack }) {
         return;
       }
     }
+    // Net Salary cannot exceed Gross Salary
+    if (activeSectionFields.includes('salary') && form.salary && form.gross_salary_a) {
+      const netVal = parseFloat(form.salary || '0');
+      const grossVal = parseFloat(form.gross_salary_a || '0');
+      if (grossVal > 0 && netVal > grossVal) {
+        setToast({ type: 'error', msg: `Net Salary (₹${form.salary}) cannot exceed Gross Salary (₹${form.gross_salary_a})` });
+        return;
+      }
+    }
+
     if (activeSectionFields.includes('ifsc_code') && form.ifsc_code && form.ifsc_code.length !== 11) {
       setToast({ type: 'error', msg: `IFSC Code must be 11 characters${getSection('ifsc_code')}` });
       return;

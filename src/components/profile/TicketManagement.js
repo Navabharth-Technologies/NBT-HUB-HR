@@ -128,8 +128,8 @@ export default function TicketManagement() {
 
       <div style="position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; justify-content: space-between; box-sizing: border-box;">
         <div>
-          <div style="display: flex; align-items: center; margin-bottom: 45px;">
-            <img src="${logo}" style="height: 80px; object-fit: contain;" />
+          <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 45px;">
+            <img src="${logo}" style="height: 120px; object-fit: contain; display: block; margin: 0 auto;" />
           </div>
 
           <div style="text-align: center; margin-bottom: 50px;">
@@ -750,6 +750,7 @@ export default function TicketManagement() {
                   <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Ticket ID</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Subject</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Description</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Requester</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Priority</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Created At</th>
@@ -760,7 +761,7 @@ export default function TicketManagement() {
                 </thead>
                 <tbody className="animate-fade-in">
                   {loading ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>Fetching support tickets...</td></tr>
+                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>Fetching support tickets...</td></tr>
                   ) : filteredTickets.length > 0 ? (
                     filteredTickets.map((ticket, index) => {
                       const status = getStatusStyle(ticket.status);
@@ -775,14 +776,14 @@ export default function TicketManagement() {
                               #{ticket.ticket_number || ticket.id || index + 1}
                             </span>
                           </td>
+                          <td style={{ padding: '20px 25px' }}>
+                            <div style={{ fontWeight: '800', color: '#3863a8', fontSize: '14px', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={parseTicketSubject(ticket.subject).subject}>{parseTicketSubject(ticket.subject).subject || 'No Subject'}</div>
+                          </td>
                           <td
-                            style={{ padding: '20px 25px', cursor: 'pointer' }}
-                            onClick={() => {
-                              setViewingTicket(ticket);
-                            }}
+                            style={{ padding: '20px 25px', maxWidth: '260px', cursor: 'pointer' }}
+                            onClick={() => { setViewingTicket(ticket); }}
                           >
-                            <div style={{ fontWeight: '800', color: '#3863a8', fontSize: '14px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Click to view full subject">{ticket.subject || 'No Subject'}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ticket.description || 'No description provided.'}</div>
+                            <div style={{ fontSize: '13px', color: '#3863a8', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px', textDecoration: 'underline', textUnderlineOffset: '3px' }} title={ticket.description || ''}>{ticket.description || '—'}</div>
                           </td>
                           <td style={{ padding: '20px 25px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -916,14 +917,22 @@ export default function TicketManagement() {
                 </div>
 
                 <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '18px', marginBottom: '24px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Original Request</div>
-                  <div style={{ fontSize: '15px', fontWeight: '850', color: '#1e293b', lineHeight: '1.4' }}>
-                    {(() => {
-                      const { subject } = parseTicketSubject(selectedTicket?.subject);
-                      return subject;
-                    })()}
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Ticket Details</div>
+                  {/* Issue Subject */}
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#3863a8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Issue Subject</div>
+                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', lineHeight: '1.4' }}>
+                      {(() => {
+                        const { subject, details } = parseTicketSubject(selectedTicket?.subject);
+                        return details ? `${subject} — ${details}` : (subject || selectedTicket?.subject || 'No Subject');
+                      })()}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{selectedTicket?.description || 'No description provided.'}</div>
+                  {/* Issue Description */}
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#3863a8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Issue Description</div>
+                    <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontWeight: '600' }}>{selectedTicket?.description || 'No description provided.'}</div>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
@@ -989,14 +998,22 @@ export default function TicketManagement() {
                 </div>
 
                 <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '18px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Original Request</div>
-                  <div style={{ fontSize: '15px', fontWeight: '850', color: '#1e293b', lineHeight: '1.4' }}>
-                    {(() => {
-                      const { subject } = parseTicketSubject(viewingTicket?.subject);
-                      return subject;
-                    })()}
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Ticket Details</div>
+                  {/* Issue Subject */}
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#3863a8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Issue Subject</div>
+                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', lineHeight: '1.4' }}>
+                      {(() => {
+                        const { subject, details } = parseTicketSubject(viewingTicket?.subject);
+                        return details ? `${subject} — ${details}` : (subject || viewingTicket?.subject || 'No Subject');
+                      })()}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{viewingTicket?.description || 'No description provided.'}</div>
+                  {/* Issue Description */}
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#3863a8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Issue Description</div>
+                    <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontWeight: '600' }}>{viewingTicket?.description || 'No description provided.'}</div>
+                  </div>
                 </div>
               </motion.div>
             </div>

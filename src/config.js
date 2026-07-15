@@ -46,6 +46,7 @@ export const API_ENDPOINTS = {
   ASSIGN_TASK: `${BASE_URL}/api/assign-task`,
   ASSIGNED_TASKS_GET: `${BASE_URL}/api/tasks/all-assigned`,
   ALERTS: `${BASE_URL}/api/notifications`,
+  NOTIFICATIONS: `${BASE_URL}/api/notifications`,
   USERS: `${BASE_URL}/api/users`,
   BIRTHDAYS: `${BASE_URL}/api/birthdays`,
   ATTENDANCE: `${BASE_URL}/api/attendance`,

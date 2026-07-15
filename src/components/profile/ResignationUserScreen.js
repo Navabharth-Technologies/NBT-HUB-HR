@@ -342,8 +342,11 @@ export default function ResignationUserScreen({ defaultTab = 'submit' }) {
 
                             if (Array.isArray(employees)) {
                                 employees.forEach(e => {
-                                    empMap[String(e.id || e.employee_id)] = e;
-                                    usersMap[e.id || e.employee_id] = e.name || e.username;
+                                    const eid = e.id || e.employee_id;
+                                    if (eid != null) {
+                                        empMap[String(eid)] = e;
+                                        usersMap[eid] = e.name || e.username;
+                                    }
                                 });
 
                                 let hrUser = employees.find(u => (u.role||'').toLowerCase() === 'hr' || (u.designation||'').toLowerCase() === 'hr');
@@ -378,8 +381,8 @@ export default function ResignationUserScreen({ defaultTab = 'submit' }) {
                                     ...r,
                                     employee_name: r.employee_name || emp?.name || 'Employee',
                                     profile_picture: pic,
-                                    hr_name: usersMap[r.hr_id] || r.hr_name || defaultHrName,
-                                    pm_name: usersMap[r.pm_id] || usersMap[r.project_manager_id] || r.pm_name || r.project_manager_name || defaultPmName
+                                    hr_name: (r.hr_id != null ? usersMap[r.hr_id] : null) || r.hr_name || defaultHrName,
+                                    pm_name: (r.pm_id != null ? usersMap[r.pm_id] : null) || (r.project_manager_id != null ? usersMap[r.project_manager_id] : null) || r.pm_name || r.project_manager_name || defaultPmName
                                 };
                             });
                         }

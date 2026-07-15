@@ -19,6 +19,7 @@ export default function LeaveRequestDetail() {
   const [feedback, setFeedback] = useState('');
   const [winWidth, setWinWidth] = useState(window.innerWidth);
   const [modalState, setModalState] = useState({ show: false, message: '', type: 'APPROVED' });
+  const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
 
   const handleModalClose = () => {
     setModalState({ show: false, message: '', type: 'APPROVED' });
@@ -46,8 +47,9 @@ export default function LeaveRequestDetail() {
       let remarks = feedback;
 
       if (targetStatus === 'REJECTED' && !remarks) {
-        remarks = prompt("Reason for rejection (Required):");
-        if (!remarks) return alert("Remarks are required for rejection");
+        // Show custom reject modal instead of browser prompt
+        setRejectModal({ show: true, reason: '' });
+        return;
       } else if (!remarks) {
         remarks = 'Approved by HR/Manager';
       }
@@ -331,7 +333,7 @@ export default function LeaveRequestDetail() {
             masterEmp?.profile_picture || masterEmp?.profile_pic || masterEmp?.ProfilePic ||
             found.profile_pic || found.profilePic || found.profile_picture;
 
-          const resolvedRole = (freshProfile?.designation || freshProfile?.role || masterEmp?.role || masterEmp?.designation || found.user_role || found.designation || found.role || 'Employee').toUpperCase();
+          const resolvedRole = (freshProfile?.base_designation || freshProfile?.base_role || masterEmp?.role || freshProfile?.designation || masterEmp?.designation || found.designation || found.user_role || found.role || 'Employee').toUpperCase();
           const isLeadRequester = resolvedRole.includes('LEAD') || resolvedRole.includes('MANAGER') || resolvedRole.includes('CEO') || resolvedRole.includes('ADMIN');
 
           const empTeam = masterEmp?.team || found.team || '';
@@ -365,13 +367,14 @@ export default function LeaveRequestDetail() {
           ) : null;
           const ceoName = ceoUser ? (ceoUser.name || ceoUser.full_name) : 'Dinesh';
 
-          // Resolve HR name dynamically from employee ID or Role
+          // Resolve HR name strictly by role — matches backend isHRRole logic (human resource / hr only)
           const hrUser = Array.isArray(empData) ? empData.find(e => {
-            const eid = String(e.employee_id || e.id || e.EmpID || '').trim();
-            const r = String(e.role || e.designation || '').toUpperCase();
-            return eid === '202515' || r === 'HR' || r.includes('HUMAN RESOURCE');
+            const eid = String(e.id || e.employee_id || e.EmpID || '').trim();
+            const r = String(e.role || '').toLowerCase().trim();
+            return eid === '202522' || r === 'hr' || r.includes('human resource');
           }) : null;
-          const dynamicHRName = hrUser ? (hrUser.name || hrUser.full_name) : '';
+          // Append role tag so HR name is unambiguous (e.g. "Ashwini B G (HR)")
+          const dynamicHRName = hrUser ? `${hrUser.name || hrUser.full_name} (HR)` : 'HR Team';
 
           // Resolve RM for Project Managers (Dinesh)
           let dynamicPMName = found.l3_name || 'Anish V N';
@@ -432,7 +435,7 @@ export default function LeaveRequestDetail() {
             profile_pic: finalPic,
             approvals: {
               l1: { name: dynamicLeadName, status: l1Status, stage: 'L1' },
-              l2: { name: isHRRequester ? ceoName : (found.l2_name || dynamicHRName), status: l2Status, stage: 'L2' },
+              l2: { name: isHRRequester ? ceoName : dynamicHRName, status: l2Status, stage: 'L2' },
               l3: { name: dynamicPMName, status: l3Status, stage: 'L3' }
             }
           });
@@ -760,6 +763,126 @@ export default function LeaveRequestDetail() {
                   : 'The leave request has been rejected successfully.')}
               </p>
 
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Custom Reject Reason Modal */}
+      {rejectModal.show && (
+        <>
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(8px)',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            zIndex: 99999, animation: 'modalFadeIn 0.2s ease-out'
+          }}>
+            <div style={{
+              background: 'white', width: '90%', maxWidth: '420px',
+              borderRadius: '32px', padding: '36px',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.15)',
+              border: '1.5px solid #f1f5f9', fontFamily: "'Outfit', sans-serif"
+            }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '22px',
+                background: '#fef2f2', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 20px',
+                border: '1.5px solid #fecaca'
+              }}>
+                <XCircle size={32} color="#ef4444" />
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#0f172a', margin: '0 0 8px 0', textAlign: 'center' }}>
+                Reason for Rejection
+              </h2>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px 0', textAlign: 'center', fontWeight: '700' }}>
+                Please provide a reason before rejecting this leave request.
+              </p>
+              <textarea
+                placeholder="Enter rejection reason here..."
+                value={rejectModal.reason}
+                onChange={e => setRejectModal(prev => ({ ...prev, reason: e.target.value }))}
+                rows={4}
+                style={{
+                  width: '100%', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                  padding: '14px 16px', fontSize: '14px', fontWeight: '600',
+                  color: '#0f172a', outline: 'none', resize: 'none', boxSizing: 'border-box',
+                  fontFamily: "'Outfit', sans-serif", marginBottom: '20px'
+                }}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button
+                  onClick={() => setRejectModal({ show: false, reason: '' })}
+                  style={{
+                    padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0',
+                    background: '#f8fafc', color: '#64748b', fontSize: '15px',
+                    fontWeight: '800', cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!rejectModal.reason.trim()) return;
+                    setRejectModal({ show: false, reason: '' });
+                    setFeedback(rejectModal.reason);
+                    // Re-call handleStatusUpdate with the reason already set in feedback
+                    // We pass the reason directly to avoid stale closure issues
+                    try {
+                      setIsUpdating(true);
+                      const userRole = (user?.role || 'PM').toUpperCase();
+                      const requesterRole = (request?.requesterRole || '').toUpperCase();
+                      const payload = {
+                        status: 'Rejected',
+                        remarks: rejectModal.reason,
+                        role: userRole.includes('HR') ? 'HR' : 'PM',
+                        userId: user?.id || user?.employee_id || user?.EmpID,
+                        approve_type: userRole.includes('HR') ? 'HR' : 'PM',
+                        employee_id: user?.employee_id || user?.id,
+                        EmpID: user?.id || user?.employee_id,
+                      };
+                      const r = userRole.toUpperCase();
+                      const reqRoleStr = (request?.requesterRole || '').toUpperCase();
+                      const isHRReqLocal = reqRoleStr.includes('HR') || reqRoleStr.includes('HUMAN RESOURCE') || String(request?.empCode) === '202515';
+                      const isPMReqLocal = reqRoleStr.includes('PROJECT MANAGER') || reqRoleStr === 'PM';
+                      let finalStage = 'L1';
+                      if (isHRReqLocal) finalStage = 'L3';
+                      else if (isPMReqLocal) finalStage = r.includes('HR') ? 'L2' : 'L1';
+                      else if (r.includes('PM') || r.includes('CEO') || r.includes('ADMIN') || r.includes('MANAGER') || String(user?.name || '').toUpperCase().includes('ANISH') || String(user?.name || '').toUpperCase().includes('DINESH')) finalStage = 'L3';
+                      else if (r.includes('HR')) finalStage = 'L2';
+                      payload.stage = finalStage;
+                      if (finalStage === 'L3') payload.pm_status = 'Rejected';
+                      else if (finalStage === 'L2') payload.hr_status = 'Rejected';
+                      else payload.rm_status = 'Rejected';
+                      const response = await fetch(API_ENDPOINTS.UPDATE_LEAVE_STATUS(id), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` },
+                        body: JSON.stringify(payload)
+                      });
+                      const resText = await response.text();
+                      let resData = {};
+                      try { resData = JSON.parse(resText); } catch (e) {}
+                      if (response.ok) {
+                        setModalState({ show: true, message: 'Leave Rejected.', type: 'REJECTED' });
+                      } else {
+                        setModalState({ show: true, message: 'Update Failed', desc: resData.error || resData.message || 'Server Error', type: 'REJECTED' });
+                      }
+                    } catch (err) {
+                      setModalState({ show: true, message: 'Connection Failure', desc: 'System Connection Failure.', type: 'REJECTED' });
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  }}
+                  disabled={!rejectModal.reason.trim()}
+                  style={{
+                    padding: '14px', borderRadius: '16px', border: 'none',
+                    background: rejectModal.reason.trim() ? '#ef4444' : '#fca5a5',
+                    color: 'white', fontSize: '15px', fontWeight: '900',
+                    cursor: rejectModal.reason.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  Confirm Reject
+                </button>
+              </div>
             </div>
           </div>
         </>
