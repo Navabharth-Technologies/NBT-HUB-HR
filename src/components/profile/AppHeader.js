@@ -186,7 +186,6 @@ export default function AppHeader() {
               borderRadius: '50%',
               background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'default',
               overflow: 'hidden', position: 'relative'
             }}
           >
