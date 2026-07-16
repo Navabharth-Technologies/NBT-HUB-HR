@@ -180,18 +180,15 @@ export default function AppHeader() {
 
         <div style={{ position: 'relative', width: winWidth < 768 ? '48px' : '64px', height: winWidth < 768 ? '48px' : '64px' }}>
           <div
-            onClick={() => navigate('/personal-info?self=true')}
             style={{
               width: '100%',
               height: '100%',
               borderRadius: '50%',
               background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: '0.2s transform',
+              cursor: 'default',
               overflow: 'hidden', position: 'relative'
             }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             {(() => {
               const empId = user?.employee_id || user?.id || user?.empId;
