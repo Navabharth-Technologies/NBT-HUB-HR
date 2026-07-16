@@ -798,22 +798,6 @@ export default function PerformanceModule() {
                   </div>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#f8fafc', padding: '12px 20px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', overflow: 'hidden' }}>
-                  {reportingManager.profile_pic ? (
-                    <img
-                      src={reportingManager.profile_pic.startsWith('http') || reportingManager.profile_pic.startsWith('data:') ? reportingManager.profile_pic : `${BASE_URL}${reportingManager.profile_pic.startsWith('/') ? '' : '/'}${reportingManager.profile_pic}`}
-                      alt="Manager"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : reportingManager.name?.[0]}
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reporting Manager</p>
-                  <p style={{ margin: 0, fontSize: '16px', color: '#0f172a', fontWeight: '900' }}>{reportingManager.name}</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
