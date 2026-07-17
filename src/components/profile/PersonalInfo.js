@@ -1593,7 +1593,7 @@ export default function PersonalInfo({ onBack }) {
                         backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px',
                         maxHeight: '250px', overflowY: 'auto', zIndex: 10000, boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
                       }}>
-                        {employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                        {employees.filter(emp => String(emp.employee_id || emp.id) === '202522' || (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
                           <div
                             key={emp.employee_id || emp.id}
                             onClick={() => {
@@ -1637,7 +1637,7 @@ export default function PersonalInfo({ onBack }) {
                           My Profile ({user?.name || 'Self'})
                         </option>
                       )}
-                      {!isSelfMode && employees.filter(emp => (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
+                      {!isSelfMode && employees.filter(emp => String(emp.employee_id || emp.id) === '202522' || (emp.employee_id || emp.id) !== (user?.employee_id || user?.id)).map(emp => (
                         <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
                           {emp.name || emp.emp_name} ({emp.employee_id || emp.id})
                         </option>
