@@ -261,42 +261,67 @@ export default function LeaveRequestDetail() {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        // Helper to fetch the most comprehensive leaves list
-        const fetchBestLeaves = async () => {
-          const endpointsToTry = [
-            `${BASE_URL}/api/admin/leaves`,
-            `${BASE_URL}/api/admin/leaves/all`,
-            `${BASE_URL}/api/admin/leave-requests`,
-            `${BASE_URL}/api/admin/all-leaves`,
-            `${BASE_URL}/api/leaves/admin/all`,
-            `${BASE_URL}/api/leaves`,
-            `${BASE_URL}/api/leaves/request`,
-            `${BASE_URL}/api/leave-requests`,
-            `${BASE_URL}/api/leaves/all?role=HR`,
-            `${BASE_URL}/api/leaves/all?role=admin`,
-            `${BASE_URL}/api/leaves/all`
-          ];
-          let bestList = [];
-          for (const ep of endpointsToTry) {
-            try {
-              const res = await fetch(ep, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } });
-              if (res.ok) {
-                const data = await res.json();
-                const list = Array.isArray(data) ? data : (data?.all || data?.data || data?.leaves || data?.requests || []);
-                if (Array.isArray(list) && list.length > bestList.length) bestList = list;
-              }
-            } catch (e) { }
-          }
-          return bestList;
-        };
+        const token = user?.token || localStorage.getItem('token');
+        let found = null;
+        let empData = [];
 
-        const [allLeaves, resEmp] = await Promise.all([
-          fetchBestLeaves(),
-          fetch(API_ENDPOINTS.USERS, { headers: { 'Authorization': `Bearer ${user?.token || localStorage.getItem('token')}` } })
+        // Fetch direct leave and users list in parallel
+        const [directRes, resEmp] = await Promise.all([
+          fetch(`${BASE_URL}/api/leaves/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).catch(() => null),
+          fetch(API_ENDPOINTS.USERS, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).catch(() => null)
         ]);
 
-        const empData = await resEmp.json().catch(() => []);
-        const found = (allLeaves || []).find(l => l && String(l.id || l.ID) === String(id));
+        if (directRes && directRes.ok) {
+          found = await directRes.json().catch(() => null);
+        }
+        if (resEmp && resEmp.ok) {
+          empData = await resEmp.json().catch(() => []);
+        }
+
+        if (!found) {
+          // Fallback to comprehensive list-based search if direct fetch failed
+          const fetchBestLeaves = async () => {
+            const endpointsToTry = [
+              `${BASE_URL}/api/admin/leaves`,
+              `${BASE_URL}/api/admin/leaves/all`,
+              `${BASE_URL}/api/admin/leave-requests`,
+              `${BASE_URL}/api/admin/all-leaves`,
+              `${BASE_URL}/api/leaves/admin/all`,
+              `${BASE_URL}/api/leaves`,
+              `${BASE_URL}/api/leaves/request`,
+              `${BASE_URL}/api/leave-requests`,
+              `${BASE_URL}/api/leaves/all?role=HR`,
+              `${BASE_URL}/api/leaves/all?role=admin`,
+              `${BASE_URL}/api/leaves/all`
+            ];
+            const results = await Promise.all(
+              endpointsToTry.map(async (ep) => {
+                try {
+                  const res = await fetch(ep, { headers: { 'Authorization': `Bearer ${token}` } });
+                  if (res.ok) {
+                    const data = await res.json();
+                    return Array.isArray(data) ? data : (data?.all || data?.data || data?.leaves || data?.requests || []);
+                  }
+                } catch (e) { }
+                return [];
+              })
+            );
+            let bestList = [];
+            for (const list of results) {
+              if (Array.isArray(list) && list.length > bestList.length) {
+                bestList = list;
+              }
+            }
+            return bestList;
+          };
+
+          const allLeaves = await fetchBestLeaves();
+          found = (allLeaves || []).find(l => l && String(l.id || l.ID) === String(id));
+        }
 
         // Helper to pick best status from multiple fields
         const pickStatus = (...fields) => {
