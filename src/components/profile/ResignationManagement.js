@@ -494,9 +494,9 @@ export default function ResignationManagement() {
                                     <span style={{
                                         padding: '6px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: '950',
                                         textTransform: 'uppercase',
-                                        background: selectedRequest.status === 'Approved' ? '#f0fdf4' : selectedRequest.status === 'Rejected' ? '#fef2f2' : '#fffbeb',
-                                        color: selectedRequest.status === 'Approved' ? '#16a34a' : selectedRequest.status === 'Rejected' ? '#dc2626' : '#d97706',
-                                        border: `1px solid ${selectedRequest.status === 'Approved' ? '#bbf7d0' : selectedRequest.status === 'Rejected' ? '#fee2e2' : '#fef3c7'}`
+                                        background: selectedRequest.hr_status === 'Approved' ? '#f0fdf4' : selectedRequest.status === 'Rejected' ? '#fef2f2' : '#fffbeb',
+                                        color: selectedRequest.hr_status === 'Approved' ? '#16a34a' : selectedRequest.status === 'Rejected' ? '#dc2626' : '#d97706',
+                                        border: `1px solid ${selectedRequest.hr_status === 'Approved' ? '#bbf7d0' : selectedRequest.status === 'Rejected' ? '#fee2e2' : '#fef3c7'}`
                                     }}>{selectedRequest.status || 'Pending'}</span>
                                 </div>
                             </div>
@@ -591,7 +591,7 @@ export default function ResignationManagement() {
                                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '900', color: '#64748b', marginBottom: '10px', textTransform: 'uppercase' }}>Status Decision</label>
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         {['Pending', 'Approved', 'Rejected'].map(status => {
-                                            const isApprovedStatus = selectedRequest.status === 'Approved' && status === 'Approved';
+                                            const isApprovedStatus = selectedRequest.hr_status === 'Approved' && status === 'Approved';
                                             const btnDisabled = isActionsDisabled || isApprovedStatus;
                                             return (
                                                 <button
@@ -653,18 +653,18 @@ export default function ResignationManagement() {
                                 <button onClick={() => setSelectedRequest(null)} style={{ flex: 1, padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
                                 <button
                                     onClick={handleRequestUpdate}
-                                    disabled={updating || isActionsDisabled || selectedRequest.status === 'Approved'}
+                                    disabled={updating || isActionsDisabled || selectedRequest.hr_status === 'Approved'}
                                     style={{
                                         flex: 1, padding: '16px', borderRadius: '14px', border: 'none',
-                                        background: (isActionsDisabled || selectedRequest.status === 'Approved') ? '#cbd5e1' : '#ef4444',
-                                        color: (isActionsDisabled || selectedRequest.status === 'Approved') ? '#94a3b8' : 'white',
+                                        background: (isActionsDisabled || selectedRequest.hr_status === 'Approved') ? '#cbd5e1' : '#ef4444',
+                                        color: (isActionsDisabled || selectedRequest.hr_status === 'Approved') ? '#94a3b8' : 'white',
                                         fontWeight: '800', fontSize: '14px',
-                                        cursor: (updating || isActionsDisabled || selectedRequest.status === 'Approved') ? 'not-allowed' : 'pointer',
-                                        boxShadow: (isActionsDisabled || selectedRequest.status === 'Approved') ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)',
-                                        opacity: (isActionsDisabled || selectedRequest.status === 'Approved') ? 0.7 : 1
+                                        cursor: (updating || isActionsDisabled || selectedRequest.hr_status === 'Approved') ? 'not-allowed' : 'pointer',
+                                        boxShadow: (isActionsDisabled || selectedRequest.hr_status === 'Approved') ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)',
+                                        opacity: (isActionsDisabled || selectedRequest.hr_status === 'Approved') ? 0.7 : 1
                                     }}
                                 >
-                                    {updating ? 'Saving...' : (selectedRequest.status === 'Approved' ? '✓ Already Approved' : 'Submit Review')}
+                                    {updating ? 'Saving...' : (selectedRequest.hr_status === 'Approved' ? '✓ Already Approved' : 'Submit Review')}
                                 </button>
                             </div>
                         </motion.div>
