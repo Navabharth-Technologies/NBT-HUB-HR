@@ -1972,7 +1972,7 @@ export default function PaySlipScreen() {
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
                                     <h3 style={{ ...sectionHeaderStyle, color: '#16a34a', background: 'rgba(22, 163, 74, 0.05)' }}> Final Net Payable</h3>
                                 </div>
-                                <FormField label="Net Payable Amount" name="net_payable" type="number" value={formData.net_payable} readOnly />
+                                <FormField label="Net Payable Amount" name="net_payable" type="number" value={formData.net_payable} onChange={handleInputChange} />
                                 <div></div>
                                 <div></div>
                                 <div></div> {/* Spacer */}

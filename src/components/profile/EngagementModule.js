@@ -27,6 +27,7 @@ export default function ThreadScreen() {
     const [mediaType, setMediaType] = useState(null);
     const [mediaPreview, setMediaPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadType, setUploadType] = useState('photo');
     const fileInputRef = useRef(null);
 
     const [activeEmojiPicker, setActiveEmojiPicker] = useState(null);
@@ -148,6 +149,27 @@ export default function ThreadScreen() {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        if (uploadType === 'photo') {
+            const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+            if (!allowedImageTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                alert('Please upload a valid image file (.jpg, .jpeg, .png, .webp)');
+                e.target.value = '';
+                return;
+            }
+        } else if (uploadType === 'video') {
+            const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-m4v', 'video/mov', 'video/avi', 'video/mkv'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            const allowedExtensions = ['.mp4', '.mov', '.avi', '.mkv'];
+            if (!allowedVideoTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                alert('Please upload a valid video file (.mp4, .mov, .avi, .mkv)');
+                e.target.value = '';
+                return;
+            }
+        }
+
         setMediaFile(file);
         setMediaType(file.type.startsWith('video') ? 'video' : 'image');
         setMediaPreview(URL.createObjectURL(file));
@@ -163,6 +185,32 @@ export default function ThreadScreen() {
     const handleEditFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const post = threads.find(p => p.id === editingPostId);
+        const hasMedia = post ? !!(post.media_url || post.mediaUrl || post.media || post.image) : false;
+        if (hasMedia) {
+            const isPostVideo = post.media_type === 'video' || post.mediaType === 'video' || (post.media_url || '').toLowerCase().includes('video') || (post.media_url || '').toLowerCase().endsWith('.mp4');
+            if (isPostVideo) {
+                const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/x-m4v', 'video/mov', 'video/avi', 'video/mkv'];
+                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                const allowedExtensions = ['.mp4', '.mov', '.avi', '.mkv'];
+                if (!allowedVideoTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                    alert('Please upload a valid video file (.mp4, .mov, .avi, .mkv)');
+                    e.target.value = '';
+                    return;
+                }
+            } else {
+                const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+                if (!allowedImageTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                    alert('Please upload a valid image file (.jpg, .jpeg, .png, .webp)');
+                    e.target.value = '';
+                    return;
+                }
+            }
+        }
+
         setEditMediaFile(file);
         setEditMediaType(file.type.startsWith('video') ? 'video' : 'image');
         setEditMediaPreview(URL.createObjectURL(file));
@@ -445,11 +493,18 @@ export default function ThreadScreen() {
             <div style={{ ...styles.card, borderTop: '5px solid #FDB913' }}>
                 <textarea id="thread-content-input" style={styles.mainInput} placeholder="Share an update with the team..." value={newPost} onChange={e => setNewPost(e.target.value)} />
 
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} hidden accept="image/*,video/*" />
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} hidden accept={uploadType === 'photo' ? "image/jpeg,image/png,image/jpg,image/webp" : "video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/x-m4v,video/mov,video/avi,video/mkv"} />
+                <input type="file" ref={editFileInputRef} onChange={handleEditFileSelect} hidden accept="image/jpeg,image/png,image/jpg,image/webp,video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/x-m4v,video/mov,video/avi,video/mkv" />
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '15px', alignItems: 'center' }}>
-                    <div style={styles.mediaBtn} onClick={() => fileInputRef.current?.click()}><ImageIcon size={18} color="#10b981" /> Photo</div>
-                    <div style={styles.mediaBtn} onClick={() => fileInputRef.current?.click()}><Film size={18} color="#ef4444" /> Video</div>
+                    <div style={styles.mediaBtn} onClick={() => {
+                        setUploadType('photo');
+                        setTimeout(() => fileInputRef.current?.click(), 50);
+                    }}><ImageIcon size={18} color="#10b981" /> Photo</div>
+                    <div style={styles.mediaBtn} onClick={() => {
+                        setUploadType('video');
+                        setTimeout(() => fileInputRef.current?.click(), 50);
+                    }}><Film size={18} color="#ef4444" /> Video</div>
                     <div style={{ flex: 1 }} />
                     <button style={styles.postBtn} onClick={handlePost} disabled={uploading}>
                         {uploading ? 'Publishing...' : 'Publish Thread'}

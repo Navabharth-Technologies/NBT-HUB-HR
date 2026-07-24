@@ -694,8 +694,8 @@ export default function ResignationUserScreen({ defaultTab = 'submit' }) {
                             <img src={logo} alt="Watermark" style={{ width: '500px' }} />
                         </div>
 
-                        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <img src={logo} alt="Company Logo" style={{ height: '80px', marginBottom: '10px' }} />
+                        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', textAlign: 'center' }}>
+                            <img src={logo} alt="Company Logo" style={{ height: '90px', marginBottom: '15px', objectFit: 'contain' }} />
                             <div style={{ fontSize: '14px', fontWeight: '900', color: '#1b2559', letterSpacing: '2px', marginTop: '5px' }}>
                                 NAVABHARATH TECHNOLOGIES
                             </div>
@@ -1067,8 +1067,8 @@ export default function ResignationUserScreen({ defaultTab = 'submit' }) {
                             <img src={logo} alt="Watermark" style={{ width: '500px' }} />
                         </div>
 
-                        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <img src={logo} alt="Company Logo" style={{ height: '80px', marginBottom: '10px' }} />
+                        <div style={{ marginBottom: '40px', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', textAlign: 'center' }}>
+                            <img src={logo} alt="Company Logo" style={{ height: '90px', marginBottom: '15px', objectFit: 'contain' }} />
                             <div style={{ fontSize: '14px', fontWeight: '900', color: '#1b2559', letterSpacing: '2px', marginTop: '5px' }}>
                                 NAVABHARATH TECHNOLOGIES
                             </div>

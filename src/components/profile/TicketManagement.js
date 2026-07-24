@@ -390,7 +390,7 @@ export default function TicketManagement() {
     doc.text('TICKETS REPORT', 14, 28);
     doc.text(`Generated on: ${today}`, 14, 34);
 
-    const tableColumn = ["Ticket ID", "Subject", "Description", "Requester", "Priority", "Status", "Created At"];
+    const tableColumn = ["Ticket ID", "Department/Category", "Description", "Requester", "Priority", "Status", "Created At"];
     const tableRows = filteredTickets.map((t, index) => {
       const requesterName = t.creatorName || t.name || t.user_name || 'Anonymous';
       const createdAtVal = Array.isArray(t.created_at) ? t.created_at[0] : t.created_at;
@@ -749,7 +749,7 @@ export default function TicketManagement() {
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #f1f5f9' }}>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Ticket ID</th>
-                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Subject</th>
+                    <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Department/Category</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Description</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Requester</th>
                     <th style={{ padding: '20px 25px', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Priority</th>
