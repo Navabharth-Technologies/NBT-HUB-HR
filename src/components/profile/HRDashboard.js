@@ -807,7 +807,7 @@ export default function HRDashboard() {
           {/* Fun & Engagement Hub */}
           <section
             className="dashboard-section animate-fade-in"
-            style={{ animationDelay: '0.3s', cursor: 'pointer' }}
+            style={{ animationDelay: '0.3s', cursor: 'pointer', alignSelf: 'start' }}
             onClick={() => navigate('/fun-quiz')}
           >
             <div style={{
@@ -896,7 +896,7 @@ export default function HRDashboard() {
 
 
           {/* List of Holidays Section */}
-          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer' }} onClick={() => navigate('/holidays')}>
+          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.5s', cursor: 'pointer', alignSelf: 'start' }} onClick={() => navigate('/holidays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Calendar size={20} color="#0d9488" /> List of Holidays</h2>
               <button
@@ -940,7 +940,7 @@ export default function HRDashboard() {
           </section>
 
           {/* Upcoming Birthdays Section */}
-          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer' }} onClick={() => navigate('/birthdays')}>
+          <section className="dashboard-section animate-fade-in" style={{ animationDelay: '0.6s', cursor: 'pointer', alignSelf: 'start' }} onClick={() => navigate('/birthdays')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="section-title"><Gift size={20} color="#ec4899" /> Upcoming Birthdays</h2>
               <button
