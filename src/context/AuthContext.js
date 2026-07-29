@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('userRole', data.user.role);
         return { success: true };
       } else {
-        return { success: false, error: data.error || 'Authentication Failed' };
+        return { success: false, error: data.message || data.error || 'Authentication Failed' };
       }
 
     } catch (error) {
