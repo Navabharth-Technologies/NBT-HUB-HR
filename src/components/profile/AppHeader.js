@@ -41,7 +41,7 @@ export default function AppHeader() {
       }
 
       if (!token) {
-        setFetchedRole(user?.role || user?.Role || '');
+        setFetchedRole(user?.designation || user?.role || user?.Role || '');
         return;
       }
 
@@ -65,7 +65,7 @@ export default function AppHeader() {
       }
 
       if (!isAdmin) {
-        setFetchedRole(user?.role || user?.Role || '');
+        setFetchedRole(user?.designation || user?.role || user?.Role || '');
         return;
       }
 
@@ -79,7 +79,7 @@ export default function AppHeader() {
           const currentId = user?.employee_id || user?.id || user?.empId || '202515';
           const target = users.find(u => String(u.employee_id || u.id || u.empId) === String(currentId));
           if (target) {
-            setFetchedRole(target.Role || target.role);
+            setFetchedRole(target.designation || target.Role || target.role);
           }
         }
       } catch (err) {

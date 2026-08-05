@@ -17,6 +17,15 @@ import { filterActiveEmployees } from '../../utils/employeeUtils';
 
 const LOCKED_FIELDS = ['age'];
 
+const VALID_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 
+  'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 
+  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 
+  'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 
+  'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
 const SECTIONS = [
   {
     id: 'primary',
@@ -66,7 +75,7 @@ const SECTIONS = [
       { key: 'personal_email_id', label: 'Personal Email ID', type: 'text', required: true },
       { key: 'present_address', label: 'Present Address', type: 'text', required: true },
       { key: 'permanent_address', label: 'Permanent Address', type: 'text', required: true },
-      { key: 'state', label: 'State', type: 'text' },
+      { key: 'state', label: 'State', type: 'select', options: VALID_STATES },
     ]
   },
   {
