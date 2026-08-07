@@ -482,7 +482,10 @@ export default function PaySlipScreen() {
                 }
 
                 // Recalculate dynamic high-precision LOP and Net Payable values for pre-fill
-                const basicSalaryNum = parseFloat(mapped.basic_salary) || parseFloat(formData.basic_salary) || 0;
+                if (!isEditMode) {
+                    mapped.basic_salary = '0';
+                }
+                const basicSalaryNum = isEditMode ? (parseFloat(mapped.basic_salary) || parseFloat(formData.basic_salary) || 0) : 0;
                 const absentDaysNum = parseFloat(lopVal) || 0;
 
                 const targetMonth = parseInt(formData.month) || 4;
@@ -1043,7 +1046,10 @@ export default function PaySlipScreen() {
                 }
             }
 
-            const basicSalaryNum = parseFloat(formData.basic_salary) || parseFloat(mapped.basic_salary) || 0;
+            if (!isEditMode) {
+                mapped.basic_salary = '0';
+            }
+            const basicSalaryNum = isEditMode ? (parseFloat(formData.basic_salary) || parseFloat(mapped.basic_salary) || 0) : 0;
             const absentDaysNum = parseFloat(lopVal) || parseFloat(mapped.total_absent) || 0;
 
             const targetMonth = parseInt(formData.month) || 4;
