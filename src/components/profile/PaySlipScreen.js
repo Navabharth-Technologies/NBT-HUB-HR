@@ -352,14 +352,14 @@ export default function PaySlipScreen() {
         );
     };
 
-    const mapApiDataToPayslip = (data, employeeId, month, year) => {
-        const basic = parseFloat(data.basic_salary || data.basic || data.basicSalary) || 0;
-        const hra = parseFloat(data.hra) || 0;
-        const conveyance = parseFloat(data.conveyance) || 0;
-        const special_allowance = parseFloat(data.special_allowance || data.specialAllowance) || 0;
+    const mapApiDataToPayslip = (data, employeeId, month, year, customBasic = null) => {
+        const basic = customBasic !== null ? parseFloat(customBasic) : (parseFloat(data.basic_salary || data.basic || data.basicSalary) || 0);
+        const hra = 0;
+        const conveyance = 0;
+        const special_allowance = 0;
 
-        const performance_incentive = parseFloat(data.performance_incentive || data.performanceIncentive || data.performance) || 0;
-        const yearly_incentive = parseFloat(data.yearly_incentive || data.yearlyIncentive || data.yearly) || 0;
+        const performance_incentive = 0;
+        const yearly_incentive = 0;
 
         const pf_deduction = parseFloat(data.pf_deduction || data.pf || data.pfDeduction) || 0;
         const esi_deduction = parseFloat(data.esi_deduction || data.esi || data.esiDeduction) || 0;
@@ -367,14 +367,19 @@ export default function PaySlipScreen() {
         const lwf_deduction = parseFloat(data.lwf_deduction || data.lwf || data.lwfDeduction) || 0;
         const income_tax = parseFloat(data.income_tax || data.tax || data.incomeTax) || 0;
 
-        const absentDays = parseFloat(data.lop || data.LOP || data.total_absent || data.absent || 0) || 0;
+        const totalLeavesNum = parseFloat(data.total_leaves || data.leaves || 0) || 0;
+        const totalAbsentNum = parseFloat(data.total_absent || data.absent || data.lop || data.LOP || 0) || 0;
+        const totalMissedDays = totalLeavesNum > 0 && totalAbsentNum > 0
+            ? (totalLeavesNum + totalAbsentNum)
+            : Math.max(totalLeavesNum, totalAbsentNum);
+
+        const allowedCL = 1;
+        const lopDays = Math.max(0, totalMissedDays - allowedCL);
+        const availableLeaves = totalMissedDays >= allowedCL ? 0 : (allowedCL - totalMissedDays);
+        const lop_deduction = Math.round(lopDays * 500);
+
         const targetMonth = parseInt(month || data.month) || 4;
         const targetYear = parseInt(year || data.year) || 2026;
-
-        const getDaysInMonth = (y, m) => new Date(y, m, 0).getDate();
-        const totalDays = getDaysInMonth(targetYear, targetMonth);
-        const perDaySalary = totalDays > 0 ? (basic / totalDays) : 0;
-        const lop_deduction = Math.round(perDaySalary * absentDays);
 
         const getSundaysInMonth = (y, m) => {
             let sundays = 0;
@@ -387,13 +392,10 @@ export default function PaySlipScreen() {
         };
         const calculatedWeekoffs = getSundaysInMonth(targetYear, targetMonth);
 
-        const earnings = basic + hra + conveyance + special_allowance;
-        const incentives = performance_incentive + yearly_incentive;
+        const earnings = basic;
+        const incentives = 0;
         const deductions = pf_deduction + esi_deduction + pt_deduction + lwf_deduction + income_tax + lop_deduction;
-
-        const serverNetPayable = data.net_payable !== undefined && data.net_payable !== null ? parseFloat(data.net_payable) :
-            (data.netPayable !== undefined && data.netPayable !== null ? parseFloat(data.netPayable) : null);
-        const net_payable = serverNetPayable !== null ? Math.round(serverNetPayable) : Math.max(0, Math.round(earnings + incentives - deductions));
+        const net_payable = Math.max(0, Math.round(earnings - deductions));
 
         return {
             employee_id: employeeId || data.employee_id || data.id || '',
@@ -404,22 +406,22 @@ export default function PaySlipScreen() {
             designation: data.designation || data.role || '',
 
             total_present: String(data.total_present || data.present || data.present_days || '0'),
-            total_weekly_off: String(calculatedWeekoffs),
+            total_weekly_off: String(data.total_weekly_off || calculatedWeekoffs),
             total_holidays: String(data.total_holidays || data.holidays || data.public_holidays || '0'),
-            total_leaves: String(data.total_leaves || data.leaves || data.casual_leaves || '0'),
-            total_absent: String(absentDays),
-            total_work_ot: String(data.total_work_ot || data.work_ot || data.work_overtime || '0'),
-            total_ot_hours: String(data.total_ot_hours || data.ot_hours || data.overtime_hours || '0'),
-            available_leaves: String(data.available_leaves || data.availableLeaves || data.leave_balance || data.balance || '0'),
-            lop: String(absentDays),
+            total_leaves: String(totalLeavesNum),
+            total_absent: String(totalAbsentNum),
+            total_work_ot: '0',
+            total_ot_hours: '0',
+            available_leaves: String(availableLeaves),
+            lop: String(lopDays),
 
             basic_salary: String(basic),
-            hra: String(hra),
-            conveyance: String(conveyance),
-            special_allowance: String(special_allowance),
+            hra: '0',
+            conveyance: '0',
+            special_allowance: '0',
 
-            performance_incentive: String(performance_incentive),
-            yearly_incentive: String(yearly_incentive),
+            performance_incentive: '0',
+            yearly_incentive: '0',
 
             pf_deduction: String(pf_deduction),
             esi_deduction: String(esi_deduction),
@@ -429,96 +431,11 @@ export default function PaySlipScreen() {
             lop_deduction: String(lop_deduction),
 
             total_earnings: String(earnings),
-            total_incentives: String(incentives),
+            total_incentives: '0',
             total_deductions: String(deductions),
             net_payable: String(net_payable)
         };
     };
-
-    useEffect(() => {
-        const fetchFormSummary = async () => {
-            if (isEditMode || !showAddForm || !formData.employee_id || !formData.month || !formData.year) return;
-            try {
-                setIsFormFetching(true);
-
-                // 1. Fetch main summary details
-                const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
-                const res = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${user?.token}` }
-                });
-
-                let mapped = {};
-                if (res.ok) {
-                    const data = await res.json();
-                    mapped = mapApiDataToPayslip(data, formData.employee_id, formData.month, formData.year);
-                }
-
-                // 2. Fetch LOP stats from all possible leave stats endpoints for exact month & year match
-                let lopVal = '0';
-                const endpointsToTry = [
-                    `${BASE_URL}/api/leave_stats?month=${formData.month}&year=${formData.year}`,
-                    `${BASE_URL}/api/admin/leave_stats?month=${formData.month}&year=${formData.year}`,
-                    `${BASE_URL}/api/leave-stats?month=${formData.month}&year=${formData.year}`,
-                    `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${formData.month}&year=${formData.year}`
-                ];
-
-                for (const ep of endpointsToTry) {
-                    try {
-                        const statsRes = await fetch(ep, {
-                            headers: { 'Authorization': `Bearer ${user?.token}` }
-                        });
-                        if (statsRes.ok) {
-                            const statsData = await statsRes.json();
-                            const statsList = Array.isArray(statsData) ? statsData : (statsData.stats || statsData.data || []);
-                            const userStat = statsList.find(s => String(s.employee_id || s.user_id) === String(formData.employee_id));
-                            if (userStat) {
-                                lopVal = String(userStat.LOP !== undefined ? userStat.LOP : (userStat.lop !== undefined ? userStat.lop : '0'));
-                                break;
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error trying endpoint:", ep, e);
-                    }
-                }
-
-                // Recalculate dynamic high-precision LOP and Net Payable values for pre-fill
-                if (!isEditMode) {
-                    mapped.basic_salary = '0';
-                }
-                const basicSalaryNum = isEditMode ? (parseFloat(mapped.basic_salary) || parseFloat(formData.basic_salary) || 0) : 0;
-                const absentDaysNum = parseFloat(lopVal) || 0;
-
-                const targetMonth = parseInt(formData.month) || 4;
-                const targetYear = parseInt(formData.year) || 2026;
-                const totalDays = new Date(targetYear, targetMonth, 0).getDate();
-                const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
-                const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
-
-                const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
-                const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
-                const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
-                const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
-
-                setFormData(prev => ({
-                    ...prev,
-                    ...mapped,
-                    emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
-                    department: prev.department, // Do not auto-populate department from summary
-                    designation: prev.designation !== '' ? prev.designation : mapped.designation,
-                    lop: lopVal,
-                    total_absent: lopVal, // LOP days count is sent in total_absent parameter
-                    lop_deduction: String(calculatedLopDeduction),
-                    net_payable: String(calculatedNetPayable),
-                    total_deductions: String(deductionsNum)
-                }));
-            } catch (err) {
-                console.error("Error fetching summary for form:", err);
-            } finally {
-                setIsFormFetching(false);
-            }
-        };
-        fetchFormSummary();
-    }, [formData.employee_id, formData.month, formData.year, showAddForm, user, isEditMode]);
 
     const [winWidth, setWinWidth] = useState(window.innerWidth);
 
@@ -636,8 +553,28 @@ export default function PaySlipScreen() {
                 ...prev,
                 employee_id: selectedUser.employee_id || selectedUser.id,
                 emp_name: selectedUser.name,
-                // department: selectedUser.department || '', // Manual entry requested
-                designation: selectedUser.role || selectedUser.designation || ''
+                designation: selectedUser.role || selectedUser.designation || '',
+                department: selectedUser.department || selectedUser.team || prev.department || '',
+                // Clear any previous employee's loaded attendance & salary details so stale data is never shown
+                total_present: '',
+                total_weekly_off: '',
+                total_holidays: '',
+                total_leaves: '',
+                total_absent: '',
+                total_work_ot: '0',
+                total_ot_hours: '0',
+                available_leaves: '',
+                lop: '',
+                lop_deduction: '0',
+                hra: '0',
+                conveyance: '0',
+                special_allowance: '0',
+                performance_incentive: '0',
+                yearly_incentive: '0',
+                total_incentives: '0',
+                total_earnings: prev.basic_salary || '0',
+                total_deductions: '0',
+                net_payable: prev.basic_salary || '0'
             }));
         } else {
             setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -649,12 +586,37 @@ export default function PaySlipScreen() {
         setFormData(prev => {
             const updated = { ...prev, [name]: value };
 
+            if (name === 'month' || name === 'year') {
+                // When month or year changes, reset loaded attendance/leave/deduction stats so stale data from another month is not shown
+                updated.total_present = '';
+                updated.total_weekly_off = '';
+                updated.total_holidays = '';
+                updated.total_leaves = '';
+                updated.total_absent = '';
+                updated.total_work_ot = '0';
+                updated.total_ot_hours = '0';
+                updated.available_leaves = '';
+                updated.lop = '';
+                updated.lop_deduction = '0';
+                const basic = parseFloat(updated.basic_salary) || 0;
+                updated.hra = '0';
+                updated.conveyance = '0';
+                updated.special_allowance = '0';
+                updated.performance_incentive = '0';
+                updated.yearly_incentive = '0';
+                updated.total_earnings = basic.toString();
+                updated.total_incentives = '0';
+                updated.total_deductions = '0';
+                updated.net_payable = basic.toString();
+                return updated;
+            }
+
             // Auto-calculate financials if specific fields change
             const financialFields = [
                 'basic_salary', 'hra', 'conveyance', 'special_allowance',
                 'performance_incentive', 'yearly_incentive',
                 'pf_deduction', 'esi_deduction', 'pt_deduction', 'lwf_deduction', 'income_tax', 'lop_deduction',
-                'lop', 'total_absent', 'month', 'year'
+                'lop', 'total_absent'
             ];
 
             if (financialFields.includes(name)) {
@@ -672,13 +634,9 @@ export default function PaySlipScreen() {
                 const lwf = parseFloat(updated.lwf_deduction) || 0;
                 const itax = parseFloat(updated.income_tax) || 0;
 
-                // Dynamically compute LOP deduction on input change to ensure real-time precision rounding
-                const targetMonth = parseInt(updated.month) || 4;
-                const targetYear = parseInt(updated.year) || 2026;
-                const totalDays = new Date(targetYear, targetMonth, 0).getDate();
-                const absentDays = parseFloat(updated.lop) || parseFloat(updated.total_absent) || 0;
-                const perDaySalary = totalDays > 0 ? (basic / totalDays) : 0;
-                const calculatedLop = Math.round(perDaySalary * absentDays);
+                // LOP deduction at ₹500 per applicable day
+                const lopDays = parseFloat(updated.lop) || 0;
+                const calculatedLop = Math.round(lopDays * 500);
 
                 const earnings = basic + hra + conv + spec;
                 const incentives = perf + yearly;
@@ -688,8 +646,6 @@ export default function PaySlipScreen() {
                 updated.total_earnings = earnings.toString();
                 updated.total_incentives = incentives.toString();
                 updated.total_deductions = deductions.toString();
-
-                // Dynamic formula matching payslip image perfectly
                 updated.net_payable = Math.max(0, Math.round(earnings + incentives - deductions)).toString();
             }
 
@@ -961,26 +917,37 @@ export default function PaySlipScreen() {
 
             const basicSalaryNum = parseFloat(filterData.basic_salary) || parseFloat(mapped.basic_salary) || 0;
             const absentDaysNum = parseFloat(lopVal) || parseFloat(mapped.total_absent) || 0;
+            const totalLeavesNum = parseFloat(mapped.total_leaves) || 0;
+            const totalMissedDays = totalLeavesNum > 0 && absentDaysNum > 0
+                ? (totalLeavesNum + absentDaysNum)
+                : Math.max(totalLeavesNum, absentDaysNum);
 
-            const targetMonth = parseInt(filterData.month) || 4;
-            const targetYear = parseInt(filterData.year) || 2026;
-            const totalDays = new Date(targetYear, targetMonth, 0).getDate();
-            const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
-            const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
+            const allowedCL = 1;
+            const calculatedLopDays = Math.max(0, totalMissedDays - allowedCL);
+            const calculatedLopDeduction = Math.round(calculatedLopDays * 500);
 
-            const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
-            const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
+            const earningsNum = basicSalaryNum;
+            const incentivesNum = 0;
             const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
             const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
 
             const finalPreview = {
                 ...mapped,
                 basic_salary: String(basicSalaryNum),
-                lop: String(absentDaysNum),
+                hra: '0',
+                conveyance: '0',
+                special_allowance: '0',
+                total_earnings: String(earningsNum),
+                performance_incentive: '0',
+                yearly_incentive: '0',
+                total_incentives: '0',
+                lop: String(calculatedLopDays),
                 total_absent: String(absentDaysNum),
                 lop_deduction: String(calculatedLopDeduction),
                 net_payable: String(calculatedNetPayable),
-                total_deductions: String(deductionsNum)
+                total_deductions: String(deductionsNum),
+                total_work_ot: '0',
+                total_ot_hours: '0'
             };
 
             setPreviewData(finalPreview);
@@ -1006,75 +973,194 @@ export default function PaySlipScreen() {
         try {
             setIsFormFetching(true);
 
-            // 1. Fetch main summary details
-            const url = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
-            const res = await fetch(url, {
+            // Target Month and Year
+            const targetMonth = parseInt(formData.month) || 4;
+            const targetYear = parseInt(formData.year) || 2026;
+            const totalDaysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+            const startDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+            const endDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(totalDaysInMonth).padStart(2, '0')}`;
+
+            // 1. Fetch main summary details for selected employee, month, and year (for profile/designation & deductions)
+            const summaryUrl = API_ENDPOINTS.PAY_SLIPS_CALCULATE_SUMMARY(formData.employee_id, formData.month, formData.year);
+            const summaryPromise = fetch(summaryUrl, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
+            }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+
+            // 2. Fetch actual biometric attendance logs for this exact employee and targeted month
+            const logsUrl = `${API_ENDPOINTS.ATTENDANCE_LOGS_GET}?userId=${formData.employee_id}&startDate=${startDate}&endDate=${endDate}&limit=1000`;
+            const logsPromise = fetch(logsUrl, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            }).then(r => r.ok ? r.json() : []).catch(() => []);
+
+            // 3. Fetch approved leaves
+            const leavesUrl = `${API_ENDPOINTS.LEAVES_GET}?limit=1000`;
+            const leavesPromise = fetch(leavesUrl, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            }).then(r => r.ok ? r.json() : []).catch(() => []);
+
+            // 4. Fetch holidays
+            const holidaysUrl = API_ENDPOINTS.HOLIDAYS;
+            const holidaysPromise = fetch(holidaysUrl, {
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            }).then(r => r.ok ? r.json() : []).catch(() => []);
+
+            const [data, logsData, leavesData, holidaysData] = await Promise.all([
+                summaryPromise,
+                logsPromise,
+                leavesPromise,
+                holidaysPromise
+            ]);
+
+            // Filter individual logs by employee ID
+            const rawLogs = logsData?.data || logsData?.attendance || logsData?.logs || (Array.isArray(logsData) ? logsData : []);
+            const empLogs = rawLogs.filter(l => l && String(l.user_id || l.Empcode || l.userId || '').trim() === String(formData.employee_id).trim());
+
+            // Filter approved leaves for this employee (excluding testing dummy records)
+            const rawLeaves = leavesData?.data || (Array.isArray(leavesData) ? leavesData : []);
+            const testDummyReasons = ['fghbn', 'erteryrytutyiyiuouwe', 'dfdwr rfyte yuerguergu'];
+            const empLeaves = rawLeaves.filter(l => {
+                if (!l) return false;
+                const matchUser = String(l.user_id || l.employee_id || '').trim() === String(formData.employee_id).trim();
+                const isApproved = (l.hr_status || l.status || '').toLowerCase() === 'approved';
+                const reasonStr = (l.reason || '').trim().toLowerCase();
+                const isDummyTest = testDummyReasons.includes(reasonStr) || reasonStr.includes('erter') || reasonStr.includes('fgh') || reasonStr.includes('dfdwr');
+                return matchUser && isApproved && !isDummyTest;
             });
 
-            let mapped = {};
-            if (res.ok) {
-                const data = await res.json();
-                mapped = mapApiDataToPayslip(data, formData.employee_id, formData.month, formData.year);
-            }
+            // Extract official holiday dates (YYYY-MM-DD)
+            const rawHolidays = holidaysData?.data || (Array.isArray(holidaysData) ? holidaysData : []);
+            const holidayDates = rawHolidays.map(h => (h.holiday_date || h.date || '').substring(0, 10)).filter(Boolean);
 
-            // 2. Fetch LOP stats from leave stats
-            let lopVal = '0';
-            const endpointsToTry = [
-                `${BASE_URL}/api/leave_stats?month=${formData.month}&year=${formData.year}`,
-                `${BASE_URL}/api/admin/leave_stats?month=${formData.month}&year=${formData.year}`,
-                `${BASE_URL}/api/leave-stats?month=${formData.month}&year=${formData.year}`,
-                `${API_ENDPOINTS.ADMIN_LEAVE_STATS}?month=${formData.month}&year=${formData.year}`
-            ];
+            let calculatedPresent = 0;
+            let calculatedWeeklyOff = 0;
+            let calculatedHolidays = 0;
+            let calculatedLeaves = 0;
+            let calculatedAbsent = 0;
 
-            for (const ep of endpointsToTry) {
-                try {
-                    const statsRes = await fetch(ep, {
-                        headers: { 'Authorization': `Bearer ${user?.token}` }
-                    });
-                    if (statsRes.ok) {
-                        const statsData = await statsRes.json();
-                        const statsList = Array.isArray(statsData) ? statsData : (statsData.stats || statsData.data || []);
-                        const userStat = statsList.find(s => String(s.employee_id || s.user_id) === String(formData.employee_id));
-                        if (userStat) {
-                            lopVal = String(userStat.LOP !== undefined ? userStat.LOP : (userStat.lop !== undefined ? userStat.lop : '0'));
-                            break;
-                        }
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dateStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dt = new Date(targetYear, targetMonth - 1, day);
+                const isSunday = dt.getDay() === 0;
+                const isOfficialHoliday = holidayDates.includes(dateStr);
+
+                const onApprovedLeave = empLeaves.some(l => {
+                    const s = (l.start_date || '').substring(0, 10);
+                    const e = (l.end_date || '').substring(0, 10);
+                    return dateStr >= s && dateStr <= e;
+                });
+
+                const dayLog = empLogs.find(l => {
+                    const pDate = (l.punch_date || l.PunchDate || l.date || '').substring(0, 10);
+                    return pDate === dateStr;
+                });
+
+                if (isSunday) {
+                    calculatedWeeklyOff++;
+                } else if (isOfficialHoliday) {
+                    calculatedHolidays++;
+                } else if (onApprovedLeave) {
+                    calculatedLeaves++;
+                } else if (dayLog) {
+                    const st = (dayLog.status || dayLog.Status || '').trim().toLowerCase();
+                    if (st === 'present' || st === 'p' || st === 'in office' || st.includes('office') || st === 'wfh') {
+                        calculatedPresent += 1;
+                    } else if (st.includes('half')) {
+                        calculatedPresent += 0.5;
+                        // Half day working - employee worked half shift
+                    } else if (st === 'wo' || st === 'weekly off') {
+                        calculatedWeeklyOff++;
+                    } else if (st === 'holiday') {
+                        calculatedHolidays++;
+                    } else if (st === 'absent' || st === 'a') {
+                        calculatedAbsent += 1;
+                    } else if (dayLog.work_time || dayLog.in_time) {
+                        calculatedPresent += 1;
                     }
-                } catch (e) {
-                    console.error("Error trying endpoint:", ep, e);
                 }
             }
 
-            if (!isEditMode) {
-                mapped.basic_salary = '0';
-            }
-            const basicSalaryNum = isEditMode ? (parseFloat(formData.basic_salary) || parseFloat(mapped.basic_salary) || 0) : 0;
-            const absentDaysNum = parseFloat(lopVal) || parseFloat(mapped.total_absent) || 0;
+            // Accurate attendance and leave numbers
+            const hasBiometricData = empLogs.length > 0 || empLeaves.length > 0;
+            const totalPresent = hasBiometricData ? calculatedPresent : (data.total_present !== undefined ? data.total_present : (data.present || '0'));
+            const totalWeekOff = hasBiometricData ? calculatedWeeklyOff : (data.total_weekly_off !== undefined ? data.total_weekly_off : '0');
+            const totalHolidays = hasBiometricData ? calculatedHolidays : (data.total_holidays !== undefined ? data.total_holidays : (data.holidays || '0'));
+            const totalLeaves = hasBiometricData ? calculatedLeaves : (data.total_leaves !== undefined ? data.total_leaves : (data.leaves || '0'));
+            const totalAbsent = hasBiometricData ? calculatedAbsent : (data.total_absent !== undefined ? data.total_absent : (data.absent || '0'));
 
-            const targetMonth = parseInt(formData.month) || 4;
-            const targetYear = parseInt(formData.year) || 2026;
-            const totalDays = new Date(targetYear, targetMonth, 0).getDate();
-            const perDaySalary = totalDays > 0 ? (basicSalaryNum / totalDays) : 0;
-            const calculatedLopDeduction = Math.round(perDaySalary * absentDaysNum);
+            const totalLeavesNum = parseFloat(totalLeaves) || 0;
+            const totalAbsentNum = parseFloat(totalAbsent) || 0;
 
-            const earningsNum = basicSalaryNum + (parseFloat(mapped.hra) || 0) + (parseFloat(mapped.conveyance) || 0) + (parseFloat(mapped.special_allowance) || 0);
-            const incentivesNum = (parseFloat(mapped.performance_incentive) || 0) + (parseFloat(mapped.yearly_incentive) || 0);
-            const deductionsNum = (parseFloat(mapped.pf_deduction) || 0) + (parseFloat(mapped.esi_deduction) || 0) + (parseFloat(mapped.pt_deduction) || 0) + (parseFloat(mapped.lwf_deduction) || 0) + (parseFloat(mapped.income_tax) || 0) + calculatedLopDeduction;
-            const calculatedNetPayable = Math.max(0, Math.round(earningsNum + incentivesNum - deductionsNum));
+            // Total missed days (leaves + absents)
+            const totalMissedDays = totalLeavesNum + totalAbsentNum;
+
+            // Allowed CL = 1 day per month
+            const allowedCL = 1;
+
+            // Applicable LOP days = applicable excess leave days beyond allowed 1 CL
+            const calculatedLopDays = Math.max(0, totalMissedDays - allowedCL);
+
+            // Available Leaves for the selected month (1 if 0 missed days, 0 if 1 or more leaves taken)
+            const availableLeaves = totalMissedDays >= allowedCL ? 0 : (allowedCL - totalMissedDays);
+
+            // Leave deduction at ₹500 per applicable day
+            const calculatedLopDeduction = Math.round(calculatedLopDays * 500);
+
+            // Use the manually entered Basic Salary
+            const basicSalaryNum = parseFloat(formData.basic_salary) || 0;
+
+            // Company does not provide HRA, Conveyance, Special Allowance, Incentives
+            const hra = 0;
+            const conveyance = 0;
+            const specialAllowance = 0;
+            const totalEarnings = basicSalaryNum;
+
+            const performanceIncentive = 0;
+            const yearlyIncentive = 0;
+            const totalIncentives = 0;
+
+            // Deductions
+            const pf = parseFloat(data.pf_deduction) || parseFloat(formData.pf_deduction) || 0;
+            const esi = parseFloat(data.esi_deduction) || parseFloat(formData.esi_deduction) || 0;
+            const pt = parseFloat(data.pt_deduction) || parseFloat(formData.pt_deduction) || 0;
+            const lwf = parseFloat(data.lwf_deduction) || parseFloat(formData.lwf_deduction) || 0;
+            const itax = parseFloat(data.income_tax) || parseFloat(formData.income_tax) || 0;
+            const totalDeductions = pf + esi + pt + lwf + itax + calculatedLopDeduction;
+
+            // Net Salary = Total Earnings - Total Deductions
+            const netSalary = Math.max(0, Math.round(totalEarnings + totalIncentives - totalDeductions));
+
+            const selectedUser = usersList.find(u => String(u.employee_id || u.id) === String(formData.employee_id));
 
             setFormData(prev => ({
                 ...prev,
-                ...mapped,
-                emp_name: prev.emp_name !== '' ? prev.emp_name : mapped.emp_name,
-                department: prev.department,
-                designation: prev.designation !== '' ? prev.designation : mapped.designation,
+                emp_name: data.emp_name || selectedUser?.name || prev.emp_name,
+                designation: data.designation || selectedUser?.role || selectedUser?.designation || prev.designation,
+                department: data.department || selectedUser?.department || selectedUser?.team || prev.department,
                 basic_salary: String(basicSalaryNum),
-                lop: String(absentDaysNum),
-                total_absent: String(absentDaysNum),
+                hra: '0',
+                conveyance: '0',
+                special_allowance: '0',
+                total_earnings: String(totalEarnings),
+                performance_incentive: '0',
+                yearly_incentive: '0',
+                total_incentives: '0',
+                pf_deduction: String(pf),
+                esi_deduction: String(esi),
+                pt_deduction: String(pt),
+                lwf_deduction: String(lwf),
+                income_tax: String(itax),
+                lop: String(calculatedLopDays),
                 lop_deduction: String(calculatedLopDeduction),
-                net_payable: String(calculatedNetPayable),
-                total_deductions: String(deductionsNum)
+                total_deductions: String(totalDeductions),
+                net_payable: String(netSalary),
+                total_present: String(totalPresent),
+                total_weekly_off: String(totalWeekOff),
+                total_holidays: String(totalHolidays),
+                total_leaves: String(totalLeavesNum),
+                total_absent: String(totalAbsentNum),
+                total_work_ot: '0',
+                total_ot_hours: '0',
+                available_leaves: String(availableLeaves)
             }));
 
         } catch (err) {
@@ -1100,12 +1186,12 @@ export default function PaySlipScreen() {
         setFormData({
             employee_id: '', month: '', year: '', emp_name: '', department: '', designation: '',
             total_present: '', total_weekly_off: '', total_holidays: '', total_leaves: '',
-            total_absent: '', total_work_ot: '', total_ot_hours: '',
-            basic_salary: '', hra: '', conveyance: '', special_allowance: '',
-            performance_incentive: '', yearly_incentive: '',
-            pf_deduction: '', esi_deduction: '', pt_deduction: '', lwf_deduction: '', income_tax: '', lop_deduction: '',
-            total_earnings: '', total_incentives: '', total_deductions: '', net_payable: '', available_leaves: '',
-            lop: ''
+            total_absent: '', total_work_ot: '0', total_ot_hours: '0',
+            basic_salary: '', hra: '0', conveyance: '0', special_allowance: '0',
+            performance_incentive: '0', yearly_incentive: '0',
+            pf_deduction: '0', esi_deduction: '0', pt_deduction: '0', lwf_deduction: '0', income_tax: '0', lop_deduction: '0',
+            total_earnings: '0', total_incentives: '0', total_deductions: '0', net_payable: '0', available_leaves: '',
+            lop: '0'
         });
         setShowAddForm(true);
     };
@@ -1487,47 +1573,32 @@ export default function PaySlipScreen() {
                                 >
                                     <Filter size={18} /> Filter
                                     {(selectedEmployeeFilter || selectedMonthFilter) && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
-                                            <span style={{
-                                                background: '#1e40af',
+                                        <span
+                                            title="Clear Filters"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedEmployeeFilter('');
+                                                setSelectedMonthFilter('');
+                                                setCurrentPage(1);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: '#ef4444',
                                                 color: 'white',
                                                 borderRadius: '50%',
                                                 width: '18px',
                                                 height: '18px',
-                                                fontSize: '10px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: '900'
-                                            }}>
-                                                {(selectedEmployeeFilter && selectedMonthFilter) ? 2 : 1}
-                                            </span>
-                                            <span
-                                                title="Clear Filters"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedEmployeeFilter('');
-                                                    setSelectedMonthFilter('');
-                                                    setCurrentPage(1);
-                                                }}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    background: '#ef4444',
-                                                    color: 'white',
-                                                    borderRadius: '50%',
-                                                    width: '18px',
-                                                    height: '18px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
-                                            >
-                                                <X size={10} strokeWidth={3} />
-                                            </span>
-                                        </div>
+                                                marginLeft: '4px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
+                                        >
+                                            <X size={10} strokeWidth={3} />
+                                        </span>
                                     )}
                                 </button>
 
@@ -2279,7 +2350,26 @@ const FormField = ({ label, name, value, onChange, type = "text", icon, ...rest 
         <label style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginLeft: '4px' }}>{label}</label>
         <div style={{ position: 'relative' }}>
             {icon && <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>{icon}</div>}
-            <input type={type} name={name} value={value} onChange={onChange} autoComplete="off" style={{ ...inputStyle, paddingLeft: icon ? '40px' : '14px' }} {...rest} />
+            <input 
+                type={type} 
+                name={name} 
+                value={value} 
+                onChange={onChange} 
+                autoComplete="off" 
+                onWheel={(e) => {
+                    if (type === 'number') {
+                        e.target.blur();
+                    }
+                }}
+                onKeyDown={(e) => {
+                    if (type === 'number' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                        e.preventDefault();
+                    }
+                    if (rest.onKeyDown) rest.onKeyDown(e);
+                }}
+                style={{ ...inputStyle, paddingLeft: icon ? '40px' : '14px' }} 
+                {...rest} 
+            />
         </div>
     </div>
 );
