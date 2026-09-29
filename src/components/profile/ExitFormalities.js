@@ -41,6 +41,7 @@ export default function ExitFormalities() {
     const [showPrintDropdown, setShowPrintDropdown] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [feedback, setFeedback] = useState({ show: false, message: '', type: 'success' });
+
     const showFeedback = (msg, type = 'success') => {
         setFeedback({ show: true, message: msg, type });
     };
@@ -598,7 +599,7 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
             const pages = document.querySelectorAll('.a4-page');
             if (pages.length === 0) {
                 if (previewWindow && !previewWindow.closed) previewWindow.close();
-                showFeedback('No document pages found to export.', 'error');
+                showFeedback('Unable to open the PDF. Please try again.', 'error');
                 return;
             }
 
@@ -658,22 +659,39 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
             const blobWithMime = new Blob([pdfBlob], { type: 'application/pdf' });
             const blobUrl = URL.createObjectURL(blobWithMime);
 
+            let openedSuccessfully = false;
             if (previewWindow && !previewWindow.closed) {
-                previewWindow.location.href = blobUrl;
-            } else {
-                window.open(blobUrl, '_blank');
+                try {
+                    previewWindow.location.href = blobUrl;
+                    openedSuccessfully = true;
+                } catch (e) {
+                    console.warn('Could not set location.href of previewWindow, trying window.open:', e);
+                }
+            }
+
+            if (!openedSuccessfully) {
+                previewWindow = window.open(blobUrl, '_blank');
+                if (previewWindow && !previewWindow.closed) {
+                    openedSuccessfully = true;
+                }
+            }
+
+            if (!openedSuccessfully || !previewWindow) {
+                showFeedback('Unable to open the PDF. Please try again.', 'error');
+                return;
             }
 
             pdf.save(fileName);
-            showFeedback('Exit formalities PDF exported and opened directly! 📄', 'success');
 
             setTimeout(() => {
-                URL.revokeObjectURL(blobUrl);
+                try {
+                    URL.revokeObjectURL(blobUrl);
+                } catch (e) {}
             }, 120000);
         } catch (error) {
             if (previewWindow && !previewWindow.closed) previewWindow.close();
             console.error('PDF generation error:', error);
-            showFeedback('Failed to export PDF.', 'error');
+            showFeedback('Unable to open the PDF. Please try again.', 'error');
         } finally {
             if (wasEditable) {
                 setIsEditable(true);

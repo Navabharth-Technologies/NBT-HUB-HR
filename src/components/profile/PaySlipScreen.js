@@ -11,6 +11,12 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
+// Helper to sanitize team name by stripping emojis and trailing symbols
+const cleanTeamName = (name) => {
+    if (!name || typeof name !== 'string') return typeof name === 'number' ? String(name) : '';
+    return name.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '').trim();
+};
+
 export default function PaySlipScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -136,12 +142,16 @@ export default function PaySlipScreen() {
 
     const normalizePayslipData = (item) => {
         if (!item) return null;
+        const empUser = usersList.find(u => String(u.employee_id || u.id) === String(item.employee_id || item.id));
+        const resolvedDept = empUser
+            ? cleanTeamName(empUser.team || (empUser.department && empUser.department !== 'IT' && empUser.department !== 'Staff' ? empUser.department : '') || '')
+            : cleanTeamName(item.userTeam || item.team || (item.department && item.department !== 'IT' && item.department !== 'Staff' ? item.department : '') || '');
         return {
             employee_id: String(item.employee_id || item.id || ''),
             month: String(item.month || ''),
             year: String(item.year || ''),
             emp_name: String(item.emp_name || item.employee_name || item.name || ''),
-            department: String(item.department || ''),
+            department: String(resolvedDept),
             designation: String(item.designation || item.role || ''),
             total_present: String(item.total_present || item.totalPresent || item.present || '0'),
             total_weekly_off: String(item.total_weekly_off || item.totalWeeklyOff || '0'),
@@ -397,12 +407,16 @@ export default function PaySlipScreen() {
         const deductions = pf_deduction + esi_deduction + pt_deduction + lwf_deduction + income_tax + lop_deduction;
         const net_payable = Math.max(0, Math.round(earnings - deductions));
 
+        const empUser = usersList.find(u => String(u.employee_id || u.id) === String(employeeId || data.employee_id || data.id));
+        const resolvedDept = empUser
+            ? cleanTeamName(empUser.team || (empUser.department && empUser.department !== 'IT' && empUser.department !== 'Staff' ? empUser.department : '') || '')
+            : cleanTeamName(data.userTeam || data.team || (data.department && data.department !== 'IT' && data.department !== 'Staff' ? data.department : '') || '');
         return {
             employee_id: employeeId || data.employee_id || data.id || '',
             month: month || data.month || '',
             year: year || data.year || '',
             emp_name: data.emp_name || data.name || data.employee_name || '',
-            department: data.department || '',
+            department: resolvedDept,
             designation: data.designation || data.role || '',
 
             total_present: String(data.total_present || data.present || data.present_days || '0'),
@@ -527,20 +541,83 @@ export default function PaySlipScreen() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await fetch(API_ENDPOINTS.USERS, {
-                    headers: { 'Authorization': `Bearer ${user?.token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const sorted = [...data].sort((a, b) => {
-                        const idA = parseInt(String(a.employee_id || a.id || '').replace(/[^\d]/g, ''), 10) || 0;
-                        const idB = parseInt(String(b.employee_id || b.id || '').replace(/[^\d]/g, ''), 10) || 0;
-                        if (idA !== idB) return idA - idB;
-                        return String(a.employee_id || a.id || '').localeCompare(String(b.employee_id || b.id || ''));
-                    });
-                    setUsersList(sorted);
+                const [usersRes, empsRes, teamsRes] = await Promise.all([
+                    fetch(API_ENDPOINTS.USERS, { headers: { 'Authorization': `Bearer ${user?.token}` } }).catch(() => null),
+                    fetch(API_ENDPOINTS.EMPLOYEES, { headers: { 'Authorization': `Bearer ${user?.token}` } }).catch(() => null),
+                    fetch(API_ENDPOINTS.TEAMS, { headers: { 'Authorization': `Bearer ${user?.token}` } }).catch(() => null)
+                ]);
+
+                let usersData = [];
+                if (usersRes && usersRes.ok) {
+                    usersData = await usersRes.json();
                 }
-            } catch (err) { console.error('User fetch error:', err); }
+
+                let empsData = [];
+                if (empsRes && empsRes.ok) {
+                    empsData = await empsRes.json();
+                }
+
+                let teamsData = [];
+                if (teamsRes && teamsRes.ok) {
+                    teamsData = await teamsRes.json();
+                }
+
+                const teamMemberMap = {};
+                if (Array.isArray(teamsData)) {
+                    teamsData.forEach(t => {
+                        const cTeam = cleanTeamName(t.name);
+                        if (t.lead) teamMemberMap[t.lead.toLowerCase().trim()] = cTeam;
+                        if (Array.isArray(t.membersList)) {
+                            t.membersList.forEach(m => {
+                                if (m && m.name) teamMemberMap[m.name.toLowerCase().trim()] = cTeam;
+                            });
+                        }
+                    });
+                }
+
+                const userMap = new Map();
+                const allList = [
+                    ...(Array.isArray(usersData) ? usersData : []),
+                    ...(Array.isArray(empsData) ? empsData : [])
+                ];
+
+                allList.forEach(u => {
+                    const empId = String(u.employee_id || u.id || '').trim();
+                    if (!empId) return;
+                    const name = u.name || u.emp_name || '';
+                    const rawTeam = u.team || teamMemberMap[name.toLowerCase().trim()] || (u.department && u.department !== 'IT' && u.department !== 'Staff' ? u.department : '') || '';
+                    const cleanTeam = cleanTeamName(rawTeam);
+
+                    if (!userMap.has(empId)) {
+                        userMap.set(empId, {
+                            ...u,
+                            employee_id: empId,
+                            id: empId,
+                            name: name,
+                            team: cleanTeam,
+                            department: cleanTeam,
+                            role: u.role || u.designation || ''
+                        });
+                    } else {
+                        const existing = userMap.get(empId);
+                        if (!existing.team && cleanTeam) {
+                            existing.team = cleanTeam;
+                            existing.department = cleanTeam;
+                        }
+                    }
+                });
+
+                const sorted = Array.from(userMap.values()).sort((a, b) => {
+                    const idA = parseInt(String(a.employee_id || a.id || '').replace(/[^\d]/g, ''), 10) || 0;
+                    const idB = parseInt(String(b.employee_id || b.id || '').replace(/[^\d]/g, ''), 10) || 0;
+                    if (idA !== idB) return idA - idB;
+                    return String(a.employee_id || a.id || '').localeCompare(String(b.employee_id || b.id || ''));
+                });
+
+                setUsersList(sorted);
+            } catch (err) {
+                console.error('User fetch error:', err);
+            }
         };
         fetchUsers();
     }, [user]);
@@ -549,12 +626,13 @@ export default function PaySlipScreen() {
         const selectedValue = e.target.value;
         const selectedUser = usersList.find(u => String(u.employee_id || u.id) === String(selectedValue));
         if (selectedUser) {
+            const actualTeam = cleanTeamName(selectedUser.team || selectedUser.department || '');
             setFormData(prev => ({
                 ...prev,
                 employee_id: selectedUser.employee_id || selectedUser.id,
                 emp_name: selectedUser.name,
                 designation: selectedUser.role || selectedUser.designation || '',
-                department: selectedUser.department || selectedUser.team || prev.department || '',
+                department: actualTeam,
                 // Clear any previous employee's loaded attendance & salary details so stale data is never shown
                 total_present: '',
                 total_weekly_off: '',
@@ -577,7 +655,13 @@ export default function PaySlipScreen() {
                 net_payable: prev.basic_salary || '0'
             }));
         } else {
-            setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+            setFormData(prev => ({
+                ...prev,
+                employee_id: String(selectedValue || ''),
+                emp_name: '',
+                department: '',
+                designation: ''
+            }));
         }
     };
 
@@ -616,7 +700,7 @@ export default function PaySlipScreen() {
                 'basic_salary', 'hra', 'conveyance', 'special_allowance',
                 'performance_incentive', 'yearly_incentive',
                 'pf_deduction', 'esi_deduction', 'pt_deduction', 'lwf_deduction', 'income_tax', 'lop_deduction',
-                'lop', 'total_absent'
+                'lop', 'total_absent', 'total_deductions'
             ];
 
             if (financialFields.includes(name)) {
@@ -634,18 +718,32 @@ export default function PaySlipScreen() {
                 const lwf = parseFloat(updated.lwf_deduction) || 0;
                 const itax = parseFloat(updated.income_tax) || 0;
 
-                // LOP deduction at ₹500 per applicable day
+                // LOP deduction at ₹500 per applicable day (updated if lop days change)
                 const lopDays = parseFloat(updated.lop) || 0;
                 const calculatedLop = Math.round(lopDays * 500);
 
+                if (name === 'lop') {
+                    updated.lop_deduction = calculatedLop.toString();
+                }
+
+                const lopDed = name === 'lop_deduction'
+                    ? (parseFloat(value) || 0)
+                    : (updated.lop_deduction !== '' && updated.lop_deduction !== undefined ? (parseFloat(updated.lop_deduction) || 0) : calculatedLop);
+
                 const earnings = basic + hra + conv + spec;
                 const incentives = perf + yearly;
-                const deductions = pf + esi + pt + lwf + itax + calculatedLop;
 
-                updated.lop_deduction = calculatedLop.toString();
+                let deductions;
+                if (name === 'total_deductions') {
+                    deductions = parseFloat(value) || 0;
+                    updated.total_deductions = value;
+                } else {
+                    deductions = pf + esi + pt + lwf + itax + lopDed;
+                    updated.total_deductions = deductions.toString();
+                }
+
                 updated.total_earnings = earnings.toString();
                 updated.total_incentives = incentives.toString();
-                updated.total_deductions = deductions.toString();
                 updated.net_payable = Math.max(0, Math.round(earnings + incentives - deductions)).toString();
             }
 
@@ -736,6 +834,11 @@ export default function PaySlipScreen() {
                 _id: editingPayslipId,
                 id: editingPayslipId
             } : { ...formData };
+
+            targetPayload.lwf = targetPayload.lwf_deduction || targetPayload.lwf || '0';
+            targetPayload.total_deductions = String(targetPayload.total_deductions || '0');
+            targetPayload.lop_deduction = String(targetPayload.lop_deduction || '0');
+            targetPayload.net_payable = String(targetPayload.net_payable || '0');
 
             if (String(targetPayload.employee_id || targetPayload.id || '') === '202522') {
                 targetPayload.email = 'raviaradhya46@gmail.com';
@@ -862,7 +965,7 @@ export default function PaySlipScreen() {
                     month: filterData.month,
                     year: filterData.year,
                     emp_name: selectedUser?.name || 'Employee',
-                    department: selectedUser?.department || 'Staff',
+                    department: cleanTeamName(selectedUser?.team || selectedUser?.department || ''),
                     designation: selectedUser?.role || selectedUser?.designation || '',
                     basic_salary: filterData.basic_salary || '0',
                     total_present: '0',
@@ -1130,12 +1233,13 @@ export default function PaySlipScreen() {
             const netSalary = Math.max(0, Math.round(totalEarnings + totalIncentives - totalDeductions));
 
             const selectedUser = usersList.find(u => String(u.employee_id || u.id) === String(formData.employee_id));
+            const actualTeam = cleanTeamName(selectedUser?.team || selectedUser?.department || formData.department || '');
 
             setFormData(prev => ({
                 ...prev,
                 emp_name: data.emp_name || selectedUser?.name || prev.emp_name,
                 designation: data.designation || selectedUser?.role || selectedUser?.designation || prev.designation,
-                department: data.department || selectedUser?.department || selectedUser?.team || prev.department,
+                department: actualTeam,
                 basic_salary: String(basicSalaryNum),
                 hra: '0',
                 conveyance: '0',
@@ -1199,12 +1303,16 @@ export default function PaySlipScreen() {
     const handleEditPayslip = (item) => {
         setIsEditMode(true);
         setEditingPayslipId(item._id || item.id);
+        const empUser = usersList.find(u => String(u.employee_id || u.id) === String(item.employee_id || item.id));
+        const resolvedDept = empUser
+            ? cleanTeamName(empUser.team || (empUser.department && empUser.department !== 'IT' && empUser.department !== 'Staff' ? empUser.department : '') || '')
+            : cleanTeamName(item.userTeam || item.team || (item.department && item.department !== 'IT' && item.department !== 'Staff' ? item.department : '') || '');
         setFormData({
             employee_id: String(item.employee_id || item.id || ''),
             month: String(item.month || ''),
             year: String(item.year || ''),
             emp_name: String(item.emp_name || item.employee_name || item.name || ''),
-            department: String(item.department || ''),
+            department: String(resolvedDept),
             designation: String(item.designation || item.role || ''),
             total_present: String(item.total_present || item.totalPresent || item.present || '0'),
             total_weekly_off: String(item.total_weekly_off || item.totalWeeklyOff || '0'),
@@ -2043,8 +2151,8 @@ export default function PaySlipScreen() {
                                 <FormField label="PT" name="pt_deduction" type="number" value={formData.pt_deduction} onChange={handleInputChange} />
                                 <FormField label="LWF" name="lwf_deduction" type="number" value={formData.lwf_deduction} onChange={handleInputChange} />
                                 <FormField label="Income Tax" name="income_tax" type="number" value={formData.income_tax} onChange={handleInputChange} />
-                                <FormField label="LOP Deduction" name="lop_deduction" type="number" value={formData.lop_deduction} readOnly />
-                                <FormField label="Total Deductions" name="total_deductions" type="number" value={formData.total_deductions} readOnly />
+                                <FormField label="LOP Deduction" name="lop_deduction" type="number" value={formData.lop_deduction} onChange={handleInputChange} />
+                                <FormField label="Total Deductions" name="total_deductions" type="number" value={formData.total_deductions} onChange={handleInputChange} />
 
                                 <div style={{ gridColumn: winWidth < 768 ? 'auto' : 'span 3', margin: '24px 0 8px' }}>
                                     <h3 style={{ ...sectionHeaderStyle, color: '#16a34a', background: 'rgba(22, 163, 74, 0.05)' }}> Final Net Payable</h3>
